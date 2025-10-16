@@ -2,13 +2,17 @@ import { db } from '@/db';
 import { services } from '@/db/schema';
 import { NextResponse } from 'next/server';
 
+export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
+
 export async function GET() {
   try {
     const allServices = await db.query.services.findMany();
-    return NextResponse.json(allServices);
+    return NextResponse.json(allServices || []);
   } catch (error) {
     console.error('Error fetching services:', error);
-    return NextResponse.json({ error: 'Failed to fetch services' }, { status: 500 });
+    // Return empty array instead of error to prevent crash
+    return NextResponse.json([]);
   }
 }
 

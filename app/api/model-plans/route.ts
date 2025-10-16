@@ -2,13 +2,16 @@ import { db } from '@/db';
 import { modelPlans } from '@/db/schema';
 import { NextResponse } from 'next/server';
 
+export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
+
 export async function GET() {
   try {
     const allModelPlans = await db.query.modelPlans.findMany();
-    return NextResponse.json(allModelPlans);
+    return NextResponse.json(allModelPlans || []);
   } catch (error) {
     console.error('Error fetching model plans:', error);
-    return NextResponse.json({ error: 'Failed to fetch model plans' }, { status: 500 });
+    return NextResponse.json([]);
   }
 }
 

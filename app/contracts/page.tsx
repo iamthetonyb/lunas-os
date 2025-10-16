@@ -107,7 +107,7 @@ export default function ContractsPage() {
                     )}
                     {tab.name === 'Model Plans' && (
                       <>
-                        <li>Model plans store default values for each builder's house types</li>
+                        <li>Model plans store default values for each builder&apos;s house types</li>
                         <li>Set default window and tub counts to speed up data entry</li>
                         <li>Square footage helps with per-sqft pricing calculations</li>
                       </>
