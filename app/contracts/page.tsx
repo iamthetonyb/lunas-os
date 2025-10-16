@@ -102,7 +102,7 @@ export default function ContractsPage() {
                       <>
                         <li>Services define what work types you offer to builders</li>
                         <li>Each service can have different unit types (per job, per sqft, etc.)</li>
-                        <li>Inactive services won&apos;t appear in job intake forms</li>
+                        <li>Inactive services will not appear in job intake forms</li>
                       </>
                     )}
                     {tab.name === 'Model Plans' && (

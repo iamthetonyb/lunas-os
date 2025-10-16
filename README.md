@@ -2,10 +2,10 @@
 
 **Construction Cleanup Management System** - A comprehensive platform for managing construction cleanup operations, scheduling, invoicing, and crew dispatch.
 
-[![Next.js](https://img.shields.io/badge/Next.js-15.5.5-black)](https://nextjs.org/)
-[![React](https://img.shields.io/badge/React-19.1.0-blue)](https://react.dev/)
+[![Next.js](https://img.shields.io/badge/Next.js-14.x-black)](https://nextjs.org/)
+[![React](https://img.shields.io/badge/React-19-blue)](https://react.dev/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.x-blue)](https://www.typescriptlang.org/)
-[![Tailwind CSS](https://img.shields.io/badge/Tailwind-4.x-38bdf8)](https://tailwindcss.com/)
+[![Tailwind CSS](https://img.shields.io/badge/Tailwind-3.x-38bdf8)](https://tailwindcss.com/)
 
 ---
 
