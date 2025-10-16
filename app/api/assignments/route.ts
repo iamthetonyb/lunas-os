@@ -12,13 +12,27 @@ export async function GET(req: Request) {
       const filteredAssignments = await db.query.assignments.findMany({
         where: eq(assignments.status, status as any),
       });
-      return NextResponse.json(filteredAssignments);
+      return NextResponse.json(filteredAssignments || [], {
+        headers: {
+          'Cache-Control': 'no-store, no-cache, must-revalidate',
+        },
+      });
     }
 
     const allAssignments = await db.query.assignments.findMany();
-    return NextResponse.json(allAssignments);
+    return NextResponse.json(allAssignments || [], {
+      headers: {
+        'Cache-Control': 'no-store, no-cache, must-revalidate',
+      },
+    });
   } catch (error) {
     console.error('Error fetching assignments:', error);
-    return NextResponse.json({ error: 'Failed to fetch assignments' }, { status: 500 });
+    // Return empty array with 200 status to prevent crashes
+    return NextResponse.json([], {
+      status: 200,
+      headers: {
+        'Cache-Control': 'no-store, no-cache, must-revalidate',
+      },
+    });
   }
 }

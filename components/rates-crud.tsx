@@ -9,12 +9,19 @@ import { zodResolver } from '@hookform/resolvers/zod';
 
 const fetcher = async (url: string) => {
   try {
-    const res = await fetch(url);
-    if (!res.ok) return [];
+    const res = await fetch(url, {
+      headers: {
+        'Cache-Control': 'no-cache',
+      },
+    });
+    if (!res.ok) {
+      console.warn(`API request failed: ${url} - ${res.status}`);
+      return [];
+    }
     const data = await res.json();
     return Array.isArray(data) ? data : [];
   } catch (error) {
-    console.error("Fetcher error:", error);
+    console.error('Fetcher error:', error);
     return [];
   }
 };

@@ -10,9 +10,13 @@ import { Fragment } from 'react';
 
 const fetcher = async (url: string) => {
   try {
-    const res = await fetch(url);
+    const res = await fetch(url, {
+      headers: {
+        'Cache-Control': 'no-cache',
+      },
+    });
     if (!res.ok) {
-      // Return empty array on error instead of throwing
+      console.warn(`API request failed: ${url} - ${res.status}`);
       return [];
     }
     const data = await res.json();

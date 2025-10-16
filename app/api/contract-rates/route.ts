@@ -8,10 +8,20 @@ export const runtime = 'nodejs';
 export async function GET() {
   try {
     const rates = await db.query.contractRates.findMany();
-    return NextResponse.json(rates || []);
+    return NextResponse.json(rates || [], {
+      headers: {
+        'Cache-Control': 'no-store, no-cache, must-revalidate',
+      },
+    });
   } catch (error) {
     console.error('Error fetching contract rates:', error);
-    return NextResponse.json([]);
+    // Return empty array with 200 status to prevent crashes
+    return NextResponse.json([], {
+      status: 200,
+      headers: {
+        'Cache-Control': 'no-store, no-cache, must-revalidate',
+      },
+    });
   }
 }
 
