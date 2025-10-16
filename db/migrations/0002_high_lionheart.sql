@@ -1,0 +1,1 @@
+ALTER TABLE "model_plans" ADD CONSTRAINT "builder_id_code_unique" UNIQUE("builder_id","code");

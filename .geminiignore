@@ -1,0 +1,17 @@
+# Build artefacts & deps
+node_modules
+.next
+dist
+coverage
+.tmp
+.cache
+.vscode
+.DS_Store
+
+# VCS and logs
+.git
+**/*.log
+
+# Puppeteer/Playwright caches
+~/.cache/puppeteer
+~/.cache/ms-playwright
