@@ -3,10 +3,32 @@ import { Resend } from 'resend';
 import { db } from '@/db';
 import { smsEmailLogs } from '@/db/schema';
 
-const twilio = new Twilio(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);
-const resend = new Resend(process.env.RESEND_API_KEY);
+// Lazy initialization to avoid build-time errors when API keys are missing
+let twilioClient: Twilio | null = null;
+let resendClient: Resend | null = null;
+
+function getTwilio() {
+  if (!twilioClient && process.env.TWILIO_ACCOUNT_SID && process.env.TWILIO_AUTH_TOKEN) {
+    twilioClient = new Twilio(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);
+  }
+  return twilioClient;
+}
+
+function getResend() {
+  if (!resendClient && process.env.RESEND_API_KEY) {
+    resendClient = new Resend(process.env.RESEND_API_KEY);
+  }
+  return resendClient;
+}
 
 export async function sendSms(to: string, body: string) {
+  const twilio = getTwilio();
+  
+  if (!twilio) {
+    console.warn('SMS service not configured. Set TWILIO_ACCOUNT_SID and TWILIO_AUTH_TOKEN in environment.');
+    return null;
+  }
+
   try {
     const message = await twilio.messages.create({
       body,
@@ -29,6 +51,13 @@ export async function sendSms(to: string, body: string) {
 }
 
 export async function sendEmail(to: string, subject: string, html: string) {
+  const resend = getResend();
+  
+  if (!resend) {
+    console.warn('Email service not configured. Set RESEND_API_KEY in environment.');
+    return null;
+  }
+
   try {
     const { data, error } = await resend.emails.send({
       from: 'Lunas OS <noreply@lunas-os.com>', // This should be a configured domain in Resend
