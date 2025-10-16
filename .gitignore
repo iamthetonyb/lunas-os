@@ -48,3 +48,14 @@ next-env.d.ts
 /*-WORKING.txt
 /*-READY.txt
 SESSION-*.md
+
+# SQLite dev database
+*.db
+*.db-shm
+*.db-wal
+dev.db*
+
+# Screenshots
+*.png
+*.jpg
+*.jpeg

@@ -7,9 +7,10 @@ const nextConfig = {
   typescript: {
     ignoreBuildErrors: true,
   },
-  webpack: (config) => {
-    // Ensure CSS is processed
-    return config;
+  // Disable experimental features that might interfere
+  experimental: {
+    // Ensure webpack is used for CSS processing
+    esmExternals: true,
   },
 };
 module.exports = nextConfig;

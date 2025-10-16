@@ -37,20 +37,18 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 require("dotenv/config");
-const better_sqlite3_1 = __importDefault(require("better-sqlite3"));
-const better_sqlite3_2 = require("drizzle-orm/better-sqlite3");
-const migrator_1 = require("drizzle-orm/better-sqlite3/migrator");
+const postgres_1 = __importDefault(require("postgres"));
+const postgres_js_1 = require("drizzle-orm/postgres-js");
+const migrator_1 = require("drizzle-orm/postgres-js/migrator");
 const schema = __importStar(require("../db/schema"));
 async function main() {
-    var _a;
-    const sqlitePath = (_a = process.env.SQLITE_PATH) !== null && _a !== void 0 ? _a : 'dev.db';
-    const client = new better_sqlite3_1.default(sqlitePath);
-    const db = (0, better_sqlite3_2.drizzle)(client, { schema });
-    (0, migrator_1.migrate)(db, { migrationsFolder: 'db/migrations-sqlite' });
-    client.close();
-    console.log('✅ SQLite migrations applied');
+    const client = (0, postgres_1.default)(process.env.DATABASE_URL, { max: 1 });
+    const db = (0, postgres_js_1.drizzle)(client, { schema });
+    await (0, migrator_1.migrate)(db, { migrationsFolder: 'db/migrations' });
+    await client.end();
+    console.log('✅ Programmatic migrations applied');
 }
 main().catch(async (e) => {
-    console.error('❌ migrate-sqlite.ts failed', e);
+    console.error('❌ migrate.ts failed', e);
     process.exit(1);
 });

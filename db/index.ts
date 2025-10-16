@@ -1,21 +1,51 @@
 import 'dotenv/config';
-import postgres from 'postgres';
-import { drizzle } from 'drizzle-orm/postgres-js';
 import * as schema from './schema';
+
+// Postgres (postgres-js)
+import postgres from 'postgres';
+import { drizzle as drizzlePg } from 'drizzle-orm/postgres-js';
+
+// SQLite (better-sqlite3)
+import Database from 'better-sqlite3';
+import { drizzle as drizzleSqlite } from 'drizzle-orm/better-sqlite3';
+
+const url = process.env.DATABASE_URL;
+const useSqlite = !url || !url.startsWith('postgres');
 
 // Create a singleton connection
 const globalForDb = globalThis as unknown as {
-  client: ReturnType<typeof postgres> | undefined;
+  pgClient: ReturnType<typeof postgres> | undefined;
+  sqliteClient: Database.Database | undefined;
 };
 
-export const client = globalForDb.client ?? postgres(process.env.DATABASE_URL!, { 
-  max: 10,
-  idle_timeout: 20,
-  connect_timeout: 10,
-});
+let client: any;
+let db: any;
 
-if (process.env.NODE_ENV !== 'production') {
-  globalForDb.client = client;
+// SQLite for dev (no Docker needed)
+if (useSqlite) {
+  const sqlitePath = process.env.SQLITE_PATH ?? 'dev.db';
+  const sqliteClient = globalForDb.sqliteClient ?? new Database(sqlitePath);
+  
+  if (process.env.NODE_ENV !== 'production') {
+    globalForDb.sqliteClient = sqliteClient;
+  }
+  
+  client = sqliteClient;
+  db = drizzleSqlite(sqliteClient, { schema });
+} else {
+  // Postgres for production
+  const pgClient = globalForDb.pgClient ?? postgres(url, { 
+    max: 10,
+    idle_timeout: 20,
+    connect_timeout: 10,
+  });
+  
+  if (process.env.NODE_ENV !== 'production') {
+    globalForDb.pgClient = pgClient;
+  }
+  
+  client = pgClient;
+  db = drizzlePg(pgClient, { schema });
 }
 
-export const db = drizzle(client, { schema });
+export { db, client };
