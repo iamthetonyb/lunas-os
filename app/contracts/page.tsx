@@ -3,73 +3,12 @@
 import { AppLayout } from '@/components/app-layout';
 import { PageHeader } from '@/components/page-header';
 import { Tab } from '@headlessui/react';
+import { ServicesCrud } from '@/components/services-crud';
+import { ModelPlansCrud } from '@/components/model-plans-crud';
+import { RatesCrud } from '@/components/rates-crud';
 
 function classNames(...classes: string[]) {
   return classes.filter(Boolean).join(' ');
-}
-
-// Placeholder components for testing without database
-function ServicesCrudDemo() {
-  return (
-    <div className="p-6 bg-white dark:bg-slate-800 rounded-lg shadow">
-      <h3 className="text-lg font-semibold mb-4 text-gray-900 dark:text-white">Services</h3>
-      <p className="text-gray-600 dark:text-gray-400 mb-4">
-        Configure your service types here. Database connection required for full functionality.
-      </p>
-      <div className="space-y-2">
-        <div className="p-4 border border-gray-200 dark:border-gray-700 rounded">
-          <h4 className="font-medium text-gray-900 dark:text-white">Demo Service: Final Clean</h4>
-          <p className="text-sm text-gray-500 dark:text-gray-400">Standard post-construction cleaning</p>
-        </div>
-        <div className="p-4 border border-gray-200 dark:border-gray-700 rounded">
-          <h4 className="font-medium text-gray-900 dark:text-white">Demo Service: Touch Up</h4>
-          <p className="text-sm text-gray-500 dark:text-gray-400">Minor repairs and cleaning</p>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function ModelPlansCrudDemo() {
-  return (
-    <div className="p-6 bg-white dark:bg-slate-800 rounded-lg shadow">
-      <h3 className="text-lg font-semibold mb-4 text-gray-900 dark:text-white">Model Plans</h3>
-      <p className="text-gray-600 dark:text-gray-400 mb-4">
-        Configure model plans for each builder. Database connection required for full functionality.
-      </p>
-      <div className="space-y-2">
-        <div className="p-4 border border-gray-200 dark:border-gray-700 rounded">
-          <h4 className="font-medium text-gray-900 dark:text-white">Demo Plan: Plan A</h4>
-          <p className="text-sm text-gray-500 dark:text-gray-400">2 bed, 2 bath - 1,200 sqft</p>
-        </div>
-        <div className="p-4 border border-gray-200 dark:border-gray-700 rounded">
-          <h4 className="font-medium text-gray-900 dark:text-white">Demo Plan: Plan B</h4>
-          <p className="text-sm text-gray-500 dark:text-gray-400">3 bed, 2 bath - 1,500 sqft</p>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function RatesCrudDemo() {
-  return (
-    <div className="p-6 bg-white dark:bg-slate-800 rounded-lg shadow">
-      <h3 className="text-lg font-semibold mb-4 text-gray-900 dark:text-white">Rates</h3>
-      <p className="text-gray-600 dark:text-gray-400 mb-4">
-        Set pricing rates by builder, community, or model. Database connection required for full functionality.
-      </p>
-      <div className="space-y-2">
-        <div className="p-4 border border-gray-200 dark:border-gray-700 rounded">
-          <h4 className="font-medium text-gray-900 dark:text-white">Demo Rate: Final Clean</h4>
-          <p className="text-sm text-gray-500 dark:text-gray-400">$250 - $500 depending on size</p>
-        </div>
-        <div className="p-4 border border-gray-200 dark:border-gray-700 rounded">
-          <h4 className="font-medium text-gray-900 dark:text-white">Demo Rate: Touch Up</h4>
-          <p className="text-sm text-gray-500 dark:text-gray-400">$150 - $300 depending on work</p>
-        </div>
-      </div>
-    </div>
-  );
 }
 
 export default function ContractsPage() {
@@ -78,19 +17,19 @@ export default function ContractsPage() {
       name: 'Services', 
       icon: '🛠️', 
       description: 'Define and manage service types offered to builders',
-      component: ServicesCrudDemo 
+      component: ServicesCrud 
     },
     { 
       name: 'Model Plans', 
       icon: '🏠', 
       description: 'Configure house models with default settings for each builder',
-      component: ModelPlansCrudDemo 
+      component: ModelPlansCrud 
     },
     { 
       name: 'Rates', 
       icon: '💵', 
       description: 'Set pricing for services by builder, community, or model plan',
-      component: RatesCrudDemo 
+      component: RatesCrud 
     },
   ];
 

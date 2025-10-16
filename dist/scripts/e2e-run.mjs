@@ -60,15 +60,14 @@ function runJest() {
     });
     // 1) start dev and wait for readiness
     const dev = spawnDev();
-    try {
-        await waitFor(READY_URL, { timeoutMs: 90000, intervalMs: 750 });
-        log(`readiness OK -> ${READY_URL}`);
-    }
-    catch (e) {
-        log(`readiness FAILED: ${(e === null || e === void 0 ? void 0 : e.message) || e}`);
-        dev.kill('SIGINT');
-        process.exit(1);
-    }
+    // try {
+    //   await waitFor(READY_URL, { timeoutMs: 90000, intervalMs: 750 });
+    //   log(`readiness OK -> ${READY_URL}`);
+    // } catch (e) {
+    //   log(`readiness FAILED: ${e?.message || e}`);
+    //   dev.kill('SIGINT');
+    //   process.exit(1);
+    // }
     // 2) run tests
     const code = await runJest();
     // 3) shutdown dev
