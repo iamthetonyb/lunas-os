@@ -3,10 +3,10 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "NODE_OPTIONS='--max-old-space-size=4096' NODE_ENV=development PORT=4010 next dev --turbo -p 4010",
+    "dev": "NODE_OPTIONS='--max-old-space-size=4096' NODE_ENV=development PORT=4010 next dev -p 4010",
+    "dev:turbo": "NODE_OPTIONS='--max-old-space-size=4096' NODE_ENV=development PORT=4010 next dev --turbo -p 4010",
     "dev:safe": "./dev-start.sh",
     "dev:keepalive": "./keep-server-alive.sh",
-    "dev:webpack": "NODE_OPTIONS='--max-old-space-size=4096' NODE_ENV=development PORT=4010 next dev -p 4010",
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
