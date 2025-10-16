@@ -1,6 +1,5 @@
-import type { NextConfig } from "next";
-
-const nextConfig: NextConfig = {
+/** @type {import('next').NextConfig} */
+const nextConfig = {
   /* config options here */
   // Disable ESLint during builds to allow deployment with warnings
   eslint: {
@@ -18,15 +17,6 @@ const nextConfig: NextConfig = {
         permanent: true,
       },
     ];
-  },
-  // Turbopack configuration (updated for Next.js 15.5+)
-  turbopack: {
-    rules: {
-      '*.svg': {
-        loaders: ['@svgr/webpack'],
-        as: '*.js',
-      },
-    },
   },
   // Experimental features
   experimental: {

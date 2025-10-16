@@ -1,0 +1,9 @@
+ignoredBuiltDependencies:
+  - esbuild
+  - msgpackr-extract
+  - puppeteer
+  - unrs-resolver
+
+onlyBuiltDependencies:
+  - '@tailwindcss/oxide'
+  - bcrypt
