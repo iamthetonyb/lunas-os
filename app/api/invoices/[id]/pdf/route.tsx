@@ -20,7 +20,7 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
 
   const pdfStream = await renderToStream(<InvoicePdf invoice={invoice} />);
   
-  return new Response(pdfStream, {
+  return new Response(pdfStream as any, {
     headers: {
       'Content-Type': 'application/pdf',
     },

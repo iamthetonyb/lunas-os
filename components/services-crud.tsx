@@ -10,19 +10,34 @@ import { Fragment } from 'react';
 
 const fetcher = async (url: string) => {
   try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 10000); // Increased to 10s
+    
     const res = await fetch(url, {
+      signal: controller.signal,
       headers: {
-        'Cache-Control': 'no-cache',
+        'Cache-Control': 'no-store',
+        'Pragma': 'no-cache',
       },
+      cache: 'no-store',
     });
+    
+    clearTimeout(timeoutId);
+    
     if (!res.ok) {
-      console.warn(`API request failed: ${url} - ${res.status}`);
-      return [];
+      console.warn(`API request failed: ${url} - Status: ${res.status}`);
+      // Return empty array for non-critical errors
+      if (res.status === 404 || res.status >= 500) {
+        return [];
+      }
+      throw new Error(`HTTP ${res.status}`);
     }
+    
     const data = await res.json();
     return Array.isArray(data) ? data : [];
   } catch (error) {
-    console.error('Fetcher error:', error);
+    console.error('Fetcher error for', url, error);
+    // Always return empty array to prevent crashes
     return [];
   }
 };

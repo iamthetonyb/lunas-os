@@ -6,7 +6,7 @@ import { users } from '../../../../db/schema';
 import { eq } from 'drizzle-orm';
 import type { NextAuthOptions } from 'next-auth';
 
-export const authOptions: NextAuthOptions = {
+const authOptions: NextAuthOptions = {
   session: { strategy: 'jwt' },
   providers: [
     Credentials({
@@ -15,7 +15,7 @@ export const authOptions: NextAuthOptions = {
       authorize: async (creds) => {
         if (!creds?.email || !creds?.password) return null;
         const [u] = await db.select().from(users).where(eq(users.email, creds.email.toLowerCase()));
-        if (!u) return null;
+        if (!u || !u.passwordHash) return null;
         const ok = await bcrypt.compare(creds.password, u.passwordHash);
         if (!ok) return null;
         return { id: u.id, name: u.name, email: u.email, role: u.role };

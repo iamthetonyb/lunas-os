@@ -1,37 +1,31 @@
 import { db } from '@/db';
 import { modelPlans } from '@/db/schema';
 import { NextResponse } from 'next/server';
+import { withApiHandler, withTimeout, errorResponse } from '@/lib/api-helpers';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
 export async function GET() {
-  try {
-    const allModelPlans = await db.query.modelPlans.findMany();
-    return NextResponse.json(allModelPlans || [], {
-      headers: {
-        'Cache-Control': 'no-store, no-cache, must-revalidate',
-      },
-    });
-  } catch (error) {
-    console.error('Error fetching model plans:', error);
-    // Return empty array with 200 status to prevent crashes
-    return NextResponse.json([], {
-      status: 200,
-      headers: {
-        'Cache-Control': 'no-store, no-cache, must-revalidate',
-      },
-    });
-  }
+  return withApiHandler(
+    async () => {
+      const allModelPlans = await db.query.modelPlans.findMany();
+      return allModelPlans || [];
+    },
+    []
+  );
 }
 
 export async function POST(req: Request) {
   try {
-    const data = await req.json();
-    const newModelPlan = await db.insert(modelPlans).values(data).returning();
+    const data = await withTimeout(req.json(), 5000);
+    const newModelPlan = await withTimeout(
+      db.insert(modelPlans).values(data).returning(),
+      8000
+    );
     return NextResponse.json(newModelPlan[0]);
   } catch (error) {
     console.error('Error creating model plan:', error);
-    return NextResponse.json({ error: 'Failed to create model plan' }, { status: 500 });
+    return errorResponse('Failed to create model plan');
   }
 }

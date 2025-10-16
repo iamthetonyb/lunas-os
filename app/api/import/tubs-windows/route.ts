@@ -37,7 +37,7 @@ export async function POST(req: Request) {
       builderId,
       communityId: community.id,
       lot: Lot,
-      dueDate: new Date(dateStr),
+      dueDate: dateStr ? new Date(dateStr).toISOString().split('T')[0] : null,
     }).returning();
 
     const newJobRequestService = await db.insert(jobRequestServices).values({

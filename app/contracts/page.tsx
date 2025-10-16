@@ -6,9 +6,18 @@ import { Tab } from '@headlessui/react';
 import { ServicesCrud } from '@/components/services-crud';
 import { ModelPlansCrud } from '@/components/model-plans-crud';
 import { RatesCrud } from '@/components/rates-crud';
+import { Suspense } from 'react';
 
 function classNames(...classes: string[]) {
   return classes.filter(Boolean).join(' ');
+}
+
+function LoadingSpinner() {
+  return (
+    <div className="flex items-center justify-center py-12">
+      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+    </div>
+  );
 }
 
 export default function ContractsPage() {
@@ -74,6 +83,7 @@ export default function ContractsPage() {
             {tabs.map((tab, idx) => (
               <Tab.Panel
                 key={idx}
+                unmount={false}
                 className="bg-white dark:bg-slate-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 p-6 transition-all duration-200"
               >
                 {/* Tab Header */}
@@ -93,76 +103,12 @@ export default function ContractsPage() {
                   </div>
                 </div>
 
-                {/* Tab Content */}
-                <div className="space-y-4">
-                  <tab.component />
-                </div>
-
-                {/* Quick Tips */}
-                <div className="mt-6 p-5 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 border-l-4 border-blue-500 dark:border-blue-400 rounded-r-lg shadow-sm">
-                  <div className="flex items-start gap-3">
-                    <div className="bg-blue-500 dark:bg-blue-600 rounded-full p-1.5 mt-0.5">
-                      <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                      </svg>
-                    </div>
-                    <div className="flex-1">
-                      <h4 className="font-bold text-blue-900 dark:text-blue-300 text-sm mb-2">
-                        Quick Tips
-                      </h4>
-                      <ul className="text-xs text-blue-800 dark:text-blue-200 space-y-1.5 ml-1">
-                        {tab.name === 'Services' && (
-                          <>
-                            <li className="flex items-start gap-2">
-                              <span className="text-blue-500 mt-0.5">•</span>
-                              <span>Services define what work types you offer to builders</span>
-                            </li>
-                            <li className="flex items-start gap-2">
-                              <span className="text-blue-500 mt-0.5">•</span>
-                              <span>Each service can have different unit types (per job, per sqft, etc.)</span>
-                            </li>
-                            <li className="flex items-start gap-2">
-                              <span className="text-blue-500 mt-0.5">•</span>
-                              <span>Inactive services will not appear in job intake forms</span>
-                            </li>
-                          </>
-                        )}
-                        {tab.name === 'Model Plans' && (
-                          <>
-                            <li className="flex items-start gap-2">
-                              <span className="text-blue-500 mt-0.5">•</span>
-                              <span>Model plans store default values for each builder&apos;s house types</span>
-                            </li>
-                            <li className="flex items-start gap-2">
-                              <span className="text-blue-500 mt-0.5">•</span>
-                              <span>Set default window and tub counts to speed up data entry</span>
-                            </li>
-                            <li className="flex items-start gap-2">
-                              <span className="text-blue-500 mt-0.5">•</span>
-                              <span>Square footage helps with per-sqft pricing calculations</span>
-                            </li>
-                          </>
-                        )}
-                        {tab.name === 'Rates' && (
-                          <>
-                            <li className="flex items-start gap-2">
-                              <span className="text-blue-500 mt-0.5">•</span>
-                              <span>Rates can be set at builder, community, or model plan level</span>
-                            </li>
-                            <li className="flex items-start gap-2">
-                              <span className="text-blue-500 mt-0.5">•</span>
-                              <span>More specific rates (model plan) override general rates (builder)</span>
-                            </li>
-                            <li className="flex items-start gap-2">
-                              <span className="text-blue-500 mt-0.5">•</span>
-                              <span>Review rates regularly to ensure profitability</span>
-                            </li>
-                          </>
-                        )}
-                      </ul>
-                    </div>
+                {/* Tab Content with Suspense */}
+                <Suspense fallback={<LoadingSpinner />}>
+                  <div className="space-y-4">
+                    <tab.component />
                   </div>
-                </div>
+                </Suspense>
               </Tab.Panel>
             ))}
           </Tab.Panels>
