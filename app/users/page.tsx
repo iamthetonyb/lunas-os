@@ -1,11 +1,10 @@
 'use client';
 
-import { AppLayout } from '@/components/app-layout';
 import { PageHeader } from '@/components/page-header';
 
 export default function UsersPage() {
   return (
-    <AppLayout>
+    <>
       <PageHeader 
         title="Users" 
         description="Manage system users and permissions"
@@ -21,6 +20,6 @@ export default function UsersPage() {
           <p className="text-gray-600">User management interface will be displayed here</p>
         </div>
       </main>
-    </AppLayout>
+    </>
   );
 }

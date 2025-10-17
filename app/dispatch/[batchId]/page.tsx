@@ -1,6 +1,5 @@
 'use client';
 
-import { AppLayout } from '@/components/app-layout';
 import { PageHeader } from '@/components/page-header';
 import Link from 'next/link';
 import { use } from 'react';
@@ -10,7 +9,7 @@ export default function DispatchBatchPage({ params }: { params: Promise<{ batchI
   const { batchId } = use(params);
   
   return (
-    <AppLayout>
+    <>
       <PageHeader 
         title={`Dispatch Batch: ${batchId}`}
         description="View and manage batch details"
@@ -26,6 +25,6 @@ export default function DispatchBatchPage({ params }: { params: Promise<{ batchI
           <p className="text-gray-600">Batch {batchId} details will be displayed here</p>
         </div>
       </main>
-    </AppLayout>
+    </>
   );
 }

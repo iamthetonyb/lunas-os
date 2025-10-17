@@ -1,13 +1,12 @@
 'use client';
 
-import { AppLayout } from '@/components/app-layout';
 import { PageHeader } from '@/components/page-header';
 import { IntakeForm } from '@/components/intake-form';
 import Link from 'next/link';
 
 export default function NewIntakePage() {
   return (
-    <AppLayout>
+    <>
       <PageHeader 
         title="New Intake" 
         description="Create a new job intake request"
@@ -22,6 +21,6 @@ export default function NewIntakePage() {
           <IntakeForm />
         </div>
       </main>
-    </AppLayout>
+    </>
   );
 }

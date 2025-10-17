@@ -1,8 +1,6 @@
 'use client';
 
 import { useEffect } from 'react';
-import { AppLayout } from '@/components/app-layout';
-
 export default function DashboardError({
   error,
   reset,
@@ -15,7 +13,7 @@ export default function DashboardError({
   }, [error]);
 
   return (
-    <AppLayout>
+    <>
       <div className="px-6 py-6">
         <div className="max-w-2xl mx-auto">
           <div className="bg-white dark:bg-slate-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-8">
@@ -54,6 +52,6 @@ export default function DashboardError({
           </div>
         </div>
       </div>
-    </AppLayout>
+    </>
   );
 }

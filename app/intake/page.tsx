@@ -1,12 +1,11 @@
 'use client';
 
-import { AppLayout } from '@/components/app-layout';
 import { PageHeader } from '@/components/page-header';
 import Link from 'next/link';
 
 export default function IntakePage() {
   return (
-    <AppLayout>
+    <>
       <PageHeader 
         title="Intake" 
         description="Manage job intake and new project submissions"
@@ -22,6 +21,6 @@ export default function IntakePage() {
           <p className="text-gray-600">Intake list will be displayed here</p>
         </div>
       </main>
-    </AppLayout>
+    </>
   );
 }

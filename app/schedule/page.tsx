@@ -1,6 +1,5 @@
 'use client';
 
-import { AppLayout } from '@/components/app-layout';
 import { PageHeader } from '@/components/page-header';
 import { useState } from 'react';
 import useSWR from 'swr';
@@ -33,7 +32,7 @@ export default function SchedulePage() {
   };
 
   return (
-    <AppLayout>
+    <>
       <PageHeader 
         title="Schedule" 
         description="Manage job scheduling and crew assignments"
@@ -73,6 +72,6 @@ export default function SchedulePage() {
           )}
         </div>
       </main>
-    </AppLayout>
+    </>
   );
 }

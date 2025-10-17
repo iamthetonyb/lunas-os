@@ -2,8 +2,9 @@ import { db } from '@/db';
 import { blueBookEntries } from '@/db/schema';
 import { and, eq, isNull } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
+import { withErrorHandling } from '@/lib/api-handler';
 
-export async function GET(req: Request) {
+async function handler(req: Request) {
   const { searchParams } = new URL(req.url);
   const builderId = searchParams.get('builderId');
   const status = searchParams.get('status');
@@ -20,8 +21,10 @@ export async function GET(req: Request) {
     conditions.push(isNull(blueBookEntries.invoiceLineId));
   }
 
-  const where = and(...conditions);
+  const where = conditions.length > 0 ? and(...conditions) : undefined;
 
   const entries = await db.query.blueBookEntries.findMany({ where });
-  return NextResponse.json(entries);
+  return NextResponse.json(entries || []);
 }
+
+export const GET = withErrorHandling(handler);

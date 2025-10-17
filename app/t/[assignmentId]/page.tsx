@@ -1,6 +1,5 @@
 'use client';
 
-import { AppLayout } from '@/components/app-layout';
 import { PageHeader } from '@/components/page-header';
 import useSWR from 'swr';
 import SignatureCanvas from 'react-signature-canvas';
@@ -61,29 +60,29 @@ export default function FieldTicketPage({ params }: { params: Promise<{ assignme
   });
 
   if (error) return (
-    <AppLayout>
+    <>
       <PageHeader title="Field Ticket" description={`Assignment ${params.assignmentId}`} />
       <main className="px-6 py-6">
         <div className="bg-red-50 border border-red-200 rounded-lg p-4">
           <p className="text-red-600">Failed to load assignment</p>
         </div>
       </main>
-    </AppLayout>
+    </>
   );
 
   if (!assignment) return (
-    <AppLayout>
+    <>
       <PageHeader title="Field Ticket" description={`Assignment ${params.assignmentId}`} />
       <main className="px-6 py-6">
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
           <p className="text-gray-600">Loading assignment...</p>
         </div>
       </main>
-    </AppLayout>
+    </>
   );
 
   return (
-    <AppLayout>
+    <>
       <PageHeader 
         title="Field Ticket" 
         description={`Assignment ID: ${assignment.id}`}
@@ -206,6 +205,6 @@ export default function FieldTicketPage({ params }: { params: Promise<{ assignme
           </div>
         </form>
       </main>
-    </AppLayout>
+    </>
   );
 }

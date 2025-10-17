@@ -1,6 +1,5 @@
 'use client';
 
-import { AppLayout } from '@/components/app-layout';
 import { PageHeader } from '@/components/page-header';
 import { Tab } from '@headlessui/react';
 import { ServicesCrud } from '@/components/services-crud';
@@ -43,7 +42,7 @@ export default function ContractsPage() {
   ];
 
   return (
-    <AppLayout>
+    <>
       <PageHeader 
         title="Contracts & Configuration" 
         description="Manage services, model plans, and pricing rates"
@@ -114,6 +113,6 @@ export default function ContractsPage() {
           </Tab.Panels>
         </Tab.Group>
       </main>
-    </AppLayout>
+    </>
   );
 }

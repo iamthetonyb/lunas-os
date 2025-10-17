@@ -1,6 +1,5 @@
 'use client';
 
-import { AppLayout } from '@/components/app-layout';
 import { PageHeader } from '@/components/page-header';
 import { useState, useRef } from 'react';
 
@@ -66,7 +65,7 @@ export default function ImportPage() {
   };
 
   return (
-    <AppLayout>
+    <>
       <PageHeader 
         title="Data Import" 
         description="Import job data from files, Google Sheets, or various formats"
@@ -315,6 +314,6 @@ export default function ImportPage() {
           </ul>
         </div>
       </main>
-    </AppLayout>
+    </>
   );
 }

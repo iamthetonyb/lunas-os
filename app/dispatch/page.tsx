@@ -1,6 +1,5 @@
 'use client';
 
-import { AppLayout } from '@/components/app-layout';
 import { PageHeader } from '@/components/page-header';
 import Link from 'next/link';
 
@@ -13,7 +12,7 @@ export default function DispatchPage() {
   ];
 
   return (
-    <AppLayout>
+    <>
       <PageHeader 
         title="Dispatch" 
         description="Manage crew dispatch and job batches"
@@ -86,6 +85,6 @@ export default function DispatchPage() {
           </div>
         </div>
       </main>
-    </AppLayout>
+    </>
   );
 }

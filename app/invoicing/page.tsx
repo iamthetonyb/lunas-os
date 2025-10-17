@@ -1,6 +1,5 @@
 'use client';
 
-import { AppLayout } from '@/components/app-layout';
 import { PageHeader } from '@/components/page-header';
 import useSWR from 'swr';
 import { useState } from 'react';
@@ -36,7 +35,7 @@ export default function InvoicingPage() {
   };
 
   return (
-    <AppLayout>
+    <>
       <PageHeader 
         title="Invoicing" 
         description="Generate and manage invoices"
@@ -160,6 +159,6 @@ export default function InvoicingPage() {
           </div>
         </div>
       </main>
-    </AppLayout>
+    </>
   );
 }

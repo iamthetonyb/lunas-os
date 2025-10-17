@@ -7,10 +7,15 @@ const nextConfig = {
   typescript: {
     ignoreBuildErrors: true,
   },
-  // Disable experimental features that might interfere
-  experimental: {
-    // Ensure webpack is used for CSS processing
-    esmExternals: true,
+  // Force webpack to process CSS properly in dev mode
+  webpack: (config, { dev, isServer }) => {
+    // Ensure PostCSS loader is applied to CSS files
+    if (dev && !isServer) {
+      config.infrastructureLogging = {
+        level: 'error',
+      };
+    }
+    return config;
   },
 };
 module.exports = nextConfig;

@@ -1,11 +1,10 @@
 'use client';
 
-import { AppLayout } from '@/components/app-layout';
 import { PageHeader } from '@/components/page-header';
 
 export default function SettingsPage() {
   return (
-    <AppLayout>
+    <>
       <PageHeader 
         title="Settings" 
         description="Configure system settings and preferences"
@@ -22,6 +21,6 @@ export default function SettingsPage() {
           </div>
         </div>
       </main>
-    </AppLayout>
+    </>
   );
 }
