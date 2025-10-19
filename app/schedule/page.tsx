@@ -91,47 +91,35 @@ export default function SchedulePage() {
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50">
                   <tr>
-                    <th className="px-4 py-2 text-left text-xs font-semibold text-gray-500 uppercase">Start</th>
+                    <th className="px-4 py-2 text-left text-xs font-semibold text-gray-500 uppercase">Contractor</th>
+                    <th className="px-4 py-2 text-left text-xs font-semibold text-gray-500 uppercase">Builder</th>
                     <th className="px-4 py-2 text-left text-xs font-semibold text-gray-500 uppercase">Community</th>
-                    <th className="px-4 py-2 text-left text-xs font-semibold text-gray-500 uppercase">Lot</th>
-                    <th className="px-4 py-2 text-left text-xs font-semibold text-gray-500 uppercase">Category</th>
-                    <th className="px-4 py-2 text-left text-xs font-semibold text-gray-500 uppercase">Amount</th>
-                    <th className="px-4 py-2 text-left text-xs font-semibold text-gray-500 uppercase">Status</th>
+                    <th className="px-4 py-2 text-left text-xs font-semibold text-gray-500 uppercase">Job</th>
+                    <th className="px-4 py-2 text-left text-xs font-semibold text-gray-500 uppercase">Notes</th>
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
-                  {upcomingJobs.map((job: any) => (
-                    <tr key={job.id}>
-                      <td className="px-4 py-2 text-sm text-gray-900">
-                        {job.startDate ? new Date(job.startDate).toLocaleDateString() : '—'}
-                      </td>
-                      <td className="px-4 py-2 text-sm text-gray-900">{job.communityName || '—'}</td>
-                      <td className="px-4 py-2 text-sm text-gray-900">{job.lot || '—'}</td>
-                      <td className="px-4 py-2 text-sm text-gray-900">
-                        {job.accountCategoryCode
-                          ? `${job.accountCategoryCode} – ${job.accountCategoryName || ''}`.trim()
-                          : job.serviceName || '—'}
-                      </td>
-                      <td className="px-4 py-2 text-sm text-gray-900">
-                        {job.amount
-                          ? new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(
-                              Number(job.amount)
-                            )
-                          : '—'}
-                      </td>
-                      <td className="px-4 py-2 text-sm">
-                        <span
-                          className={`px-2 py-1 rounded-full text-xs font-semibold ${
-                            job.status === 'COMPLETE'
-                              ? 'bg-green-100 text-green-800'
-                              : 'bg-yellow-100 text-yellow-800'
-                          }`}
-                        >
-                          {job.status}
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
+                  {upcomingJobs.map((job: any) => {
+                    const contractor = job.contractorName || job.serviceName || '—';
+                    const builder = job.builderName || '—';
+                    const community = job.communityName || '—';
+                    const jobLabel = job.jobNumber || job.invoiceNumber || job.lot || '—';
+                    const notesParts = [
+                      job.lot ? `Lot ${job.lot}` : null,
+                      job.startDate ? `Start ${new Date(job.startDate).toLocaleDateString()}` : null,
+                    ].filter(Boolean);
+                    const notes = notesParts.join(' • ') || '—';
+
+                    return (
+                      <tr key={job.id}>
+                        <td className="px-4 py-2 text-sm text-gray-900">{contractor}</td>
+                        <td className="px-4 py-2 text-sm text-gray-900">{builder}</td>
+                        <td className="px-4 py-2 text-sm text-gray-900">{community}</td>
+                        <td className="px-4 py-2 text-sm text-gray-900">{jobLabel}</td>
+                        <td className="px-4 py-2 text-sm text-gray-900">{notes}</td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>

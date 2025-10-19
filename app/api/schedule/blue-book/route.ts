@@ -22,11 +22,14 @@ export async function GET(req: Request) {
   defaultEnd.setDate(defaultEnd.getDate() + 14);
   const endDate = parseDateParam(searchParams.get('end'), defaultEnd);
 
+  const startIso = formatDateInput(startDate);
+  const endIso = formatDateInput(endDate);
+
   const entries = await db.query.blueBookEntries.findMany({
     where: and(
       isNotNull(blueBookEntries.startDate),
-      gte(blueBookEntries.startDate, new Date(formatDateInput(startDate))),
-      lte(blueBookEntries.startDate, new Date(formatDateInput(endDate)))
+      gte(blueBookEntries.startDate, startIso),
+      lte(blueBookEntries.startDate, endIso)
     ),
     with: {
       builder: true,
@@ -36,19 +39,32 @@ export async function GET(req: Request) {
     orderBy: (entries, { asc }) => asc(blueBookEntries.startDate),
   });
 
-  const formatted = entries.map((entry) => ({
-    id: entry.id,
-    startDate: entry.startDate,
-    builderName: entry.builder?.name ?? null,
-    communityName: entry.community?.name ?? null,
-    lot: entry.lot,
-    serviceName: entry.service?.name ?? entry.accountCategoryName ?? null,
-    accountCategoryCode: entry.accountCategoryCode,
-    accountCategoryName: entry.accountCategoryName,
-    invoiceNumber: entry.poNumber,
-    amount: entry.amount,
-    status: entry.status,
-  }));
+  const formatted = entries.map((entry) => {
+    const builderName = entry.builder?.name ?? null;
+    const communityName = entry.community?.name ?? null;
+    const serviceName = entry.service?.name ?? entry.accountCategoryName ?? null;
+    const accountCategoryName = entry.accountCategoryName ?? entry.service?.name ?? null;
+    const communityCode = communityName ?? entry.communityId;
+    const jobNumber =
+      communityCode && entry.lot
+        ? `${communityCode}-${entry.lot}`
+        : entry.lot || communityCode || null;
+
+    return {
+      id: entry.id,
+      startDate: entry.startDate,
+      builderName,
+      communityName,
+      lot: entry.lot,
+      contractorName: accountCategoryName,
+      serviceName,
+      jobNumber,
+      accountCategoryCode: entry.accountCategoryCode,
+      invoiceNumber: entry.poNumber,
+      amount: entry.amount,
+      status: entry.status,
+    };
+  });
 
   return NextResponse.json(formatted);
 }
