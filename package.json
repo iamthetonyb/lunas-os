@@ -28,7 +28,9 @@
     "pretest:e2e": "npx puppeteer browsers install chromium || true",
     "test:e2e": "node scripts/e2e-run.mjs",
     "test:e2e:devtools": "node scripts/e2e-with-devtools.mjs",
-    "test:e2e:comprehensive": "node scripts/e2e-with-devtools.mjs"
+    "test:e2e:comprehensive": "node scripts/e2e-with-devtools.mjs",
+    "harvest:pulte": "tsx --env-file=.env.harvester workers/pulte-harvester/pulte.scrape.ts",
+    "harvest:pulte:bootstrap": "HEADLESS=false tsx --env-file=.env.harvester workers/pulte-harvester/pulte.scrape.ts"
   },
   "dependencies": {
     "@auth/drizzle-adapter": "^1.11.0",
@@ -62,6 +64,7 @@
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3.3.1",
+    "@playwright/test": "^1.56.1",
     "@types/bcrypt": "^6.0.0",
     "@types/better-sqlite3": "^7.6.13",
     "@types/jest": "^30.0.0",
@@ -72,12 +75,14 @@
     "@types/react-signature-canvas": "^1.0.7",
     "autoprefixer": "10.4.21",
     "better-sqlite3": "^12.4.1",
+    "dayjs": "^1.11.18",
     "dotenv": "^17.2.3",
     "drizzle-kit": "^0.31.5",
     "eslint": "^9",
     "eslint-config-next": "^15.5.5",
     "jest": "^30.2.0",
     "next": "14.2.15",
+    "playwright": "^1.56.1",
     "postcss": "8.5.6",
     "prettier": "^3.6.2",
     "prettier-plugin-tailwindcss": "^0.7.0",

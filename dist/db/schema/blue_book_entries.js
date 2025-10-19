@@ -23,6 +23,9 @@ exports.blueBookEntries = (0, pg_core_1.pgTable)('blue_book_entries', {
     ticketId: (0, pg_core_1.uuid)('ticket_id').references(() => field_tickets_1.fieldTickets.id),
     invoiceLineId: (0, pg_core_1.uuid)('invoice_line_id').references(() => invoice_lines_1.invoiceLines.id),
     amount: (0, pg_core_1.decimal)('amount'),
+    accountCategoryCode: (0, pg_core_1.text)('account_category_code'),
+    accountCategoryName: (0, pg_core_1.text)('account_category_name'),
+    startDate: (0, pg_core_1.date)('start_date'),
     createdAt: (0, pg_core_1.timestamp)('created_at').defaultNow().notNull(),
     updatedAt: (0, pg_core_1.timestamp)('updated_at').defaultNow().notNull(),
 });

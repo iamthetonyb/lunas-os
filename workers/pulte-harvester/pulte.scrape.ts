@@ -1,0 +1,405 @@
+import 'dotenv/config';
+import fs from 'fs';
+import dayjs from 'dayjs';
+import { chromium, Browser, Locator, Page } from 'playwright';
+
+const PULTE_URL = 'https://bwp.pulte.com';
+const PAYMENTS_URL = `${PULTE_URL}/Payments`;
+const STATE_PATH = 'workers/pulte-harvester/pulte-state.json';
+const CHROME_UA =
+  'Mozilla/5.0 (Macintosh; Intel Mac OS X 14_5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36';
+const NEEDS_LOGIN_PATH = 'workers/pulte-harvester/NEEDS_LOGIN';
+
+const USER = process.env.PULTE_USER;
+const PASS = process.env.PULTE_PASS;
+const INGEST_URL = process.env.INGEST_URL;
+const INGEST_TOKEN = process.env.INGEST_TOKEN ?? '';
+const DEBUG_MODE = String(process.env.HARVEST_DEBUG || 'false').toLowerCase() === 'true';
+
+if (!USER || !PASS || !INGEST_URL) {
+  throw new Error('Missing required env vars: PULTE_USER, PULTE_PASS, INGEST_URL');
+}
+
+type HarvestWindow = { start: string; end: string };
+
+type LineItem = {
+  checkDate: string;
+  checkNumber: string;
+  isACH: boolean;
+  checkTotal: number;
+  invoiceNumber: string;
+  invoiceDate: string;
+  invoiceAmount: number;
+  jobNumber: string;
+  jobAddress: string;
+  accountCategory: string;
+  planNumber: string;
+  optionNumber: string;
+  startDate: string | null;
+  completedDate: string | null;
+  lineAmount: number;
+};
+
+function fridayWindowPST(): HarvestWindow {
+  const formatter = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'America/Los_Angeles',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  });
+  const parts = formatter.formatToParts(new Date());
+  const month = parts.find((p) => p.type === 'month')?.value ?? '01';
+  const day = parts.find((p) => p.type === 'day')?.value ?? '01';
+  const year = parts.find((p) => p.type === 'year')?.value ?? '1970';
+
+  const todayPacific = dayjs(`${year}-${month}-${day}`);
+  const end = todayPacific.format('MM/DD/YYYY');
+  const start = todayPacific.subtract(7, 'day').format('MM/DD/YYYY');
+  return { start, end };
+}
+
+async function login(page: Page): Promise<boolean> {
+  await page.goto(PULTE_URL, { waitUntil: 'domcontentloaded' });
+  await assertNotBlocked(page);
+
+  const paymentsLink = page.locator('a[href="/Payments"]').first();
+  const alreadyAuthed = await paymentsLink.isVisible().catch(() => false);
+  if (alreadyAuthed) return false;
+
+  await page.getByRole('textbox', { name: /email|user/i }).fill(USER);
+  await page.getByRole('textbox', { name: /password/i }).fill(PASS);
+  await page.getByRole('button', { name: /sign in|log in/i }).click();
+
+  await page.waitForLoadState('networkidle', { timeout: 60_000 });
+  await page.waitForSelector('a[href="/Payments"]', { timeout: 60_000 });
+  await assertNotBlocked(page);
+
+  await page.context().storageState({ path: STATE_PATH });
+  return true;
+}
+
+async function setDateRange(page: Page, start: string, end: string) {
+  await page.goto(PAYMENTS_URL, { waitUntil: 'domcontentloaded' });
+  await assertNotBlocked(page);
+
+  const startBox = page.locator('input[name="StartDate"], #check-start-date').first();
+  const endBox = page.locator('input[name="EndDate"], #check-end-date').first();
+
+  await Promise.all([
+    startBox.waitFor({ state: 'attached' }),
+    endBox.waitFor({ state: 'attached' }),
+  ]);
+
+  await page.evaluate(() => {
+    const s = document.querySelector('input[name="StartDate"], #check-start-date') as HTMLInputElement | null;
+    const e = document.querySelector('input[name="EndDate"], #check-end-date') as HTMLInputElement | null;
+    if (!s || !e) return;
+    s.removeAttribute('disabled');
+    e.removeAttribute('disabled');
+  });
+
+  await startBox.click({ clickCount: 3 });
+  await page.keyboard.press(process.platform === 'darwin' ? 'Meta+A' : 'Control+A');
+  await page.keyboard.type(start);
+  await page.keyboard.press('Tab');
+
+  await endBox.click({ clickCount: 3 });
+  await page.keyboard.press(process.platform === 'darwin' ? 'Meta+A' : 'Control+A');
+  await page.keyboard.type(end);
+  await page.keyboard.press('Tab');
+
+  await page.evaluate(() => {
+    const s = document.querySelector('input[name="StartDate"], #check-start-date') as HTMLInputElement | null;
+    const e = document.querySelector('input[name="EndDate"], #check-end-date') as HTMLInputElement | null;
+    if (!s || !e) return;
+    s.dispatchEvent(new Event('input', { bubbles: true }));
+    s.dispatchEvent(new Event('change', { bubbles: true }));
+    e.dispatchEvent(new Event('input', { bubbles: true }));
+    e.dispatchEvent(new Event('change', { bubbles: true }));
+  });
+  if (DEBUG_MODE) {
+    const startValue = await startBox.inputValue().catch(() => '');
+    const endValue = await endBox.inputValue().catch(() => '');
+    console.log(`[DEBUG] Checks date inputs set to ${startValue} → ${endValue}`);
+  }
+
+  const searchButton = page.locator(
+    'button:has-text("Search"), input[type="submit"][value="Search"], button[title*="Search"], button[aria-label*="Search"]'
+  ).first();
+  await searchButton.waitFor({ state: 'visible' });
+  const enabled = await searchButton.isEnabled().catch(() => true);
+  if (DEBUG_MODE) {
+    console.log(`[DEBUG] Search button enabled: ${enabled}`);
+  }
+  await searchButton.click({ force: true });
+
+  if (DEBUG_MODE) {
+    console.log('[DEBUG] Search button clicked');
+  }
+
+  await page.waitForLoadState('networkidle');
+  const gridReady = await page
+    .waitForFunction(() => {
+      const table = document.querySelector('#checks-results-table') as HTMLTableElement | null;
+      if (!table || table.classList.contains('hidden')) return false;
+      const hasRows = table.querySelectorAll('tbody tr').length > 0;
+      const noData = table.querySelector('tbody tr td')?.textContent?.toLowerCase().includes('no checks found');
+      return hasRows || noData;
+    }, null, { timeout: 20_000 })
+    .catch(() => false);
+
+  if (DEBUG_MODE) {
+    console.log(`[DEBUG] Checks grid ready: ${gridReady}`);
+    const warningVisible = await page.locator('#check-search-results-warning').isVisible().catch(() => false);
+    console.log(`[DEBUG] Warning visible: ${warningVisible}`);
+  }
+  await assertNotBlocked(page);
+}
+
+function parseMoney(text?: string | null) {
+  if (!text) return 0;
+  return Number(text.replace(/[,$]/g, '').trim());
+}
+
+async function assertNotBlocked(page: Page) {
+  const text = await page.locator('body').innerText({ timeout: 10_000 }).catch(() => '');
+  if (/request is blocked|access denied|blocked by/i.test(text)) {
+    throw new Error('WAF_BLOCKED');
+  }
+}
+
+async function expandAllPlusButtons(page: Page) {
+  const clickAll = async (locator: Locator, description: string) => {
+    const count = await locator.count();
+    if (DEBUG_MODE) {
+      console.log(`[DEBUG] Clicking ${count} elements for ${description}`);
+    }
+    for (let i = 0; i < count; i++) {
+      try {
+        await locator.nth(i).click({ timeout: 1000 });
+        await page.waitForTimeout(150);
+      } catch {
+        // ignore elements that collapse immediately or are already open
+      }
+    }
+  };
+
+  // Expand check-level rows
+  const checkAnchors = page.locator('#checks-results-table tr.open-row > td:first-child a');
+  const checkCount = await checkAnchors.count();
+  if (DEBUG_MODE) {
+    console.log(`[DEBUG] Found ${checkCount} check rows`);
+  }
+  await clickAll(checkAnchors, 'check expanders');
+  if (checkCount > 0) {
+    await page.waitForResponse((res) => res.url().includes('/Payments/GetCheckInvoices'), { timeout: 15_000 }).catch(() => undefined);
+    await page.waitForFunction(() => {
+      return document.querySelectorAll('#checks-results-table table.invoices-datagrid tr.open-row').length > 0;
+    }).catch(() => undefined);
+  }
+
+  // Expand invoice-level rows under each check
+  const invoiceAnchors = page.locator(
+    '#checks-results-table table.invoices-datagrid tr.open-row > td:first-child a'
+  );
+  const invoiceCount = await invoiceAnchors.count();
+  if (DEBUG_MODE) {
+    console.log(`[DEBUG] Found ${invoiceCount} invoice rows`);
+  }
+  await clickAll(invoiceAnchors, 'invoice expanders');
+  if (invoiceCount > 0) {
+    await page.waitForFunction(() => {
+      return document.querySelectorAll('table.invoice-details-datagrid tbody tr').length > 0;
+    }).catch(() => undefined);
+  }
+
+  await page.waitForTimeout(300);
+}
+
+async function scrape(page: Page): Promise<LineItem[]> {
+  const items = await page.evaluate(function () {
+    const __name = (fn: any) => fn;
+    function parseMoneyFrom(text?: string | null) {
+      if (!text) return 0;
+      const cleaned = text.replace(/[^0-9.-]/g, '');
+      const value = Number(cleaned);
+      return Number.isFinite(value) ? value : 0;
+    }
+
+    const data: any[] = [];
+    const checkRows = document.querySelectorAll<HTMLTableRowElement>(
+      '#checks-results-table tbody tr.open-row'
+    );
+
+    for (let i = 0; i < checkRows.length; i++) {
+      const checkRow = checkRows[i];
+      const checkDate =
+        checkRow.querySelector<HTMLTableCellElement>('td:nth-child(2)')?.textContent?.trim() ?? '';
+      const checkNumber =
+        checkRow.querySelector<HTMLAnchorElement>('td:nth-child(3) a')?.textContent?.trim() ?? '';
+      const achText =
+        checkRow.querySelector<HTMLTableCellElement>('td:nth-child(4)')?.textContent?.trim() ?? '';
+      const checkTotalText =
+        checkRow.querySelector<HTMLSpanElement>('td:nth-child(5) span')?.textContent?.trim() ?? '';
+
+      const checkDetailsTarget = checkRow.getAttribute('data-target');
+      if (!checkDetailsTarget) continue;
+      const invoiceTable = document.querySelector(
+        `${checkDetailsTarget} table.invoices-datagrid tbody`
+      ) as HTMLTableSectionElement | null;
+      if (!invoiceTable) continue;
+
+      const invoiceRows = invoiceTable.querySelectorAll<HTMLTableRowElement>('tr.open-row');
+
+      for (let j = 0; j < invoiceRows.length; j++) {
+        const invoiceRow = invoiceRows[j];
+        const invoiceNumber =
+          invoiceRow.querySelector<HTMLAnchorElement>('td:nth-child(2) a')?.textContent?.trim() ?? '';
+        const invoiceDate =
+          invoiceRow.querySelector<HTMLTableCellElement>('td:nth-child(3)')?.textContent?.trim() ?? '';
+        const invoiceAmountText =
+          invoiceRow.querySelector<HTMLSpanElement>('td:nth-child(5) span')?.textContent?.trim() ?? '';
+
+        const detailsTarget = invoiceRow.getAttribute('data-target');
+        if (!detailsTarget) continue;
+        const lineTable = document.querySelector(
+          `${detailsTarget} table.invoice-details-datagrid tbody`
+        ) as HTMLTableSectionElement | null;
+        if (!lineTable) continue;
+
+        const lineRows = lineTable.querySelectorAll<HTMLTableRowElement>('tr');
+        for (let k = 0; k < lineRows.length; k++) {
+          const lineRow = lineRows[k];
+          const cells = lineRow.querySelectorAll<HTMLTableCellElement>('td');
+          if (cells.length < 9) continue;
+
+          const lineAmountText = cells[8]?.textContent ?? '';
+
+          data.push({
+            checkDate,
+            checkNumber,
+            isACH: /yes/i.test(achText),
+            checkTotal: parseMoneyFrom(checkTotalText),
+            invoiceNumber,
+            invoiceDate,
+            invoiceAmount: parseMoneyFrom(invoiceAmountText),
+            jobNumber: cells[1]?.textContent?.trim() ?? '',
+            jobAddress: cells[2]?.textContent?.trim() ?? '',
+            accountCategory: cells[3]?.textContent?.trim() ?? '',
+            planNumber: cells[4]?.textContent?.trim() ?? '',
+            optionNumber: cells[5]?.textContent?.trim() ?? '',
+            startDate: cells[6]?.textContent?.trim() || null,
+            completedDate: cells[7]?.textContent?.trim() || null,
+            lineAmount: parseMoneyFrom(lineAmountText),
+          });
+        }
+      }
+    }
+
+    return data;
+  });
+
+  return items;
+}
+
+async function run() {
+  const headless = String(process.env.HEADLESS || 'true') !== 'false';
+  const useState = fs.existsSync(STATE_PATH);
+  const harvestWindow: HarvestWindow = process.env.START_DATE && process.env.END_DATE
+    ? { start: process.env.START_DATE, end: process.env.END_DATE }
+    : fridayWindowPST();
+
+  let browser: Browser | null = null;
+
+  try {
+    browser = await chromium.launch({
+      headless,
+      args: ['--disable-blink-features=AutomationControlled'],
+    });
+
+    const ctx = await browser.newContext({
+      viewport: { width: 1600, height: 1000 },
+      userAgent: CHROME_UA,
+      locale: 'en-US',
+      timezoneId: 'America/Los_Angeles',
+      storageState: useState ? STATE_PATH : undefined,
+    });
+    await ctx.addInitScript(() => {
+      (window as unknown as { __name?: (fn: any, name?: string) => any }).__name = (fn: any) => fn;
+    });
+
+    const page = await ctx.newPage();
+    if (DEBUG_MODE) {
+      page.on('response', async (res) => {
+        const url = res.url();
+        if (url.includes('/Payments') || url.includes('/payments')) {
+          console.log(`[DEBUG] Response ${res.status()} ${url}`);
+        }
+      });
+    }
+
+    const loggedIn = await login(page);
+    if (loggedIn) {
+      console.log('🔐 Saved new session state to pulte-state.json');
+    }
+
+    await setDateRange(page, harvestWindow.start, harvestWindow.end);
+    await expandAllPlusButtons(page);
+    if (DEBUG_MODE) {
+      await page.screenshot({ path: 'workers/pulte-harvester/pulte-debug.png', fullPage: true }).catch(() => {});
+      const html = await page.content().catch(() => '');
+      if (html) {
+        fs.writeFileSync('workers/pulte-harvester/pulte-debug.html', html);
+      }
+    }
+
+    const items = await scrape(page);
+
+    const response = await fetch(INGEST_URL, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        ...(INGEST_TOKEN ? { authorization: `Bearer ${INGEST_TOKEN}` } : {}),
+      },
+      body: JSON.stringify({
+        start: harvestWindow.start,
+        end: harvestWindow.end,
+        items,
+      }),
+    });
+
+    if (!response.ok) {
+      const text = await response.text();
+      throw new Error(`Ingest failed (${response.status}): ${text}`);
+    }
+
+    console.log(`✅ Sent ${items.length} line items (${harvestWindow.start} → ${harvestWindow.end})`);
+    if (fs.existsSync(NEEDS_LOGIN_PATH)) {
+      fs.rmSync(NEEDS_LOGIN_PATH);
+    }
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    if (message.includes('WAF_BLOCKED')) {
+      fs.writeFileSync(NEEDS_LOGIN_PATH, new Date().toISOString());
+      console.error('❌ Blocked by WAF. Run bootstrap: pnpm harvest:pulte:bootstrap');
+    } else {
+      console.error('❌ Harvester error:', message);
+    }
+
+    const firstContext = browser?.contexts()[0];
+    const firstPage = firstContext?.pages()[0];
+    if (firstPage) {
+      try {
+        await firstPage.screenshot({ path: 'pulte-error.png', fullPage: true });
+      } catch (screenshotError) {
+        console.error('Failed to capture screenshot:', screenshotError);
+      }
+    }
+
+    process.exitCode = 1;
+  } finally {
+    await browser?.close();
+  }
+}
+
+run();

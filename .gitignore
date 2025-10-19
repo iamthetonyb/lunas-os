@@ -59,3 +59,9 @@ dev.db*
 *.png
 *.jpg
 *.jpeg
+
+# Harvester session artifacts
+workers/pulte-harvester/pulte-state.json
+workers/pulte-harvester/NEEDS_LOGIN
+workers/pulte-harvester/pulte-debug.html
+workers/pulte-harvester/pulte-debug.png

@@ -23,8 +23,35 @@ async function handler(req: Request) {
 
   const where = conditions.length > 0 ? and(...conditions) : undefined;
 
-  const entries = await db.query.blueBookEntries.findMany({ where });
-  return NextResponse.json(entries || []);
+  const entries = await db.query.blueBookEntries.findMany({
+    where,
+    with: {
+      builder: true,
+      community: true,
+      service: true,
+    },
+  });
+
+  const formatted = (entries || []).map((entry) => ({
+    id: entry.id,
+    builderId: entry.builderId,
+    builderName: entry.builder?.name ?? null,
+    communityId: entry.communityId,
+    communityName: entry.community?.name ?? null,
+    lot: entry.lot,
+    serviceId: entry.serviceId,
+    serviceName: entry.service?.name ?? entry.accountCategoryName ?? null,
+    status: entry.status,
+    amount: entry.amount,
+    invoiceNumber: entry.poNumber,
+    accountCategoryCode: entry.accountCategoryCode,
+    accountCategoryName: entry.accountCategoryName,
+    startDate: entry.startDate,
+    createdAt: entry.createdAt,
+    updatedAt: entry.updatedAt,
+  }));
+
+  return NextResponse.json(formatted);
 }
 
 export const GET = withErrorHandling(handler);
