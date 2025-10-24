@@ -65,3 +65,4 @@ workers/pulte-harvester/pulte-state.json
 workers/pulte-harvester/NEEDS_LOGIN
 workers/pulte-harvester/pulte-debug.html
 workers/pulte-harvester/pulte-debug.png
+workers/pulte-harvester/outbox/

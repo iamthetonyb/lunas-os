@@ -1,5 +1,6 @@
 import 'dotenv/config';
 import fs from 'fs';
+import path from 'path';
 import dayjs from 'dayjs';
 import { chromium, Browser, Locator, Page } from 'playwright';
 
@@ -9,6 +10,7 @@ const STATE_PATH = 'workers/pulte-harvester/pulte-state.json';
 const CHROME_UA =
   'Mozilla/5.0 (Macintosh; Intel Mac OS X 14_5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36';
 const NEEDS_LOGIN_PATH = 'workers/pulte-harvester/NEEDS_LOGIN';
+const OUTBOX_DIR = 'workers/pulte-harvester/outbox';
 
 const USER = process.env.PULTE_USER;
 const PASS = process.env.PULTE_PASS;
@@ -40,6 +42,12 @@ type LineItem = {
   lineAmount: number;
 };
 
+type HarvestPayload = {
+  start: string;
+  end: string;
+  items: LineItem[];
+};
+
 function fridayWindowPST(): HarvestWindow {
   const formatter = new Intl.DateTimeFormat('en-US', {
     timeZone: 'America/Los_Angeles',
@@ -56,6 +64,57 @@ function fridayWindowPST(): HarvestWindow {
   const end = todayPacific.format('MM/DD/YYYY');
   const start = todayPacific.subtract(7, 'day').format('MM/DD/YYYY');
   return { start, end };
+}
+
+function ensureOutboxDir() {
+  if (!fs.existsSync(OUTBOX_DIR)) {
+    fs.mkdirSync(OUTBOX_DIR, { recursive: true });
+  }
+}
+
+async function flushOutbox() {
+  ensureOutboxDir();
+  const files = fs.readdirSync(OUTBOX_DIR).filter((file) => file.endsWith('.json')).sort();
+  for (const file of files) {
+    const fullPath = path.join(OUTBOX_DIR, file);
+    try {
+      const raw = fs.readFileSync(fullPath, 'utf-8');
+      const { payload } = JSON.parse(raw) as { payload: HarvestPayload };
+      if (!payload) {
+        throw new Error('Missing payload data');
+      }
+      await sendToIngest(payload);
+      fs.unlinkSync(fullPath);
+      console.log(`📤 Flushed queued harvest (${file})`);
+    } catch (err) {
+      console.error(`⚠️ Failed to flush ${file}:`, err instanceof Error ? err.message : err);
+      break;
+    }
+  }
+}
+
+async function sendToIngest(payload: HarvestPayload) {
+  const response = await fetch(INGEST_URL, {
+    method: 'POST',
+    headers: {
+      'content-type': 'application/json',
+      ...(INGEST_TOKEN ? { authorization: `Bearer ${INGEST_TOKEN}` } : {}),
+    },
+    body: JSON.stringify(payload),
+  });
+
+  if (!response.ok) {
+    const text = await response.text();
+    throw new Error(`Ingest failed (${response.status}): ${text}`);
+  }
+}
+
+function persistPendingPayload(payload: HarvestPayload, reason: string) {
+  ensureOutboxDir();
+  const fileName = `pending-${Date.now()}.json`;
+  const fullPath = path.join(OUTBOX_DIR, fileName);
+  fs.writeFileSync(fullPath, JSON.stringify({ reason, payload }, null, 2));
+  console.warn(`📦 Saved payload for retry (${fullPath})`);
 }
 
 async function login(page: Page): Promise<boolean> {
@@ -312,6 +371,8 @@ async function run() {
   let browser: Browser | null = null;
 
   try {
+    ensureOutboxDir();
+    await flushOutbox();
     browser = await chromium.launch({
       headless,
       args: ['--disable-blink-features=AutomationControlled'],
@@ -355,25 +416,21 @@ async function run() {
 
     const items = await scrape(page);
 
-    const response = await fetch(INGEST_URL, {
-      method: 'POST',
-      headers: {
-        'content-type': 'application/json',
-        ...(INGEST_TOKEN ? { authorization: `Bearer ${INGEST_TOKEN}` } : {}),
-      },
-      body: JSON.stringify({
-        start: harvestWindow.start,
-        end: harvestWindow.end,
-        items,
-      }),
-    });
+    const payload: HarvestPayload = {
+      start: harvestWindow.start,
+      end: harvestWindow.end,
+      items,
+    };
 
-    if (!response.ok) {
-      const text = await response.text();
-      throw new Error(`Ingest failed (${response.status}): ${text}`);
+    try {
+      await sendToIngest(payload);
+      console.log(`✅ Sent ${items.length} line items (${harvestWindow.start} → ${harvestWindow.end})`);
+    } catch (ingestError) {
+      const reason = ingestError instanceof Error ? ingestError.message : String(ingestError);
+      persistPendingPayload(payload, reason);
+      throw new Error(`INGEST_DEFERRED: ${reason}`);
     }
 
-    console.log(`✅ Sent ${items.length} line items (${harvestWindow.start} → ${harvestWindow.end})`);
     if (fs.existsSync(NEEDS_LOGIN_PATH)) {
       fs.rmSync(NEEDS_LOGIN_PATH);
     }
@@ -382,6 +439,8 @@ async function run() {
     if (message.includes('WAF_BLOCKED')) {
       fs.writeFileSync(NEEDS_LOGIN_PATH, new Date().toISOString());
       console.error('❌ Blocked by WAF. Run bootstrap: pnpm harvest:pulte:bootstrap');
+    } else if (message.includes('INGEST_DEFERRED')) {
+      console.warn('⚠️ App offline; data queued for retry once ingest endpoint returns.');
     } else {
       console.error('❌ Harvester error:', message);
     }
@@ -396,7 +455,9 @@ async function run() {
       }
     }
 
-    process.exitCode = 1;
+    if (!message.includes('INGEST_DEFERRED')) {
+      process.exitCode = 1;
+    }
   } finally {
     await browser?.close();
   }
