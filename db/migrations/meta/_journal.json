@@ -36,6 +36,13 @@
       "when": 1760846400000,
       "tag": "0004_pulte_blue_book_extensions",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1760848200000,
+      "tag": "0005_blue_book_check_meta",
+      "breakpoints": true
     }
   ]
 }

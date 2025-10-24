@@ -1,4 +1,4 @@
-import { pgTable, uuid, text, pgEnum, decimal, timestamp, date } from 'drizzle-orm/pg-core';
+import { pgTable, uuid, text, pgEnum, decimal, timestamp, date, boolean } from 'drizzle-orm/pg-core';
 import { builders } from './builders';
 import { communities } from './communities';
 import { modelPlans } from './model_plans';
@@ -22,6 +22,10 @@ export const blueBookEntries = pgTable('blue_book_entries', {
   ticketId: uuid('ticket_id').references(() => fieldTickets.id),
   invoiceLineId: uuid('invoice_line_id').references(() => invoiceLines.id),
   amount: decimal('amount'),
+  checkNumber: text('check_number'),
+  checkDate: date('check_date'),
+  checkTotal: decimal('check_total'),
+  isAch: boolean('is_ach').default(false),
   accountCategoryCode: text('account_category_code'),
   accountCategoryName: text('account_category_name'),
   startDate: date('start_date'),

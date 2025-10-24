@@ -56,7 +56,8 @@ function parseAccountCategory(raw: string | null | undefined) {
 
 function parseDate(value: string | null | undefined) {
   if (!value) return null;
-  const match = value.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  const cleaned = value.trim().split(' ')[0];
+  const match = cleaned.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
   if (!match) return null;
   const [, mm, dd, yyyy] = match;
   const month = Number(mm);
@@ -156,6 +157,7 @@ async function handler(req: Request) {
     const { communityCode, lot } = splitJobNumber(jobNumberRaw);
     const accountCategory = parseAccountCategory(item.accountCategory);
     const startDateValue = parseDate(item.startDate);
+    const checkDateValue = parseDate(item.checkDate);
     const communityId = await getCommunityId(communityCode);
     const serviceId = await getServiceId(accountCategory.code, accountCategory.name);
 
@@ -190,6 +192,10 @@ async function handler(req: Request) {
         accountCategoryCode: accountCategory.code,
         accountCategoryName: accountCategory.name,
         startDate: startDateValue,
+        checkNumber: item.checkNumber?.trim() || null,
+        checkDate: checkDateValue,
+        checkTotal: Number.isFinite(item.checkTotal) ? item.checkTotal.toFixed(2) : null,
+        isAch: !!item.isACH,
         ...(communityId ? { communityId } : {}),
         ...(serviceId ? { serviceId } : {}),
         ...(builderId ? { builderId } : {}),
@@ -210,6 +216,10 @@ async function handler(req: Request) {
         accountCategoryCode: accountCategory.code,
         accountCategoryName: accountCategory.name,
         startDate: startDateValue,
+        checkNumber: item.checkNumber?.trim() || null,
+        checkDate: checkDateValue,
+        checkTotal: Number.isFinite(item.checkTotal) ? item.checkTotal.toFixed(2) : null,
+        isAch: !!item.isACH,
         ...(communityId ? { communityId } : {}),
         ...(serviceId ? { serviceId } : {}),
         ...(builderId ? { builderId } : {}),
