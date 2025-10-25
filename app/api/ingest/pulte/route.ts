@@ -88,15 +88,28 @@ async function handler(req: Request) {
   const builderId = builder?.id ?? null;
   const communityCache = new Map<string, string>();
   const serviceCache = new Map<string, string>();
+  const jobMap = new Map<string, { name: string | null; scarStartDate: string | null }>();
 
-  async function getCommunityId(code: string | null) {
+  if (Array.isArray(body.jobs)) {
+    for (const job of body.jobs) {
+      if (!job.communityCode) continue;
+      jobMap.set(job.communityCode, {
+        name: job.communityName || null,
+        scarStartDate: job.scarStartDate || null,
+      });
+    }
+  }
+
+  async function getCommunityId(code: string | null, friendlyName?: string | null) {
     if (!builderId || !code) return null;
     if (communityCache.has(code)) {
       return communityCache.get(code)!;
     }
 
+    const targetName = friendlyName || code;
+
     const existing = await db.query.communities.findFirst({
-      where: and(eq(communities.builderId, builderId), eq(communities.name, code)),
+      where: and(eq(communities.builderId, builderId), eq(communities.name, targetName)),
     });
 
     if (existing) {
@@ -104,9 +117,23 @@ async function handler(req: Request) {
       return existing.id;
     }
 
+    if (friendlyName && friendlyName !== code) {
+      const existingByCode = await db.query.communities.findFirst({
+        where: and(eq(communities.builderId, builderId), eq(communities.name, code)),
+      });
+
+      if (existingByCode) {
+        await db.update(communities)
+          .set({ name: friendlyName })
+          .where(eq(communities.id, existingByCode.id));
+        communityCache.set(code, existingByCode.id);
+        return existingByCode.id;
+      }
+    }
+
     const [row] = await db.insert(communities).values({
       builderId,
-      name: code,
+      name: targetName,
     }).returning();
 
     communityCache.set(code, row.id);
@@ -156,9 +183,14 @@ async function handler(req: Request) {
 
     const { communityCode, lot } = splitJobNumber(jobNumberRaw);
     const accountCategory = parseAccountCategory(item.accountCategory);
-    const startDateValue = parseDate(item.startDate);
+    const jobMeta = communityCode ? jobMap.get(communityCode) : null;
+    const startDateValue =
+      parseDate(jobMeta?.scarStartDate) ?? parseDate(item.startDate);
     const checkDateValue = parseDate(item.checkDate);
-    const communityId = await getCommunityId(communityCode);
+    const communityId = await getCommunityId(
+      communityCode,
+      jobMeta?.name ?? communityCode
+    );
     const serviceId = await getServiceId(accountCategory.code, accountCategory.name);
 
     let existing = null;

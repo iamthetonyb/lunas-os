@@ -6,6 +6,7 @@ import { chromium, Browser, Locator, Page } from 'playwright';
 
 const PULTE_URL = 'https://bwp.pulte.com';
 const PAYMENTS_URL = `${PULTE_URL}/Payments`;
+const JOBS_URL = `${PULTE_URL}/Jobs`;
 const STATE_PATH = 'workers/pulte-harvester/pulte-state.json';
 const CHROME_UA =
   'Mozilla/5.0 (Macintosh; Intel Mac OS X 14_5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36';
@@ -46,6 +47,13 @@ type HarvestPayload = {
   start: string;
   end: string;
   items: LineItem[];
+  jobs?: JobCommunity[];
+};
+
+type JobCommunity = {
+  communityCode: string | null;
+  communityName: string | null;
+  scarStartDate: string | null;
 };
 
 function fridayWindowPST(): HarvestWindow {
@@ -361,6 +369,109 @@ async function scrape(page: Page): Promise<LineItem[]> {
   return items;
 }
 
+async function scrapeJobs(page: Page): Promise<JobCommunity[]> {
+  try {
+    await page.goto(JOBS_URL, { waitUntil: 'domcontentloaded' });
+    await page.waitForLoadState('networkidle');
+
+    const searchButton = page.getByRole('button', { name: /search/i }).first();
+    if (await searchButton.isVisible().catch(() => false)) {
+      await searchButton.click();
+      await page.waitForLoadState('networkidle');
+      await page.waitForTimeout(1000);
+    }
+
+    const jobs = await page.evaluate(() => {
+      const results: Array<{
+        communityCode: string | null;
+        communityName: string | null;
+        scarStartDate: string | null;
+      }> = [];
+      const dateRegex = /(\d{1,2})\/(\d{1,2})\/(\d{4})/;
+
+    const rows = Array.from(
+      document.querySelectorAll<HTMLTableRowElement>('#jobs-results-table tbody tr')
+    );
+
+      rows.forEach((row) => {
+        const cells = Array.from(row.querySelectorAll('td')).map((cell) =>
+          cell.textContent?.trim() ?? ''
+        );
+
+        if (!cells.length) return;
+
+        const planRaw = cells[0] || '';
+        const planLines = planRaw.split('\n').map((line) => line.trim()).filter(Boolean);
+        const planLine = planLines[0] || '';
+        const codeLine =
+          planLines.slice(1).find((line) => /\d{3,}/.test(line)) ||
+          cells.find((text) => /^\d{3,}$/.test(text)) ||
+          '';
+
+        const communityName = planLine.includes('-')
+          ? planLine.split('-')[0]?.trim() || planLine
+          : planLine;
+        const communityCodeMatch = codeLine.match(/(\d{3,})/);
+        const communityCode = communityCodeMatch ? communityCodeMatch[1] : null;
+
+        const scarStartCell =
+          cells.find((text) => dateRegex.test(text)) ||
+          row
+            .querySelector('[data-title*="SCAR Start"], [data-title*="Start Date"]')
+            ?.textContent?.trim() ||
+          null;
+
+        const scarStartDate = scarStartCell && dateRegex.test(scarStartCell)
+          ? scarStartCell.match(dateRegex)?.[0] ?? null
+          : null;
+
+        if (communityCode || communityName) {
+          results.push({
+            communityCode,
+            communityName: communityName || null,
+            scarStartDate,
+          });
+        }
+      });
+
+      if (!results.length) {
+        const filterItems = Array.from(
+          document.querySelectorAll<HTMLLabelElement>('.community-filter label')
+        );
+
+        filterItems.forEach((item) => {
+          const text = item.textContent?.trim() ?? '';
+          if (!text) return;
+          const lines = text.split('\n').map((line) => line.trim()).filter(Boolean);
+          const title = lines[0] || '';
+          const communityName = title.includes('-')
+            ? title.split('-')[0]?.trim() || title
+            : title;
+
+          const codeMatch =
+            lines
+              .slice(1)
+              .map((line) => line.match(/\d{3,}/)?.[0])
+              .find(Boolean) || title.match(/\d{3,}/)?.[0];
+
+          results.push({
+            communityCode: codeMatch || null,
+            communityName: communityName || null,
+            scarStartDate: null,
+          });
+        });
+      }
+
+      return results;
+    });
+
+    return jobs;
+  } catch (error) {
+    console.warn('⚠️ Failed to scrape Jobs tab:', error instanceof Error ? error.message : error);
+    return [];
+  }
+}
+
 async function run() {
   const headless = String(process.env.HEADLESS || 'true') !== 'false';
   const useState = fs.existsSync(STATE_PATH);
@@ -415,11 +526,13 @@ async function run() {
     }
 
     const items = await scrape(page);
+    const jobs = await scrapeJobs(page);
 
     const payload: HarvestPayload = {
       start: harvestWindow.start,
       end: harvestWindow.end,
       items,
+      jobs,
     };
 
     try {
