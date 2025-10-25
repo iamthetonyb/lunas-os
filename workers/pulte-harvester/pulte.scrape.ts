@@ -22,6 +22,9 @@ const DEBUG_MODE = String(process.env.HARVEST_DEBUG || 'false').toLowerCase() ==
 if (!USER || !PASS || !INGEST_URL) {
   throw new Error('Missing required env vars: PULTE_USER, PULTE_PASS, INGEST_URL');
 }
+const AUTH_USER = USER as string;
+const AUTH_PASS = PASS as string;
+const INGEST_ENDPOINT = INGEST_URL as string;
 
 type HarvestWindow = { start: string; end: string };
 
@@ -102,7 +105,7 @@ async function flushOutbox() {
 }
 
 async function sendToIngest(payload: HarvestPayload) {
-  const response = await fetch(INGEST_URL, {
+  const response = await fetch(INGEST_ENDPOINT, {
     method: 'POST',
     headers: {
       'content-type': 'application/json',
@@ -133,8 +136,8 @@ async function login(page: Page): Promise<boolean> {
   const alreadyAuthed = await paymentsLink.isVisible().catch(() => false);
   if (alreadyAuthed) return false;
 
-  await page.getByRole('textbox', { name: /email|user/i }).fill(USER);
-  await page.getByRole('textbox', { name: /password/i }).fill(PASS);
+  await page.getByRole('textbox', { name: /email|user/i }).fill(AUTH_USER);
+  await page.getByRole('textbox', { name: /password/i }).fill(AUTH_PASS);
   await page.getByRole('button', { name: /sign in|log in/i }).click();
 
   await page.waitForLoadState('networkidle', { timeout: 60_000 });
@@ -369,23 +372,6 @@ async function scrape(page: Page): Promise<LineItem[]> {
   return items;
 }
 
-function cleanCommunityName(raw?: string | null) {
-  if (!raw) return null;
-  const trimmed = raw.trim();
-  if (!trimmed) return null;
-
-  const hyphenIndex = trimmed.indexOf(' - ');
-  if (hyphenIndex >= 0) {
-    const before = trimmed.slice(0, hyphenIndex).trim();
-    if (before) return before;
-  }
-
-  const withoutTrailingDigits = trimmed.replace(/\s*[-–]?\s*\d+(s|\/\d+)?$/i, '').trim();
-  if (withoutTrailingDigits) return withoutTrailingDigits;
-
-  return trimmed;
-}
-
 async function scrapeJobs(page: Page): Promise<JobCommunity[]> {
   try {
     await page.goto(JOBS_URL, { waitUntil: 'domcontentloaded' });
@@ -408,18 +394,6 @@ async function scrapeJobs(page: Page): Promise<JobCommunity[]> {
     }
 
     const jobs = await page.evaluate(() => {
-      const cleanName = (raw?: string | null) => {
-        if (!raw) return null;
-        const trimmed = raw.trim();
-        if (!trimmed) return null;
-        const hyphenIndex = trimmed.indexOf(' - ');
-        if (hyphenIndex >= 0) {
-          const before = trimmed.slice(0, hyphenIndex).trim();
-          if (before) return before;
-        }
-        const withoutTrailingDigits = trimmed.replace(/\s*[-–]?\s*\d+(s|\/\d+)?$/i, '').trim();
-        return withoutTrailingDigits || trimmed;
-      };
       const map = new Map<
         string,
         {
@@ -449,7 +423,7 @@ async function scrapeJobs(page: Page): Promise<JobCommunity[]> {
           cells.find((text) => /^\d{3,}$/.test(text)) ||
           '';
 
-        const communityName = cleanName(planLine);
+        const communityName = planLine?.trim() || null;
         const communityCodeMatch = codeLine.match(/(\d{3,})/);
         const communityCode = communityCodeMatch ? communityCodeMatch[1] : null;
 
@@ -485,7 +459,7 @@ async function scrapeJobs(page: Page): Promise<JobCommunity[]> {
         if (!text) return;
         const lines = text.split('\n').map((line) => line.trim()).filter(Boolean);
         const title = lines[0] || '';
-        const communityName = cleanName(title);
+        const communityName = title?.trim() || null;
 
         const codeMatch =
           lines

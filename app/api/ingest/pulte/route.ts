@@ -100,6 +100,12 @@ async function handler(req: Request) {
     }
   }
 
+  if (builderId && jobMap.size) {
+    for (const [code, meta] of jobMap.entries()) {
+      await getCommunityId(code, meta.name ?? code);
+    }
+  }
+
   async function getCommunityId(code: string | null, friendlyName?: string | null) {
     if (!builderId || !code) return null;
     if (communityCache.has(code)) {
