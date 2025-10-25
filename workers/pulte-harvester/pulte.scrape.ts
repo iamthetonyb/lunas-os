@@ -381,17 +381,29 @@ async function scrapeJobs(page: Page): Promise<JobCommunity[]> {
       await page.waitForTimeout(1000);
     }
 
+    if (DEBUG_MODE) {
+      try {
+        const html = await page.content();
+        fs.writeFileSync('workers/pulte-harvester/jobs-debug.html', html);
+      } catch (err) {
+        console.warn('Failed to write jobs debug HTML:', err instanceof Error ? err.message : err);
+      }
+    }
+
     const jobs = await page.evaluate(() => {
-      const results: Array<{
-        communityCode: string | null;
-        communityName: string | null;
-        scarStartDate: string | null;
-      }> = [];
+      const map = new Map<
+        string,
+        {
+          communityCode: string | null;
+          communityName: string | null;
+          scarStartDate: string | null;
+        }
+      >();
       const dateRegex = /(\d{1,2})\/(\d{1,2})\/(\d{4})/;
 
-    const rows = Array.from(
-      document.querySelectorAll<HTMLTableRowElement>('#jobs-results-table tbody tr')
-    );
+      const rows = Array.from(
+        document.querySelectorAll<HTMLTableRowElement>('#jobs-results-table tbody tr')
+      );
 
       rows.forEach((row) => {
         const cells = Array.from(row.querySelectorAll('td')).map((cell) =>
@@ -408,9 +420,7 @@ async function scrapeJobs(page: Page): Promise<JobCommunity[]> {
           cells.find((text) => /^\d{3,}$/.test(text)) ||
           '';
 
-        const communityName = planLine.includes('-')
-          ? planLine.split('-')[0]?.trim() || planLine
-          : planLine;
+        const communityName = planLine || null;
         const communityCodeMatch = codeLine.match(/(\d{3,})/);
         const communityCode = communityCodeMatch ? communityCodeMatch[1] : null;
 
@@ -425,44 +435,46 @@ async function scrapeJobs(page: Page): Promise<JobCommunity[]> {
           ? scarStartCell.match(dateRegex)?.[0] ?? null
           : null;
 
-        if (communityCode || communityName) {
-          results.push({
-            communityCode,
-            communityName: communityName || null,
-            scarStartDate,
+        if (communityCode) {
+          const existing = map.get(communityCode);
+          if (!existing || scarStartDate) {
+            map.set(communityCode, {
+              communityCode,
+              communityName: communityName || existing?.communityName || null,
+              scarStartDate: scarStartDate || existing?.scarStartDate || null,
+            });
+          }
+        }
+      });
+
+      const filterItems = Array.from(
+        document.querySelectorAll<HTMLLabelElement>('#community-options label')
+      );
+
+      filterItems.forEach((item) => {
+        const text = item.textContent?.trim() ?? '';
+        if (!text) return;
+        const lines = text.split('\n').map((line) => line.trim()).filter(Boolean);
+        const title = lines[0] || '';
+        const communityName = title || null;
+
+        const codeMatch =
+          lines
+            .slice(1)
+            .map((line) => line.match(/\d{3,}/)?.[0])
+            .find(Boolean) || title.match(/\d{3,}/)?.[0];
+
+        if (!codeMatch) return;
+        if (!map.has(codeMatch)) {
+          map.set(codeMatch, {
+            communityCode: codeMatch,
+            communityName,
+            scarStartDate: null,
           });
         }
       });
 
-      if (!results.length) {
-        const filterItems = Array.from(
-          document.querySelectorAll<HTMLLabelElement>('.community-filter label')
-        );
-
-        filterItems.forEach((item) => {
-          const text = item.textContent?.trim() ?? '';
-          if (!text) return;
-          const lines = text.split('\n').map((line) => line.trim()).filter(Boolean);
-          const title = lines[0] || '';
-          const communityName = title.includes('-')
-            ? title.split('-')[0]?.trim() || title
-            : title;
-
-          const codeMatch =
-            lines
-              .slice(1)
-              .map((line) => line.match(/\d{3,}/)?.[0])
-              .find(Boolean) || title.match(/\d{3,}/)?.[0];
-
-          results.push({
-            communityCode: codeMatch || null,
-            communityName: communityName || null,
-            scarStartDate: null,
-          });
-        });
-      }
-
-      return results;
+      return Array.from(map.values());
     });
 
     return jobs;
@@ -527,6 +539,9 @@ async function run() {
 
     const items = await scrape(page);
     const jobs = await scrapeJobs(page);
+    if (DEBUG_MODE) {
+      console.log('Jobs scraped sample:', jobs.slice(0, 5));
+    }
 
     const payload: HarvestPayload = {
       start: harvestWindow.start,
