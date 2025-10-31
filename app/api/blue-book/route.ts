@@ -1,6 +1,6 @@
 import { db } from '@/db';
 import { blueBookEntries } from '@/db/schema';
-import { and, eq, isNull, count, like, or, desc } from 'drizzle-orm';
+import { and, eq, isNull, count, like, or, desc, asc } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 import { withErrorHandling } from '@/lib/api-handler';
 
@@ -46,14 +46,14 @@ async function handler(req: Request) {
   const orderByClauses =
     sortParam === 'startdate'
       ? [
-          desc(blueBookEntries.checkDate),
-          desc(blueBookEntries.startDate),
-          desc(blueBookEntries.createdAt),
+          asc(blueBookEntries.startDate),
+          asc(blueBookEntries.checkDate),
+          asc(blueBookEntries.createdAt),
         ]
       : [
-          desc(blueBookEntries.checkDate),
-          desc(blueBookEntries.startDate),
-          desc(blueBookEntries.createdAt),
+          asc(blueBookEntries.checkDate),
+          asc(blueBookEntries.startDate),
+          asc(blueBookEntries.createdAt),
         ];
 
   const entries = await db.query.blueBookEntries.findMany({

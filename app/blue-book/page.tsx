@@ -33,6 +33,11 @@ type BlueBookResponse = {
   pageSize: number;
 };
 
+type Builder = {
+  id: string;
+  name: string;
+};
+
 const fetcher = async (url: string): Promise<BlueBookResponse> => {
   const res = await fetch(url);
   if (!res.ok) {
@@ -43,6 +48,12 @@ const fetcher = async (url: string): Promise<BlueBookResponse> => {
     return { entries: data, total: data.length, page: 1, pageSize: data.length || PAGE_SIZE };
   }
   return data;
+};
+
+const builderFetcher = async (url: string): Promise<Builder[]> => {
+  const res = await fetch(url);
+  if (!res.ok) throw new Error('Failed to load builders');
+  return res.json();
 };
 
 function useDebounce<T>(value: T, delay = 300) {
@@ -66,7 +77,8 @@ type CheckGroup = {
 export default function BlueBookPage() {
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState('');
-  const [sort, setSort] = useState<'checkDate' | 'startDate'>('checkDate');
+  const [sort, setSort] = useState<'checkDate' | 'startDate'>('startDate');
+  const [activeBuilderId, setActiveBuilderId] = useState<string | null>(null);
   const [editingEntry, setEditingEntry] = useState<BlueBookEntry | null>(null);
   const [formState, setFormState] = useState({
     lot: '',
@@ -81,17 +93,47 @@ export default function BlueBookPage() {
   });
   const [formError, setFormError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [newTabBuilderId, setNewTabBuilderId] = useState('');
 
   const debouncedSearch = useDebounce(search);
 
   useEffect(() => {
     setPage(1);
-  }, [debouncedSearch, sort]);
+  }, [debouncedSearch, sort, activeBuilderId]);
 
+  const { data: buildersData } = useSWR('/api/builders', builderFetcher, {
+    revalidateOnFocus: false,
+  });
+  const availableBuilders = buildersData || [];
+  const defaultTabNames = ['Pulte', 'KB Homes'];
+  const defaultTabs = availableBuilders.filter((builder) =>
+    defaultTabNames.includes(builder.name)
+  );
+  const [customTabIds, setCustomTabIds] = useState<string[]>([]);
+
+  const tabBuilderIds = useMemo(() => {
+    const ids = new Set<string>();
+    defaultTabs.forEach((builder) => ids.add(builder.id));
+    customTabIds.forEach((id) => ids.add(id));
+    return Array.from(ids);
+  }, [defaultTabs, customTabIds]);
+
+  useEffect(() => {
+    if (!activeBuilderId) {
+      setActiveBuilderId(defaultTabs[0]?.id ?? 'all');
+    }
+  }, [defaultTabs, activeBuilderId]);
+
+  const selectableBuilders = availableBuilders.filter(
+    (builder) => !tabBuilderIds.includes(builder.id)
+  );
+
+  const builderParam =
+    activeBuilderId && activeBuilderId !== 'all' ? `&builderId=${activeBuilderId}` : '';
   const { data, error, isLoading, mutate } = useSWR(
     `/api/blue-book?page=${page}&pageSize=${PAGE_SIZE}&sort=${sort}&search=${encodeURIComponent(
       debouncedSearch
-    )}`,
+    )}${builderParam}`,
     fetcher,
     { keepPreviousData: true, revalidateOnFocus: false }
   );
@@ -120,10 +162,16 @@ export default function BlueBookPage() {
       }
       map.get(key)!.entries.push(entry);
     });
+    const toTimestamp = (value: string | null) =>
+      value ? new Date(value).getTime() : Number.MAX_SAFE_INTEGER;
     return Array.from(map.values()).sort((a, b) => {
-      const dateA = a.checkDate ? new Date(a.checkDate).getTime() : 0;
-      const dateB = b.checkDate ? new Date(b.checkDate).getTime() : 0;
-      return dateB - dateA;
+      const earliestA = Math.min(
+        ...a.entries.map((entry) => toTimestamp(entry.startDate ?? entry.checkDate))
+      );
+      const earliestB = Math.min(
+        ...b.entries.map((entry) => toTimestamp(entry.startDate ?? entry.checkDate))
+      );
+      return earliestA - earliestB;
     });
   }, [entries]);
 
@@ -209,6 +257,37 @@ export default function BlueBookPage() {
     <>
       <PageHeader title="Blue Book" description="Project tracking and management" />
       <main className="px-6 py-6">
+        <div className="mb-6 flex flex-wrap items-center gap-3">
+          <button
+            className={`rounded-full border px-4 py-2 text-sm transition ${
+              activeBuilderId === 'all'
+                ? 'border-blue-500 bg-blue-500 text-white'
+                : 'border-gray-300 bg-white text-gray-700 hover:border-blue-400'
+            }`}
+            onClick={() => setActiveBuilderId('all')}
+          >
+            All Builders
+          </button>
+          {tabBuilderIds.map((builderId) => {
+            const builder = availableBuilders.find((b) => b.id === builderId);
+            if (!builder) return null;
+            const isActive = activeBuilderId === builder.id;
+            return (
+              <button
+                key={builder.id}
+                className={`rounded-full border px-4 py-2 text-sm transition ${
+                  isActive
+                    ? 'border-blue-500 bg-blue-500 text-white'
+                    : 'border-gray-300 bg-white text-gray-700 hover:border-blue-400'
+                }`}
+                onClick={() => setActiveBuilderId(builder.id)}
+              >
+                {builder.name}
+              </button>
+            );
+          })}
+        </div>
+
         <div className="mb-6 flex flex-col gap-4 lg:flex-row">
           <input
             type="search"
@@ -226,6 +305,40 @@ export default function BlueBookPage() {
             <option value="startDate">Sort by Start Date</option>
           </select>
         </div>
+
+        {selectableBuilders.length > 0 && (
+          <div className="mb-6 flex flex-col gap-3 rounded-lg border border-dashed border-gray-300 p-4 text-sm dark:border-slate-700 lg:flex-row lg:items-center">
+            <div className="font-semibold text-gray-700 dark:text-gray-200">
+              Add Builder Tab
+            </div>
+            <select
+              value={newTabBuilderId}
+              onChange={(e) => setNewTabBuilderId(e.target.value)}
+              className="rounded-lg border border-gray-300 px-3 py-2 dark:bg-slate-900 dark:text-white"
+            >
+              <option value="">Select builder…</option>
+              {selectableBuilders.map((builder) => (
+                <option key={builder.id} value={builder.id}>
+                  {builder.name}
+                </option>
+              ))}
+            </select>
+            <button
+              type="button"
+              disabled={!newTabBuilderId}
+              onClick={() => {
+                if (newTabBuilderId) {
+                  setCustomTabIds((prev) => [...prev, newTabBuilderId]);
+                  setActiveBuilderId(newTabBuilderId);
+                  setNewTabBuilderId('');
+                }
+              }}
+              className="rounded-lg bg-blue-600 px-4 py-2 font-semibold text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              Add
+            </button>
+          </div>
+        )}
 
         {isLoading && (
           <div className="bg-white dark:bg-slate-800 rounded-lg border border-gray-200 dark:border-slate-700 p-6 shadow-sm">
@@ -279,9 +392,13 @@ export default function BlueBookPage() {
                       {group.entries
                         .slice()
                         .sort((a, b) => {
-                          const aStart = a.startDate ? new Date(a.startDate).getTime() : 0;
-                          const bStart = b.startDate ? new Date(b.startDate).getTime() : 0;
-                          return bStart - aStart;
+                          const aStart = a.startDate
+                            ? new Date(a.startDate).getTime()
+                            : Number.MAX_SAFE_INTEGER;
+                          const bStart = b.startDate
+                            ? new Date(b.startDate).getTime()
+                            : Number.MAX_SAFE_INTEGER;
+                          return aStart - bStart;
                         })
                         .map((entry) => (
                           <tr key={entry.id}>
