@@ -22,7 +22,9 @@ export type RecentIntake = {
   createdAt: string;
   notes: string | null;
   poNumber: string | null;
-  contact: string | null;
+  contact: string | null; // deprecated - kept for backward compat
+  contactPhone: string | null;
+  contactEmail: string | null;
   requestedBy: string | null;
   services: {
     id: string;
@@ -113,7 +115,8 @@ function IntakeDetailModal({
                       />
                       <DetailItem label="PO Number" value={intake.poNumber} />
                       <DetailItem label="Requested By" value={intake.requestedBy} />
-                      <DetailItem label="Contact" value={intake.contact} />
+                      <DetailItem label="Contact Phone" value={intake.contactPhone} />
+                      <DetailItem label="Contact Email" value={intake.contactEmail} />
                     </div>
                   </div>
 

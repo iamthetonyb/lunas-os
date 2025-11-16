@@ -1,6 +1,6 @@
 import { getDb } from '@/lib/db/get-db';
-import { blueBookEntries } from '@/db/schema';
-import { and, gte, lte, isNotNull } from 'drizzle-orm';
+import { blueBookEntries, jobRequests, jobRequestServices, builders, communities, modelPlans, services } from '@/db/schema';
+import { and, gte, lte, isNotNull, eq } from 'drizzle-orm';
 import { safe, ok } from '@/lib/api/http';
 import { requireMembership } from '@/lib/auth/guards';
 
@@ -30,7 +30,8 @@ export const GET = safe(async (req: Request) => {
 
   await requireMembership(['admin', 'backoffice', 'contractor']);
   const db = await getDb();
-  const entries = await db.query.blueBookEntries.findMany({
+
+  const blueBookData = await db.query.blueBookEntries.findMany({
     where: and(
       isNotNull(blueBookEntries.startDate),
       gte(blueBookEntries.startDate, startIso),
@@ -44,7 +45,35 @@ export const GET = safe(async (req: Request) => {
     orderBy: (entries, { asc }) => asc(blueBookEntries.startDate),
   });
 
-  const formatted = entries.map((entry) => {
+  const jobRequestData = await db
+    .select({
+      id: jobRequests.id,
+      dueDate: jobRequests.dueDate,
+      lot: jobRequests.lot,
+      poNumber: jobRequests.poNumber,
+      requestedBy: jobRequests.requestedBy,
+      builderName: builders.name,
+      communityName: communities.name,
+      modelPlanName: modelPlans.name,
+      serviceId: jobRequestServices.serviceId,
+      serviceName: services.name,
+      walkTime: jobRequestServices.walkTime,
+    })
+    .from(jobRequests)
+    .leftJoin(builders, eq(jobRequests.builderId, builders.id))
+    .leftJoin(communities, eq(jobRequests.communityId, communities.id))
+    .leftJoin(modelPlans, eq(jobRequests.modelPlanId, modelPlans.id))
+    .leftJoin(jobRequestServices, eq(jobRequests.id, jobRequestServices.jobRequestId))
+    .leftJoin(services, eq(jobRequestServices.serviceId, services.id))
+    .where(
+      and(
+        isNotNull(jobRequests.dueDate),
+        gte(jobRequests.dueDate, startIso),
+        lte(jobRequests.dueDate, endIso)
+      )
+    );
+
+  const formattedBlueBook = blueBookData.map((entry) => {
     const builderName = entry.builder?.name ?? null;
     const communityName = entry.community?.name ?? null;
     const serviceName = entry.service?.name ?? entry.accountCategoryName ?? null;
@@ -68,8 +97,95 @@ export const GET = safe(async (req: Request) => {
       invoiceNumber: entry.poNumber,
       amount: entry.amount,
       status: entry.status,
+      walkTime: entry.walkTime,
     };
   });
 
-  return ok(Array.isArray(formatted) ? formatted : []);
+  // Group job requests by id and aggregate services to handle multiple services per request
+  const jobRequestMap = new Map<string, {
+    id: string;
+    dueDate: string | null;
+    lot: string | null;
+    poNumber: string | null;
+    requestedBy: string | null;
+    builderName: string | null;
+    communityName: string | null;
+    modelPlanName: string | null;
+    services: Array<{ id: string | null; name: string | null; walkTime: string | null }>;
+  }>();
+
+  jobRequestData.forEach((row) => {
+    if (!jobRequestMap.has(row.id)) {
+      jobRequestMap.set(row.id, {
+        id: row.id,
+        dueDate: row.dueDate,
+        lot: row.lot,
+        poNumber: row.poNumber,
+        requestedBy: row.requestedBy,
+        builderName: row.builderName,
+        communityName: row.communityName,
+        modelPlanName: row.modelPlanName,
+        services: [],
+      });
+    }
+    const entry = jobRequestMap.get(row.id)!;
+    if (row.serviceId && row.serviceName) {
+      entry.services.push({
+        id: row.serviceId,
+        name: row.serviceName,
+        walkTime: row.walkTime,
+      });
+    }
+  });
+
+  // Create one schedule entry per service (each service is a separate job on the schedule)
+  const formattedJobRequests = Array.from(jobRequestMap.values()).flatMap((req) => {
+    const communityCode = req.communityName ?? null;
+    const jobNumber =
+      communityCode && req.lot
+        ? `${communityCode}-${req.lot}`
+        : req.lot || communityCode || null;
+
+    if (req.services.length === 0) {
+      // If no services, still show the job request
+      return [{
+        id: req.id,
+        startDate: req.dueDate,
+        builderName: req.builderName,
+        communityName: req.communityName,
+        lot: req.lot,
+        contractorName: 'No Service',
+        serviceName: 'No Service',
+        jobNumber: jobNumber,
+        accountCategoryCode: null,
+        invoiceNumber: req.poNumber,
+        amount: null,
+        status: 'Pending',
+        walkTime: null,
+        requestedBy: req.requestedBy,
+      }];
+    }
+
+    // Create one schedule item per service so each service appears as a separate job
+    return req.services.map((service) => ({
+      id: `${req.id}-${service.id}`, // Unique ID per job-service combination
+      startDate: req.dueDate,
+      builderName: req.builderName,
+      communityName: req.communityName,
+      lot: req.lot,
+      contractorName: service.name,
+      serviceName: service.name,
+      jobNumber: jobNumber,
+      accountCategoryCode: null,
+      invoiceNumber: req.poNumber,
+      amount: null,
+      status: 'Pending',
+      walkTime: service.walkTime,
+      requestedBy: req.requestedBy,
+    }));
+  });
+
+  const combinedResults = [...formattedBlueBook, ...formattedJobRequests];
+
+  return ok(Array.isArray(combinedResults) ? combinedResults : []);
 });

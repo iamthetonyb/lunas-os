@@ -29,6 +29,7 @@ export const blueBookEntries = pgTable('blue_book_entries', {
   accountCategoryCode: text('account_category_code'),
   accountCategoryName: text('account_category_name'),
   startDate: date('start_date'),
+  source: text('source').default('scraped'), // 'scraped' or 'manual'
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 });

@@ -43,7 +43,7 @@ export default function DashboardPage() {
   
   const stats = [
     { name: 'Active Jobs', value: '12', change: '+2', icon: '📋' },
-    { name: 'Pending Intakes', value: '8', change: '+3', icon: '📝' },
+    { name: 'Pending Intakes', value: recentIntakes.length.toString(), change: '+3', icon: '📝' },
     { name: 'Scheduled Today', value: '5', change: '0', icon: '📅' },
     { name: 'Invoices Due', value: '$12,450', change: '+5%', icon: '💰' },
   ];

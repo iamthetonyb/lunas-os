@@ -30,6 +30,7 @@ type BlueBookEntry = {
   modelPlanName: string | null;
   modelPlanCode: string | null;
   modelPlanSqft: string | null;
+  source?: string | null; // 'scraped' or 'manual'
 };
 
 type BlueBookResponse = {
@@ -212,6 +213,7 @@ export default function BlueBookPage() {
   const [sort, setSort] = useState<'checkDate' | 'startDate'>('startDate');
   const [activeBuilderId, setActiveBuilderId] = useState<string | null>(null);
   const [editingEntry, setEditingEntry] = useState<BlueBookEntry | null>(null);
+  const [isCreatingManual, setIsCreatingManual] = useState(false);
   const [formState, setFormState] = useState({
     lot: '',
     startDate: '',
@@ -222,10 +224,48 @@ export default function BlueBookPage() {
     accountCategoryCode: '',
     checkNumber: '',
     checkDate: '',
+    builderId: '',
+    communityId: '',
+    serviceId: '',
   });
   const [formError, setFormError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [newTabBuilderId, setNewTabBuilderId] = useState('');
+
+  // Populate form state when editing or creating
+  useEffect(() => {
+    if (editingEntry) {
+      setFormState({
+        lot: editingEntry.lot || '',
+        startDate: editingEntry.startDate || '',
+        status: editingEntry.status || 'PENDING',
+        invoiceNumber: editingEntry.invoiceNumber || '',
+        amount: editingEntry.amount || '',
+        accountCategoryName: editingEntry.accountCategoryName || '',
+        accountCategoryCode: editingEntry.accountCategoryCode || '',
+        checkNumber: editingEntry.checkNumber || '',
+        checkDate: editingEntry.checkDate || '',
+        builderId: editingEntry.builderId || '',
+        communityId: editingEntry.communityId || '',
+        serviceId: editingEntry.serviceId || '',
+      });
+    } else if (isCreatingManual) {
+      setFormState({
+        lot: '',
+        startDate: '',
+        status: 'PENDING',
+        invoiceNumber: '',
+        amount: '',
+        accountCategoryName: '',
+        accountCategoryCode: '',
+        checkNumber: '',
+        checkDate: '',
+        builderId: activeBuilderId || '',
+        communityId: '',
+        serviceId: '',
+      });
+    }
+  }, [editingEntry, isCreatingManual, activeBuilderId]);
 
   const debouncedSearch = useDebounce(search);
 
@@ -239,8 +279,22 @@ export default function BlueBookPage() {
   const { data: modelPlansData } = useSWR('/api/model-plans', modelPlanFetcher, {
     revalidateOnFocus: false,
   });
+  const { data: communitiesData } = useSWR('/api/communities', async (url) => {
+    const res = await fetchJSON<Array<{ id: string; name: string; builderId?: string | null }>>(url);
+    return res;
+  }, {
+    revalidateOnFocus: false,
+  });
+  const { data: servicesData } = useSWR('/api/services', async (url) => {
+    const res = await fetchJSON<Array<{ id: string; name: string; code?: string | null }>>(url);
+    return res;
+  }, {
+    revalidateOnFocus: false,
+  });
   const availableBuilders = buildersData || [];
   const modelPlans = useMemo(() => modelPlansData ?? [], [modelPlansData]);
+  const communities = useMemo(() => communitiesData ?? [], [communitiesData]);
+  const services = useMemo(() => servicesData ?? [], [servicesData]);
   const plansByBuilder = useMemo(() => {
     const map: Record<string, ModelPlan[]> = {};
     modelPlans.forEach((plan) => {
@@ -1015,6 +1069,75 @@ export default function BlueBookPage() {
     }
   };
 
+  const handleCreateManual = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    setSaving(true);
+    setFormError(null);
+    try {
+      await fetchJSON('/api/blue-book', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          builderId: formState.builderId,
+          communityId: formState.communityId,
+          serviceId: formState.serviceId || null,
+          lot: formState.lot || null,
+          startDate: formState.startDate || null,
+          status: formState.status || 'PENDING',
+          invoiceNumber: formState.invoiceNumber || null,
+          amount: formState.amount ? Number(formState.amount) : null,
+          accountCategoryName: formState.accountCategoryName || null,
+          accountCategoryCode: formState.accountCategoryCode || null,
+          checkNumber: formState.checkNumber || null,
+          checkDate: formState.checkDate || null,
+        }),
+      });
+      await mutate();
+      setIsCreatingManual(false);
+      setFormState({
+        lot: '',
+        startDate: '',
+        status: 'PENDING',
+        invoiceNumber: '',
+        amount: '',
+        accountCategoryName: '',
+        accountCategoryCode: '',
+        checkNumber: '',
+        checkDate: '',
+        builderId: '',
+        communityId: '',
+        serviceId: '',
+      });
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : typeof err === 'string' ? err : 'Unexpected error';
+      setFormError(message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!editingEntry || editingEntry.source !== 'manual') return;
+    if (!confirm('Are you sure you want to delete this manual entry?')) return;
+    
+    setSaving(true);
+    setFormError(null);
+    try {
+      await fetchJSON(`/api/blue-book/${editingEntry.id}`, {
+        method: 'DELETE',
+      });
+      await mutate();
+      setEditingEntry(null);
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : typeof err === 'string' ? err : 'Unexpected error';
+      setFormError(message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
   if (error) return (
     <>
       <PageHeader title="Blue Book" description="Project tracking and management" />
@@ -1080,35 +1203,44 @@ export default function BlueBookPage() {
         </div>
 
         {selectableBuilders.length > 0 && (
-          <div className="mb-6 flex flex-col gap-3 rounded-lg border border-dashed border-gray-300 p-4 text-sm dark:border-slate-700 lg:flex-row lg:items-center">
-            <div className="font-semibold text-gray-700 dark:text-gray-200">
-              Add Builder Tab
-            </div>
-            <select
-              value={newTabBuilderId}
-              onChange={(e) => setNewTabBuilderId(e.target.value)}
-              className="rounded-lg border border-gray-300 px-3 py-2 dark:bg-slate-900 dark:text-white"
-            >
-              <option value="">Select builder…</option>
-              {selectableBuilders.map((builder) => (
-                <option key={builder.id} value={builder.id}>
-                  {builder.name}
+          <div className="mb-6 flex flex-col gap-3 rounded-lg border border-dashed border-gray-300 p-4 text-sm dark:border-slate-700 lg:flex-row lg:items-center lg:justify-between">
+            <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:flex-1">
+              <div className="font-semibold text-gray-700 dark:text-gray-200">
+                Add Builder Tab
+              </div>
+              <select
+                value={newTabBuilderId}
+                onChange={(e) => setNewTabBuilderId(e.target.value)}
+                className="rounded-lg border border-gray-300 px-3 py-2 dark:bg-slate-900 dark:text-white"
+              >
+                <option value="">Select builder…</option>
+                {selectableBuilders.map((builder) => (
+                  <option key={builder.id} value={builder.id}>
+                    {builder.name}
                 </option>
               ))}
             </select>
+              <button
+                type="button"
+                disabled={!newTabBuilderId}
+                onClick={() => {
+                  if (newTabBuilderId) {
+                    setCustomTabIds((prev) => [...prev, newTabBuilderId]);
+                    setActiveBuilderId(newTabBuilderId);
+                    setNewTabBuilderId('');
+                  }
+                }}
+                className="rounded-lg bg-blue-600 px-4 py-2 font-semibold text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                Add
+              </button>
+            </div>
             <button
               type="button"
-              disabled={!newTabBuilderId}
-              onClick={() => {
-                if (newTabBuilderId) {
-                  setCustomTabIds((prev) => [...prev, newTabBuilderId]);
-                  setActiveBuilderId(newTabBuilderId);
-                  setNewTabBuilderId('');
-                }
-              }}
-              className="rounded-lg bg-blue-600 px-4 py-2 font-semibold text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+              onClick={() => setIsCreatingManual(true)}
+              className="rounded-lg bg-green-600 px-4 py-2 font-semibold text-white hover:bg-green-700 whitespace-nowrap"
             >
-              Add
+              + Manual Entry
             </button>
           </div>
         )}
@@ -1464,15 +1596,22 @@ export default function BlueBookPage() {
                                             {formatAmount(entry.amount)}
                                           </td>
                                           <td className="px-4 py-3">
-                                            <span
-                                              className={`inline-flex rounded-full px-2 py-1 text-xs font-semibold ${
-                                                entry.status === 'COMPLETE'
-                                                  ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
-                                                  : 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200'
-                                              }`}
-                                            >
-                                              {entry.status}
-                                            </span>
+                                            <div className="flex items-center gap-2">
+                                              <span
+                                                className={`inline-flex rounded-full px-2 py-1 text-xs font-semibold ${
+                                                  entry.status === 'COMPLETE'
+                                                    ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
+                                                    : 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200'
+                                                }`}
+                                              >
+                                                {entry.status}
+                                              </span>
+                                              {entry.source === 'manual' && (
+                                                <span className="inline-flex items-center gap-1 rounded-full bg-purple-100 px-2 py-1 text-xs font-semibold text-purple-800 dark:bg-purple-900 dark:text-purple-200">
+                                                  ✏️ Manual
+                                                </span>
+                                              )}
+                                            </div>
                                           </td>
                                           <td className="px-4 py-3 text-right">
                                             <button
@@ -1528,7 +1667,14 @@ export default function BlueBookPage() {
           <div className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-2xl dark:bg-slate-900">
             <div className="mb-4 flex items-center justify-between">
               <div>
-                <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Edit Entry</h3>
+                <div className="flex items-center gap-2">
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Edit Entry</h3>
+                  {editingEntry.source === 'manual' && (
+                    <span className="inline-flex items-center gap-1 rounded-full bg-purple-100 px-2 py-1 text-xs font-semibold text-purple-800 dark:bg-purple-900 dark:text-purple-200">
+                      ✏️ Manual Entry
+                    </span>
+                  )}
+                </div>
                 <p className="text-sm text-gray-500 dark:text-gray-400">
                   Check {editingEntry.checkNumber || 'N/A'} · Invoice {editingEntry.invoiceNumber || 'N/A'}
                 </p>
@@ -1627,21 +1773,200 @@ export default function BlueBookPage() {
                 </label>
               </div>
               {formError && <p className="text-sm text-red-600">{formError}</p>}
+              <div className="flex justify-between gap-3">
+                {editingEntry?.source === 'manual' && (
+                  <button
+                    type="button"
+                    className="rounded-lg border border-red-300 bg-red-50 px-4 py-2 text-sm font-semibold text-red-600 hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-50"
+                    onClick={handleDelete}
+                    disabled={saving}
+                  >
+                    {saving ? 'Deleting…' : 'Delete Entry'}
+                  </button>
+                )}
+                <div className="flex gap-3 ml-auto">
+                  <button
+                    type="button"
+                    className="rounded-lg border border-gray-300 px-4 py-2 text-sm dark:border-slate-600"
+                    onClick={() => setEditingEntry(null)}
+                    disabled={saving}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+                    disabled={saving}
+                  >
+                    {saving ? 'Saving…' : 'Save Changes'}
+                  </button>
+                </div>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {isCreatingManual && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4 py-10">
+          <div className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-2xl dark:bg-slate-900 max-h-[90vh] overflow-y-auto">
+            <div className="mb-4 flex items-center justify-between">
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Create Manual Entry</h3>
+                <p className="text-sm text-gray-500 dark:text-gray-400">
+                  Add a new Blue Book entry manually
+                </p>
+              </div>
+              <button
+                onClick={() => setIsCreatingManual(false)}
+                className="text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400"
+              >
+                Close
+              </button>
+            </div>
+            <form className="space-y-4 text-sm" onSubmit={handleCreateManual}>
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                <label className="flex flex-col gap-1 md:col-span-2">
+                  <span className="text-gray-600 dark:text-gray-300">Builder *</span>
+                  <select
+                    required
+                    className="rounded-lg border border-gray-300 px-3 py-2 dark:bg-slate-800 dark:text-white"
+                    value={formState.builderId}
+                    onChange={(e) => setFormState((prev) => ({ ...prev, builderId: e.target.value, communityId: '' }))}
+                  >
+                    <option value="">Select Builder</option>
+                    {availableBuilders.map((b) => (
+                      <option key={b.id} value={b.id}>{b.name}</option>
+                    ))}
+                  </select>
+                </label>
+                <label className="flex flex-col gap-1 md:col-span-2">
+                  <span className="text-gray-600 dark:text-gray-300">Community *</span>
+                  <select
+                    required
+                    className="rounded-lg border border-gray-300 px-3 py-2 dark:bg-slate-800 dark:text-white"
+                    value={formState.communityId}
+                    onChange={(e) => setFormState((prev) => ({ ...prev, communityId: e.target.value }))}
+                  >
+                    <option value="">Select Community</option>
+                    {communities.filter(c => !formState.builderId || c.builderId === formState.builderId).map((c) => (
+                      <option key={c.id} value={c.id}>{c.name}</option>
+                    ))}
+                  </select>
+                </label>
+                <label className="flex flex-col gap-1 md:col-span-2">
+                  <span className="text-gray-600 dark:text-gray-300">Service (Optional)</span>
+                  <select
+                    className="rounded-lg border border-gray-300 px-3 py-2 dark:bg-slate-800 dark:text-white"
+                    value={formState.serviceId}
+                    onChange={(e) => setFormState((prev) => ({ ...prev, serviceId: e.target.value }))}
+                  >
+                    <option value="">Select Service</option>
+                    {services.map((s) => (
+                      <option key={s.id} value={s.id}>{s.name} {s.code ? `(${s.code})` : ''}</option>
+                    ))}
+                  </select>
+                </label>
+                <label className="flex flex-col gap-1">
+                  <span className="text-gray-600 dark:text-gray-300">Lot</span>
+                  <input
+                    className="rounded-lg border border-gray-300 px-3 py-2 dark:bg-slate-800 dark:text-white"
+                    value={formState.lot}
+                    onChange={(e) => setFormState((prev) => ({ ...prev, lot: e.target.value }))}
+                  />
+                </label>
+                <label className="flex flex-col gap-1">
+                  <span className="text-gray-600 dark:text-gray-300">Start Date</span>
+                  <input
+                    type="date"
+                    className="rounded-lg border border-gray-300 px-3 py-2 dark:bg-slate-800 dark:text-white"
+                    value={formState.startDate}
+                    onChange={(e) => setFormState((prev) => ({ ...prev, startDate: e.target.value }))}
+                  />
+                </label>
+                <label className="flex flex-col gap-1">
+                  <span className="text-gray-600 dark:text-gray-300">Status</span>
+                  <select
+                    className="rounded-lg border border-gray-300 px-3 py-2 dark:bg-slate-800 dark:text-white"
+                    value={formState.status}
+                    onChange={(e) => setFormState((prev) => ({ ...prev, status: e.target.value }))}
+                  >
+                    <option value="PENDING">Pending</option>
+                    <option value="COMPLETE">Complete</option>
+                  </select>
+                </label>
+                <label className="flex flex-col gap-1">
+                  <span className="text-gray-600 dark:text-gray-300">Amount</span>
+                  <input
+                    type="number"
+                    step="0.01"
+                    className="rounded-lg border border-gray-300 px-3 py-2 dark:bg-slate-800 dark:text-white"
+                    value={formState.amount}
+                    onChange={(e) => setFormState((prev) => ({ ...prev, amount: e.target.value }))}
+                  />
+                </label>
+                <label className="flex flex-col gap-1">
+                  <span className="text-gray-600 dark:text-gray-300">Invoice #</span>
+                  <input
+                    className="rounded-lg border border-gray-300 px-3 py-2 dark:bg-slate-800 dark:text-white"
+                    value={formState.invoiceNumber}
+                    onChange={(e) => setFormState((prev) => ({ ...prev, invoiceNumber: e.target.value }))}
+                  />
+                </label>
+                <label className="flex flex-col gap-1">
+                  <span className="text-gray-600 dark:text-gray-300">Check #</span>
+                  <input
+                    className="rounded-lg border border-gray-300 px-3 py-2 dark:bg-slate-800 dark:text-white"
+                    value={formState.checkNumber}
+                    onChange={(e) => setFormState((prev) => ({ ...prev, checkNumber: e.target.value }))}
+                  />
+                </label>
+                <label className="flex flex-col gap-1">
+                  <span className="text-gray-600 dark:text-gray-300">Check Date</span>
+                  <input
+                    type="date"
+                    className="rounded-lg border border-gray-300 px-3 py-2 dark:bg-slate-800 dark:text-white"
+                    value={formState.checkDate}
+                    onChange={(e) => setFormState((prev) => ({ ...prev, checkDate: e.target.value }))}
+                  />
+                </label>
+                <label className="flex flex-col gap-1">
+                  <span className="text-gray-600 dark:text-gray-300">Account Category</span>
+                  <input
+                    className="rounded-lg border border-gray-300 px-3 py-2 dark:bg-slate-800 dark:text-white"
+                    value={formState.accountCategoryName}
+                    onChange={(e) =>
+                      setFormState((prev) => ({ ...prev, accountCategoryName: e.target.value }))
+                    }
+                  />
+                </label>
+                <label className="flex flex-col gap-1">
+                  <span className="text-gray-600 dark:text-gray-300">Category Code</span>
+                  <input
+                    className="rounded-lg border border-gray-300 px-3 py-2 dark:bg-slate-800 dark:text-white"
+                    value={formState.accountCategoryCode}
+                    onChange={(e) =>
+                      setFormState((prev) => ({ ...prev, accountCategoryCode: e.target.value }))
+                    }
+                  />
+                </label>
+              </div>
+              {formError && <p className="text-sm text-red-600">{formError}</p>}
               <div className="flex justify-end gap-3">
                 <button
                   type="button"
                   className="rounded-lg border border-gray-300 px-4 py-2 text-sm dark:border-slate-600"
-                  onClick={() => setEditingEntry(null)}
+                  onClick={() => setIsCreatingManual(false)}
                   disabled={saving}
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+                  className="rounded-lg bg-green-600 px-4 py-2 text-sm font-semibold text-white hover:bg-green-700 disabled:cursor-not-allowed disabled:opacity-50"
                   disabled={saving}
                 >
-                  {saving ? 'Saving…' : 'Save Changes'}
+                  {saving ? 'Creating…' : 'Create Entry'}
                 </button>
               </div>
             </form>

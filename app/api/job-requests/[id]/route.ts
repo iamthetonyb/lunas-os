@@ -20,7 +20,8 @@ const intakeUpdatePayloadSchema = z.object({
   walkTime: z.string().optional().nullable(),
   notes: z.string().optional().nullable(),
   requestedBy: z.string().optional().nullable(),
-  contact: z.string().optional().nullable(),
+  contactPhone: z.string().optional().nullable(),
+  contactEmail: z.string().optional().nullable(),
   poNumber: z.string().optional().nullable(),
   serviceIds: z.array(z.string().uuid()).min(1, 'Select at least one service'),
 });
@@ -47,7 +48,7 @@ export const PUT = safe(async (req, { params: paramsPromise }: { params: Promise
     return err('Invalid payload', 400, parsed.error.flatten());
   }
 
-  const { serviceIds, walkTime, contact, dueDate, requestedBy, notes, poNumber, ...rest } =
+  const { serviceIds, walkTime, contactPhone, contactEmail, dueDate, requestedBy, notes, poNumber, ...rest } =
     parsed.data;
 
   const dueDateISO = dueDate.toISOString().split('T')[0];
@@ -65,7 +66,8 @@ export const PUT = safe(async (req, { params: paramsPromise }: { params: Promise
         requestedBy: requestedBy ?? null,
         notes: notes ?? null,
         poNumber: poNumber ?? null,
-        contactPhone: contact ?? null,
+        contactPhone: contactPhone ?? null,
+        contactEmail: contactEmail ?? null,
       })
       .where(eq(jobRequests.id, jobRequestId))
       .returning();

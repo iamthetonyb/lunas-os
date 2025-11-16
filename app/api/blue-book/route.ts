@@ -115,3 +115,49 @@ export const GET = safe(async (req: Request) => {
 
   return ok(formatted);
 });
+
+export const POST = safe(async (req: Request) => {
+  await requireMembership(['admin', 'backoffice']);
+  const db = await getDb();
+  
+  const body = await req.json();
+  const {
+    builderId,
+    communityId,
+    serviceId,
+    lot,
+    startDate,
+    status = 'PENDING',
+    amount,
+    invoiceNumber,
+    checkNumber,
+    checkDate,
+    accountCategoryName,
+    accountCategoryCode,
+  } = body;
+
+  if (!builderId || !communityId) {
+    return ok({ error: 'Builder and Community are required' }, { status: 400 });
+  }
+
+  const [newEntry] = await db
+    .insert(blueBookEntries)
+    .values({
+      builderId,
+      communityId,
+      serviceId: serviceId || null,
+      lot: lot || null,
+      startDate: startDate || null,
+      status,
+      amount: amount ? String(amount) : null,
+      poNumber: invoiceNumber || null,
+      checkNumber: checkNumber || null,
+      checkDate: checkDate || null,
+      accountCategoryName: accountCategoryName || null,
+      accountCategoryCode: accountCategoryCode || null,
+      source: 'manual',
+    })
+    .returning();
+
+  return ok(newEntry, { status: 201 });
+});

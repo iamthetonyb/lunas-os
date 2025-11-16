@@ -40,6 +40,7 @@ type UpcomingJob = {
   status?: string | null;
   walkTime?: string | null;
   walk_time?: string | null;
+  requestedBy?: string | null;
 };
 
 type DecoratedJob = UpcomingJob & {
@@ -54,14 +55,25 @@ type DraftAssignment = {
 };
 
 function resolveForemanForJob(job: UpcomingJob): ForemanConfig | typeof UNASSIGNED_FOREMAN {
-  const code = job.accountCategoryCode?.trim();
-  const serviceName = (job.serviceName ?? job.contractorName ?? '').toLowerCase();
+  // First priority: Use the requestedBy field if it matches a foreman name
+  if (job.requestedBy) {
+    const requestedByLower = job.requestedBy.toLowerCase().trim();
+    const byName = FOREMEN_DIRECTORY.find((foreman) => 
+      foreman.name.toLowerCase() === requestedByLower ||
+      foreman.id.toLowerCase() === requestedByLower
+    );
+    if (byName) return byName;
+  }
 
+  // Second priority: Match by service code
+  const code = job.accountCategoryCode?.trim();
   if (code) {
     const byCode = FOREMEN_DIRECTORY.find((foreman) => foreman.codes?.includes(code));
     if (byCode) return byCode;
   }
 
+  // Third priority: Match by service name keywords
+  const serviceName = (job.serviceName ?? job.contractorName ?? '').toLowerCase();
   if (serviceName) {
     const byKeyword = FOREMEN_DIRECTORY.find((foreman) =>
       foreman.keywords?.some((keyword) => serviceName.includes(keyword))

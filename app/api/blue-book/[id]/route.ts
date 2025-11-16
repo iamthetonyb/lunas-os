@@ -26,9 +26,10 @@ function normalizeDate(input?: string | null) {
 export const runtime = 'nodejs';
 export const preferredRegion = 'auto';
 
-export async function PATCH(req: Request, { params }: { params: { id: string } }) {
+export async function PATCH(req: Request, { params: paramsPromise }: { params: Promise<{ id: string }> }) {
   try {
     const db = await getDb();
+    const params = await paramsPromise;
 
     if (!params.id) {
       return json({ ok: false, error: 'Missing entry id' }, 400);
@@ -87,22 +88,34 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
   }
 }
 
-export async function DELETE(req: Request, { params }: { params: { id: string } }) {
+export async function DELETE(req: Request, { params: paramsPromise }: { params: Promise<{ id: string }> }) {
   try {
     const db = await getDb();
+    const params = await paramsPromise;
 
     if (!params.id) {
       return json({ ok: false, error: 'Missing entry id' }, 400);
+    }
+
+    // First check if the entry exists and is manual
+    const existing = await db
+      .select({ source: blueBookEntries.source })
+      .from(blueBookEntries)
+      .where(eq(blueBookEntries.id, params.id))
+      .limit(1);
+
+    if (!existing.length) {
+      return json({ ok: false, error: 'Entry not found' }, 404);
+    }
+
+    if (existing[0].source !== 'manual') {
+      return json({ ok: false, error: 'Only manually created entries can be deleted' }, 403);
     }
 
     const result = await db
       .delete(blueBookEntries)
       .where(eq(blueBookEntries.id, params.id))
       .returning();
-
-    if (!result.length) {
-      return json({ ok: false, error: 'Entry not found' }, 404);
-    }
 
     return json({ ok: true, message: 'Entry deleted successfully' });
   } catch (error) {

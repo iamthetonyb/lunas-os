@@ -49,7 +49,8 @@ const baseSchema = z.object({
     .refine((value) => REQUESTED_BY_LIST.includes(value as RequestedByName), {
       message: 'Select a valid requester',
     }),
-  contact: z.string().min(1, 'Contact information is required'),
+  contactPhone: z.string().optional(),
+  contactEmail: z.string().email('Invalid email format').optional().or(z.literal('')),
   poNumber: z.string().optional(),
 });
 
@@ -88,7 +89,8 @@ function EditIntakeForm({ intake, onSuccess, onClose }: { intake: RecentIntake; 
       walkTime: intake.services?.[0]?.walkTime || '',
       notes: intake.notes ?? '',
       requestedBy: intake.requestedBy ?? '',
-      contact: intake.contact ?? '',
+      contactPhone: intake.contactPhone ?? '',
+      contactEmail: intake.contactEmail ?? '',
       poNumber: intake.poNumber ?? '',
     },
   });
@@ -222,8 +224,13 @@ function EditIntakeForm({ intake, onSuccess, onClose }: { intake: RecentIntake; 
           <Controller name="requestedBy" control={control} render={({ field }) => <SearchableSelect {...field} options={requestedByOptions} placeholder="Requested By" />} />
         </div>
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Contact</label>
-          <input {...register('contact')} placeholder="Contact" className="w-full px-4 py-2.5 border border-gray-300 rounded-lg" />
+          <label className="block text-sm font-medium text-gray-700 mb-1">Contact Phone</label>
+          <input {...register('contactPhone')} placeholder="Phone Number" className="w-full px-4 py-2.5 border border-gray-300 rounded-lg" />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Contact Email</label>
+          <input {...register('contactEmail')} type="email" placeholder="Email Address" className="w-full px-4 py-2.5 border border-gray-300 rounded-lg" />
+          {errors.contactEmail && <p className="text-red-500 text-sm mt-1">{errors.contactEmail.message}</p>}
         </div>
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">PO Number</label>

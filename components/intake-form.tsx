@@ -271,6 +271,7 @@ export function IntakeForm() {
         body: JSON.stringify(data),
       });
       await mutate('/api/job-requests/recent');
+      await mutate('/api/schedule/blue-book');
       router.push('/intake');
     } catch (error) {
       console.error('Error creating job request:', error);

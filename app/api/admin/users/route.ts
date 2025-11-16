@@ -23,6 +23,7 @@ export const GET = safe(async () => {
       userId: users.id,
       name: users.name,
       email: users.email,
+      phone: users.phone,
       systemRole: users.role,
       orgMemberId: orgMembers.id,
       memberRole: orgMembers.role,
@@ -40,6 +41,7 @@ export const GET = safe(async () => {
       id: string;
       name: string | null;
       email: string;
+      phone: string | null;
       systemRole: string | null;
       memberships: { orgId: string; orgName: string; role: string }[];
     }
@@ -51,6 +53,7 @@ export const GET = safe(async () => {
         id: row.userId,
         name: row.name,
         email: row.email,
+        phone: row.phone,
         systemRole: row.systemRole,
         memberships: [],
       });

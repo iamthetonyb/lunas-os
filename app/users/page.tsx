@@ -2,13 +2,15 @@
 
 import { PageHeader } from '@/components/page-header';
 import useSWR, { mutate } from 'swr';
-import { useMemo, useState } from 'react';
+import { useMemo, useState, Fragment } from 'react';
 import { fetchJSON } from '@/lib/utils/fetch-json';
+import { Dialog, Transition } from '@headlessui/react';
 
 type AdminUser = {
   id: string;
   name: string | null;
   email: string;
+  phone: string | null;
   systemRole: string | null;
   memberships: { orgId: string; orgName: string; role: string }[];
 };
@@ -26,6 +28,235 @@ type AdminUsersResponse = {
 
 const fetcher = (url: string) => fetchJSON<AdminUsersResponse>(url);
 
+type UserFormData = {
+  name: string;
+  email: string;
+  phone: string;
+  password: string;
+  confirmPassword: string;
+};
+
+function UserModal({
+  open,
+  onClose,
+  user,
+  onSuccess,
+}: {
+  open: boolean;
+  onClose: () => void;
+  user: AdminUser | null;
+  onSuccess: () => void;
+}) {
+  const isEdit = !!user;
+  const [formData, setFormData] = useState<UserFormData>({
+    name: user?.name || '',
+    email: user?.email || '',
+    phone: user?.phone || '',
+    password: '',
+    confirmPassword: '',
+  });
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState('');
+
+  const handleChange = (field: keyof UserFormData, value: string) => {
+    setFormData((prev) => ({ ...prev, [field]: value }));
+    setError('');
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError('');
+
+    // Validation
+    if (!formData.name.trim()) {
+      setError('Name is required');
+      return;
+    }
+    if (!formData.email.trim()) {
+      setError('Email is required');
+      return;
+    }
+    if (!isEdit && !formData.password) {
+      setError('Password is required for new users');
+      return;
+    }
+    if (formData.password && formData.password !== formData.confirmPassword) {
+      setError('Passwords do not match');
+      return;
+    }
+    if (formData.password && formData.password.length < 6) {
+      setError('Password must be at least 6 characters');
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      const payload: any = {
+        name: formData.name,
+        email: formData.email,
+        phone: formData.phone || null,
+      };
+
+      if (formData.password) {
+        payload.password = formData.password;
+      }
+
+      if (isEdit) {
+        await fetchJSON(`/api/admin/users/${user.id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+      } else {
+        await fetchJSON('/api/admin/users/create', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+      }
+
+      await mutate('/api/admin/users');
+      onSuccess();
+      onClose();
+    } catch (err: any) {
+      console.error(err);
+      setError(err.message || 'Failed to save user');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  return (
+    <Transition appear show={open} as={Fragment}>
+      <Dialog as="div" className="relative z-50" onClose={onClose}>
+        <Transition.Child
+          as={Fragment}
+          enter="ease-out duration-300"
+          enterFrom="opacity-0"
+          enterTo="opacity-100"
+          leave="ease-in duration-200"
+          leaveFrom="opacity-100"
+          leaveTo="opacity-0"
+        >
+          <div className="fixed inset-0 bg-black/30" />
+        </Transition.Child>
+
+        <div className="fixed inset-0 overflow-y-auto">
+          <div className="flex min-h-full items-center justify-center p-4">
+            <Transition.Child
+              as={Fragment}
+              enter="ease-out duration-300"
+              enterFrom="opacity-0 scale-95"
+              enterTo="opacity-100 scale-100"
+              leave="ease-in duration-200"
+              leaveFrom="opacity-100 scale-100"
+              leaveTo="opacity-0 scale-95"
+            >
+              <Dialog.Panel className="w-full max-w-md transform overflow-hidden rounded-2xl bg-white p-6 text-left align-middle shadow-xl transition-all">
+                <Dialog.Title as="h3" className="text-lg font-medium leading-6 text-gray-900 mb-4">
+                  {isEdit ? 'Edit User' : 'Create New User'}
+                </Dialog.Title>
+
+                <form onSubmit={handleSubmit} className="space-y-4">
+                  {error && (
+                    <div className="rounded-lg bg-red-50 p-3 text-sm text-red-700">
+                      {error}
+                    </div>
+                  )}
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Name *
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.name}
+                      onChange={(e) => handleChange('name', e.target.value)}
+                      className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      placeholder="John Doe"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Email *
+                    </label>
+                    <input
+                      type="email"
+                      value={formData.email}
+                      onChange={(e) => handleChange('email', e.target.value)}
+                      className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      placeholder="john@example.com"
+                      disabled={isEdit}
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Phone
+                    </label>
+                    <input
+                      type="tel"
+                      value={formData.phone}
+                      onChange={(e) => handleChange('phone', e.target.value)}
+                      className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      placeholder="555-1234"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      {isEdit ? 'New Password (leave blank to keep current)' : 'Password *'}
+                    </label>
+                    <input
+                      type="password"
+                      value={formData.password}
+                      onChange={(e) => handleChange('password', e.target.value)}
+                      className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      placeholder="••••••••"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Confirm Password
+                    </label>
+                    <input
+                      type="password"
+                      value={formData.confirmPassword}
+                      onChange={(e) => handleChange('confirmPassword', e.target.value)}
+                      className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      placeholder="••••••••"
+                    />
+                  </div>
+
+                  <div className="flex justify-end gap-3 pt-4">
+                    <button
+                      type="button"
+                      onClick={onClose}
+                      className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
+                      disabled={isSubmitting}
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={isSubmitting}
+                      className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
+                    >
+                      {isSubmitting ? 'Saving...' : isEdit ? 'Save Changes' : 'Create User'}
+                    </button>
+                  </div>
+                </form>
+              </Dialog.Panel>
+            </Transition.Child>
+          </div>
+        </div>
+      </Dialog>
+    </Transition>
+  );
+}
+
 export default function UsersPage() {
   const { data, isLoading, error } = useSWR<AdminUsersResponse>('/api/admin/users', fetcher);
   const [membership, setMembership] = useState({
@@ -35,6 +266,8 @@ export default function UsersPage() {
   });
   const [orgForm, setOrgForm] = useState({ name: '' });
   const [busy, setBusy] = useState(false);
+  const [userModalOpen, setUserModalOpen] = useState(false);
+  const [editingUser, setEditingUser] = useState<AdminUser | null>(null);
 
   const sortedUsers = useMemo(() => {
     if (!data?.users) return [];
@@ -82,15 +315,33 @@ export default function UsersPage() {
     }
   };
 
+  const handleCreateUser = () => {
+    setEditingUser(null);
+    setUserModalOpen(true);
+  };
+
+  const handleEditUser = (user: AdminUser) => {
+    setEditingUser(user);
+    setUserModalOpen(true);
+  };
+
+  const handleUserModalClose = () => {
+    setUserModalOpen(false);
+    setEditingUser(null);
+  };
+
   return (
     <>
       <PageHeader
         title="Users"
         description="Manage system users and permissions"
         action={
-          <div className="text-sm text-gray-500">
-            Need a fresh dataset? Run <code className="rounded bg-gray-100 px-2 py-1">pnpm db:reset</code>
-          </div>
+          <button
+            onClick={handleCreateUser}
+            className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700"
+          >
+            + Create User
+          </button>
         }
       />
       <main className="px-6 py-6 space-y-6">
@@ -105,7 +356,9 @@ export default function UsersPage() {
                   <tr>
                     <th className="px-4 py-2 text-left font-semibold text-gray-500">Name</th>
                     <th className="px-4 py-2 text-left font-semibold text-gray-500">Email</th>
+                    <th className="px-4 py-2 text-left font-semibold text-gray-500">Phone</th>
                     <th className="px-4 py-2 text-left font-semibold text-gray-500">Memberships</th>
+                    <th className="px-4 py-2 text-left font-semibold text-gray-500">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100">
@@ -113,6 +366,7 @@ export default function UsersPage() {
                     <tr key={user.id}>
                       <td className="px-4 py-3 text-gray-900">{user.name || '—'}</td>
                       <td className="px-4 py-3 text-gray-900">{user.email}</td>
+                      <td className="px-4 py-3 text-gray-900">{user.phone || '—'}</td>
                       <td className="px-4 py-3 text-gray-900">
                         {user.memberships.length === 0 ? (
                           <span className="text-xs text-gray-500">No org access</span>
@@ -128,6 +382,14 @@ export default function UsersPage() {
                             ))}
                           </div>
                         )}
+                      </td>
+                      <td className="px-4 py-3">
+                        <button
+                          onClick={() => handleEditUser(user)}
+                          className="text-blue-600 hover:text-blue-800 font-medium text-sm"
+                        >
+                          Edit
+                        </button>
                       </td>
                     </tr>
                   ))}
@@ -216,6 +478,15 @@ export default function UsersPage() {
           </form>
         </section>
       </main>
+
+      <UserModal
+        open={userModalOpen}
+        onClose={handleUserModalClose}
+        user={editingUser}
+        onSuccess={() => {
+          alert(editingUser ? 'User updated successfully!' : 'User created successfully!');
+        }}
+      />
     </>
   );
 }
