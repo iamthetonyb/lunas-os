@@ -1,8 +1,7 @@
-import { NextResponse } from 'next/server';
-import { db } from '@/db';
+import { getDb } from '@/lib/db/get-db';
 import { blueBookEntries } from '@/db/schema';
 import { eq } from 'drizzle-orm';
-import { withErrorHandling } from '@/lib/api-handler';
+import { json } from '@/lib/utils/json';
 
 type PatchBody = {
   lot?: string | null;
@@ -14,6 +13,7 @@ type PatchBody = {
   accountCategoryCode?: string | null;
   checkNumber?: string | null;
   checkDate?: string | null;
+  modelPlanId?: string | null;
 };
 
 function normalizeDate(input?: string | null) {
@@ -23,13 +23,19 @@ function normalizeDate(input?: string | null) {
   return date.toISOString().split('T')[0];
 }
 
-async function handler(req: Request, { params }: { params: { id: string } }) {
-  if (!params.id) {
-    return NextResponse.json({ error: 'Missing entry id' }, { status: 400 });
-  }
+export const runtime = 'nodejs';
+export const preferredRegion = 'auto';
 
-  const body = (await req.json()) as PatchBody;
-  const updates: Record<string, any> = {};
+export async function PATCH(req: Request, { params }: { params: { id: string } }) {
+  try {
+    const db = await getDb();
+
+    if (!params.id) {
+      return json({ ok: false, error: 'Missing entry id' }, 400);
+    }
+
+    const body = (await req.json()) as PatchBody;
+  const updates: Partial<typeof blueBookEntries.$inferInsert> = {};
 
   if ('lot' in body) updates.lot = body.lot?.trim() || null;
   if ('startDate' in body) updates.startDate = normalizeDate(body.startDate);
@@ -54,24 +60,53 @@ async function handler(req: Request, { params }: { params: { id: string } }) {
   if ('checkDate' in body) {
     updates.checkDate = normalizeDate(body.checkDate);
   }
-
-  if (Object.keys(updates).length === 0) {
-    return NextResponse.json({ error: 'No updates provided' }, { status: 400 });
+  if ('modelPlanId' in body) {
+    updates.modelPlanId = body.modelPlanId ?? null;
   }
 
-  updates.updatedAt = new Date();
+    if (Object.keys(updates).length === 0) {
+      return json({ ok: false, error: 'No updates provided' }, 400);
+    }
 
-  const result = await db
-    .update(blueBookEntries)
-    .set(updates)
-    .where(eq(blueBookEntries.id, params.id))
-    .returning();
+    updates.updatedAt = new Date();
 
-  if (!result.length) {
-    return NextResponse.json({ error: 'Entry not found' }, { status: 404 });
+    const result = await db
+      .update(blueBookEntries)
+      .set(updates)
+      .where(eq(blueBookEntries.id, params.id))
+      .returning();
+
+    if (!result.length) {
+      return json({ ok: false, error: 'Entry not found' }, 404);
+    }
+
+    return json({ ok: true, entry: result[0] });
+  } catch (error) {
+    console.error('Error updating blue book entry:', error);
+    return json({ ok: false, error: (error as Error).message ?? 'Failed to update entry' }, 500);
   }
-
-  return NextResponse.json({ ok: true, entry: result[0] });
 }
 
-export const PATCH = withErrorHandling(handler);
+export async function DELETE(req: Request, { params }: { params: { id: string } }) {
+  try {
+    const db = await getDb();
+
+    if (!params.id) {
+      return json({ ok: false, error: 'Missing entry id' }, 400);
+    }
+
+    const result = await db
+      .delete(blueBookEntries)
+      .where(eq(blueBookEntries.id, params.id))
+      .returning();
+
+    if (!result.length) {
+      return json({ ok: false, error: 'Entry not found' }, 404);
+    }
+
+    return json({ ok: true, message: 'Entry deleted successfully' });
+  } catch (error) {
+    console.error('Error deleting blue book entry:', error);
+    return json({ ok: false, error: (error as Error).message ?? 'Failed to delete entry' }, 500);
+  }
+}

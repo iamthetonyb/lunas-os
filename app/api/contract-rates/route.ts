@@ -1,31 +1,34 @@
-import { db } from '@/db';
+import { getDb } from '@/lib/db/get-db';
 import { contractRates } from '@/db/schema';
-import { NextResponse } from 'next/server';
-import { withApiHandler, withTimeout, errorResponse } from '@/lib/api-helpers';
+import { json } from '@/lib/utils/json';
+import { withTimeout } from '@/lib/api-helpers';
 
-export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
+export const preferredRegion = 'auto';
+export const dynamic = 'force-dynamic';
 
 export async function GET() {
-  return withApiHandler(
-    async () => {
-      const rates = await db.query.contractRates.findMany();
-      return rates || [];
-    },
-    []
-  );
+  try {
+    const db = await getDb();
+    const rates = await db.query.contractRates.findMany();
+    return json(rates ?? []);
+  } catch (error) {
+    console.error('Error fetching contract rates:', error);
+    return json({ ok: false, error: (error as Error).message ?? 'Failed to load contract rates' }, 500);
+  }
 }
 
 export async function POST(req: Request) {
   try {
+    const db = await getDb();
     const data = await withTimeout(req.json(), 5000);
-    const newRate = await withTimeout(
+    const [newRate] = await withTimeout(
       db.insert(contractRates).values(data).returning(),
       8000
     );
-    return NextResponse.json(newRate[0]);
+    return json(newRate, 201);
   } catch (error) {
     console.error('Error creating contract rate:', error);
-    return errorResponse('Failed to create contract rate');
+    return json({ ok: false, error: (error as Error).message ?? 'Failed to create contract rate' }, 500);
   }
 }

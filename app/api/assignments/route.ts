@@ -1,10 +1,14 @@
-import { db } from '@/db';
+import { getDb } from '@/lib/db/get-db';
 import { assignments } from '@/db/schema';
 import { eq } from 'drizzle-orm';
-import { NextResponse } from 'next/server';
+import { json } from '@/lib/utils/json';
+
+export const runtime = 'nodejs';
+export const preferredRegion = 'auto';
 
 export async function GET(req: Request) {
   try {
+    const db = await getDb();
     const { searchParams } = new URL(req.url);
     const status = searchParams.get('status');
 
@@ -12,27 +16,13 @@ export async function GET(req: Request) {
       const filteredAssignments = await db.query.assignments.findMany({
         where: eq(assignments.status, status as any),
       });
-      return NextResponse.json(filteredAssignments || [], {
-        headers: {
-          'Cache-Control': 'no-store, no-cache, must-revalidate',
-        },
-      });
+      return json(filteredAssignments ?? []);
     }
 
     const allAssignments = await db.query.assignments.findMany();
-    return NextResponse.json(allAssignments || [], {
-      headers: {
-        'Cache-Control': 'no-store, no-cache, must-revalidate',
-      },
-    });
+    return json(allAssignments ?? []);
   } catch (error) {
     console.error('Error fetching assignments:', error);
-    // Return empty array with 200 status to prevent crashes
-    return NextResponse.json([], {
-      status: 200,
-      headers: {
-        'Cache-Control': 'no-store, no-cache, must-revalidate',
-      },
-    });
+    return json({ ok: false, error: (error as Error).message ?? 'Failed to load assignments' }, 500);
   }
 }

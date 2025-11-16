@@ -1,8 +1,12 @@
 import { NextResponse } from 'next/server';
-import { db } from '@/db';
-import { blueBookEntries, builders, communities, services } from '@/db/schema';
+import { getDb } from '@/lib/db/get-db';
+import { blueBookEntries, builders, communities, modelPlans, services } from '@/db/schema';
 import { and, eq } from 'drizzle-orm';
 import { withErrorHandling } from '@/lib/api-handler';
+
+export const runtime = 'nodejs';
+
+const db = await getDb();
 
 type HarvesterItem = {
   checkDate: string;
@@ -26,6 +30,11 @@ type HarvesterPayload = {
   start: string;
   end: string;
   items: HarvesterItem[];
+  jobs?: Array<{
+    communityCode: string | null;
+    communityName: string | null;
+    scarStartDate: string | null;
+  }>;
 };
 
 function splitJobNumber(jobNumber: string | null | undefined) {
@@ -88,6 +97,7 @@ async function handler(req: Request) {
   const builderId = builder?.id ?? null;
   const communityCache = new Map<string, string>();
   const serviceCache = new Map<string, string>();
+  const modelPlanCache = new Map<string, string | null>();
   const jobMap = new Map<string, { name: string | null; scarStartDate: string | null }>();
 
   if (Array.isArray(body.jobs)) {
@@ -174,6 +184,24 @@ async function handler(req: Request) {
     return row.id;
   }
 
+  async function getModelPlanId(planNumber: string | null) {
+    if (!builderId || !planNumber) return null;
+    const key = planNumber.trim();
+    if (!key) return null;
+
+    if (modelPlanCache.has(key)) {
+      return modelPlanCache.get(key) ?? null;
+    }
+
+    const existing = await db.query.modelPlans.findFirst({
+      where: and(eq(modelPlans.builderId, builderId), eq(modelPlans.code, key)),
+    });
+
+    const value = existing?.id ?? null;
+    modelPlanCache.set(key, value);
+    return value;
+  }
+
   let inserted = 0;
   let updated = 0;
   let skipped = 0;
@@ -198,6 +226,7 @@ async function handler(req: Request) {
       jobMeta?.name ?? communityCode
     );
     const serviceId = await getServiceId(accountCategory.code, accountCategory.name);
+    const modelPlanId = await getModelPlanId(item.planNumber);
 
     let existing = null;
     const candidateLots = [lot, jobNumberRaw].filter(Boolean) as string[];
@@ -237,6 +266,7 @@ async function handler(req: Request) {
         ...(communityId ? { communityId } : {}),
         ...(serviceId ? { serviceId } : {}),
         ...(builderId ? { builderId } : {}),
+        ...(modelPlanId ? { modelPlanId } : {}),
       };
 
       await db
@@ -261,6 +291,7 @@ async function handler(req: Request) {
         ...(communityId ? { communityId } : {}),
         ...(serviceId ? { serviceId } : {}),
         ...(builderId ? { builderId } : {}),
+        ...(modelPlanId ? { modelPlanId } : {}),
       });
       inserted++;
     }

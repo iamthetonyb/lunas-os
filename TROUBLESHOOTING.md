@@ -68,7 +68,7 @@ cat .env.local
 # Ensure NEXTAUTH_URL, BASE_URL, SQLITE_PATH are set
 
 # 2. Check database connection
-ls -lh dev.db
+ls -lh .data/lunas.db
 # Should exist and be readable
 
 # 3. Check terminal logs for specific error
@@ -93,14 +93,14 @@ pnpm start
 **Solution**:
 ```bash
 # Option 1: Kill all processes using the database
-lsof dev.db | awk 'NR>1 {print $2}' | xargs kill -9
+lsof .data/lunas.db | awk 'NR>1 {print $2}' | xargs kill -9
 
 # Option 2: Remove lock files
-rm -f dev.db-shm dev.db-wal
+rm -f .data/lunas.db-shm .data/lunas.db-wal
 
 # Option 3: Recreate database
-rm dev.db dev.db-*
-pnpm db:setup:sqlite
+rm -f .data/lunas.db .data/lunas.db-*
+pnpm db:sqlite
 ```
 
 ### Connection Refused / ECONNREFUSED
@@ -115,7 +115,7 @@ pnpm db:setup:sqlite
 # DATABASE_URL=postgresql://...  # <- Comment this out
 
 # Add SQLite path instead
-echo "SQLITE_PATH=dev.db" >> .env.local
+echo "SQLITE_PATH=.data/lunas.db" >> .env.local
 
 # Restart server
 pkill -f next
@@ -177,11 +177,11 @@ pnpm dev
 ```bash
 # Check postcss.config.js exists
 cat postcss.config.js
-# Should contain: { plugins: { tailwindcss: {}, autoprefixer: {} } }
+# Should contain: { plugins: { '@tailwindcss/postcss': {} } }
 
 # Check globals.css uses Tailwind v3 syntax
 head -5 app/globals.css
-# Should show: @tailwind base; @tailwind components; @tailwind utilities;
+# Should show: @import "tailwindcss";
 ```
 
 ### UI Completely Broken / No Styling
@@ -394,7 +394,7 @@ export async function GET() {
 ```bash
 # 1. Check if database is responding
 # For SQLite:
-sqlite3 dev.db "SELECT COUNT(*) FROM services;"
+sqlite3 .data/lunas.db "SELECT COUNT(*) FROM services;"
 
 # 2. Check for long-running queries
 # Add logging to API routes:
@@ -549,7 +549,7 @@ pkill -f next
 
 # 3. Remove all generated files
 rm -rf node_modules .next .turbo pnpm-lock.yaml dist
-rm dev.db dev.db-*
+rm -f .data/lunas.db .data/lunas.db-*
 
 # 4. Clear pnpm cache
 pnpm store prune
@@ -559,7 +559,7 @@ pnpm install
 pnpm approve-builds
 
 # 6. Rebuild database
-pnpm db:setup:sqlite
+pnpm db:sqlite
 
 # 7. Build and start
 pnpm build

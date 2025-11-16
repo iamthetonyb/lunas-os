@@ -8,7 +8,7 @@ export const users = pgTable('users', {
   email: text('email').unique().notNull(),
   phone: text('phone'),
   name: text('name'),
-  role: roleEnum('role').notNull(),
+  role: roleEnum('role').default('CUSTOMER').notNull(),
   preferredLang: langEnum('preferred_lang').default('EN'),
   passwordHash: text('password_hash'),
   createdAt: timestamp('created_at').defaultNow().notNull(),

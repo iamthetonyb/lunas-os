@@ -1,7 +1,10 @@
-import { NextResponse } from 'next/server';
-import { db } from '@/db';
+import { getDb } from '@/lib/db/get-db';
 import { blueBookEntries } from '@/db/schema';
 import { and, gte, lte, isNotNull } from 'drizzle-orm';
+import { safe, ok } from '@/lib/api/http';
+import { requireMembership } from '@/lib/auth/guards';
+
+export const runtime = 'nodejs';
 
 function parseDateParam(value: string | null, fallback: Date) {
   if (!value) return fallback;
@@ -14,7 +17,7 @@ function formatDateInput(date: Date) {
   return date.toISOString().split('T')[0];
 }
 
-export async function GET(req: Request) {
+export const GET = safe(async (req: Request) => {
   const { searchParams } = new URL(req.url);
   const now = new Date();
   const startDate = parseDateParam(searchParams.get('start'), now);
@@ -25,6 +28,8 @@ export async function GET(req: Request) {
   const startIso = formatDateInput(startDate);
   const endIso = formatDateInput(endDate);
 
+  await requireMembership(['admin', 'backoffice', 'contractor']);
+  const db = await getDb();
   const entries = await db.query.blueBookEntries.findMany({
     where: and(
       isNotNull(blueBookEntries.startDate),
@@ -66,5 +71,5 @@ export async function GET(req: Request) {
     };
   });
 
-  return NextResponse.json(formatted);
-}
+  return ok(Array.isArray(formatted) ? formatted : []);
+});

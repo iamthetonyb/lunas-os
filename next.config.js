@@ -1,21 +1,22 @@
 /** @type {import('next').NextConfig} */
-const nextConfig = {
-  reactStrictMode: false,
-  eslint: {
-    ignoreDuringBuilds: true,
-  },
-  typescript: {
-    ignoreBuildErrors: true,
-  },
-  // Force webpack to process CSS properly in dev mode
-  webpack: (config, { dev, isServer }) => {
-    // Ensure PostCSS loader is applied to CSS files
-    if (dev && !isServer) {
-      config.infrastructureLogging = {
-        level: 'error',
-      };
-    }
+module.exports = {
+  reactStrictMode: true,
+  // Empty turbopack config to silence webpack warning
+  turbopack: {},
+  webpack: (config, { isServer }) => {
+    // Defensive aliases for optional Keyv adapters (prevent bundling errors)
+    config.resolve = config.resolve || {};
+    config.resolve.alias = {
+      ...(config.resolve.alias || {}),
+      '@keyv/redis': false,
+      '@keyv/mongo': false,
+      '@keyv/sqlite': false,
+      '@keyv/postgres': false,
+      '@keyv/mysql': false,
+      '@keyv/etcd': false,
+      '@keyv/offline': false,
+      '@keyv/tiered': false,
+    };
     return config;
   },
 };
-module.exports = nextConfig;

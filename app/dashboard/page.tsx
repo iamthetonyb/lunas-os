@@ -3,43 +3,49 @@
 import { PageHeader } from '@/components/page-header';
 import Link from 'next/link';
 import useSWR from 'swr';
+import { fetchJSON } from '@/lib/utils/fetch-json';
 
-const fetcher = async (url: string) => {
+const fetcher = async <T,>(url: string) => {
   try {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 8000);
-    const res = await fetch(url, { 
-      signal: controller.signal,
-      cache: 'no-store' 
-    });
-    clearTimeout(timeoutId);
-    if (!res.ok) return [];
-    return await res.json();
+    return await fetchJSON<T>(url);
   } catch (err) {
     console.error('Fetch error:', err);
-    return [];
+    return [] as T;
   }
 };
 
+type RecentIntake = {
+  id: string;
+  builderName: string;
+  communityName: string;
+  lot: string;
+  modelPlanName: string;
+  dueDate: string | null;
+  createdAt: string | null;
+  services: string[];
+};
+
 export default function DashboardPage() {
-  const { data: blueBookEntries = [], error } = useSWR('/api/blue-book', fetcher, {
+  const { data: blueBookEntries = [] } = useSWR<any[]>('/api/blue-book', fetcher, {
     revalidateOnFocus: false,
     revalidateOnReconnect: false,
-    shouldRetryOnError: false
+    shouldRetryOnError: false,
   });
+  const { data: recentIntakes = [] } = useSWR<RecentIntake[]>(
+    '/api/job-requests/recent',
+    fetcher,
+    {
+      revalidateOnFocus: false,
+      revalidateOnReconnect: false,
+      shouldRetryOnError: false,
+    }
+  );
   
   const stats = [
     { name: 'Active Jobs', value: '12', change: '+2', icon: '📋' },
     { name: 'Pending Intakes', value: '8', change: '+3', icon: '📝' },
     { name: 'Scheduled Today', value: '5', change: '0', icon: '📅' },
     { name: 'Invoices Due', value: '$12,450', change: '+5%', icon: '💰' },
-  ];
-
-  const recentActivity = [
-    { type: 'Intake', message: 'New intake submitted for Project ABC', time: '5 min ago' },
-    { type: 'Schedule', message: 'Job scheduled for tomorrow', time: '15 min ago' },
-    { type: 'Dispatch', message: 'Crew dispatched to Site XYZ', time: '1 hour ago' },
-    { type: 'Invoice', message: 'Invoice #1234 sent', time: '2 hours ago' },
   ];
 
   return (
@@ -103,24 +109,53 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          {/* Recent Activity */}
+          {/* Recent Intake Submissions */}
           <div className="lg:col-span-2">
             <div className="bg-white dark:bg-slate-800 rounded-lg shadow-sm border border-gray-200 dark:border-slate-700 p-6">
-              <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Recent Activity</h2>
-              <div className="space-y-4">
-                {recentActivity.map((activity, index) => (
-                  <div key={index} className="flex items-start gap-3 pb-4 border-b border-gray-100 dark:border-slate-700 last:border-0 last:pb-0">
-                    <div className="w-2 h-2 rounded-full bg-blue-500 mt-2"></div>
-                    <div className="flex-1">
-                      <div className="flex items-center justify-between mb-1">
-                        <span className="text-xs font-semibold text-blue-600 dark:text-blue-400">{activity.type}</span>
-                        <span className="text-xs text-gray-500 dark:text-gray-400">{activity.time}</span>
+              <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Recent Intakes</h2>
+              {recentIntakes.length === 0 ? (
+                <p className="text-sm text-gray-500 dark:text-gray-400">
+                  No recent intake submissions yet. Complete the intake form to see them here.
+                </p>
+              ) : (
+                <div className="space-y-4">
+                  {recentIntakes.map((intake) => (
+                    <div
+                      key={intake.id}
+                      className="flex flex-col gap-2 pb-4 border-b border-gray-100 dark:border-slate-700 last:pb-0 last:border-0"
+                    >
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-sm font-semibold text-gray-900 dark:text-white">
+                            {intake.builderName} · {intake.communityName}
+                          </p>
+                          <p className="text-xs text-gray-500 dark:text-gray-400">
+                            Lot {intake.lot} &middot;{' '}
+                            {intake.services.length ? intake.services.join(', ') : 'Services pending'}
+                          </p>
+                        </div>
+                        <span className="text-xs font-medium text-blue-600 dark:text-blue-300 bg-blue-50 dark:bg-blue-900/30 px-2 py-1 rounded-full">
+                          {intake.modelPlanName}
+                        </span>
                       </div>
-                      <p className="text-sm text-gray-700 dark:text-gray-300">{activity.message}</p>
+                      <div className="flex flex-wrap items-center gap-4 text-xs text-gray-500 dark:text-gray-400">
+                        <span>
+                          Due{' '}
+                          {intake.dueDate
+                            ? new Date(intake.dueDate).toLocaleDateString()
+                            : 'TBD'}
+                        </span>
+                        <span>
+                          Submitted{' '}
+                          {intake.createdAt
+                            ? new Date(intake.createdAt).toLocaleString()
+                            : 'Just now'}
+                        </span>
+                      </div>
                     </div>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         </div>

@@ -1,51 +1,44 @@
-import 'dotenv/config';
+import 'server-only';
+
 import * as schema from './schema';
 
-// Postgres (postgres-js)
-import postgres from 'postgres';
-import { drizzle as drizzlePg } from 'drizzle-orm/postgres-js';
+type Provider = 'sqlite' | 'postgres';
 
-// SQLite (better-sqlite3)
-import Database from 'better-sqlite3';
-import { drizzle as drizzleSqlite } from 'drizzle-orm/better-sqlite3';
+const provider: Provider =
+  (process.env.DATABASE_PROVIDER as Provider | undefined) ??
+  (process.env.DATABASE_URL ? 'postgres' : 'sqlite');
 
-const url = process.env.DATABASE_URL;
-const useSqlite = !url || !url.startsWith('postgres');
+let dbPromise: Promise<any> | null = null;
 
-// Create a singleton connection
-const globalForDb = globalThis as unknown as {
-  pgClient: ReturnType<typeof postgres> | undefined;
-  sqliteClient: Database.Database | undefined;
-};
-
-let client: any;
-let db: any;
-
-// SQLite for dev (no Docker needed)
-if (useSqlite) {
-  const sqlitePath = process.env.SQLITE_PATH ?? 'dev.db';
-  const sqliteClient = globalForDb.sqliteClient ?? new Database(sqlitePath);
-  
-  if (process.env.NODE_ENV !== 'production') {
-    globalForDb.sqliteClient = sqliteClient;
+async function createDb() {
+  if (provider === 'sqlite') {
+    const Database = (await import('better-sqlite3')).default;
+    const { drizzle } = await import('drizzle-orm/better-sqlite3');
+    const sqlitePath = process.env.SQLITE_PATH || '.data/lunas.db';
+    const sqlite = new Database(sqlitePath);
+    return drizzle(sqlite, { schema });
   }
-  
-  client = sqliteClient;
-  db = drizzleSqlite(sqliteClient, { schema });
-} else {
-  // Postgres for production
-  const pgClient = globalForDb.pgClient ?? postgres(url, { 
+
+  const postgres = (await import('postgres')).default;
+  const { drizzle } = await import('drizzle-orm/postgres-js');
+  const url = process.env.DATABASE_URL;
+  if (!url) {
+    throw new Error('DATABASE_URL is missing for postgres provider');
+  }
+  const client = postgres(url, {
+    ssl: process.env.NODE_ENV === 'production' ? 'require' : undefined,
     max: 10,
-    idle_timeout: 20,
-    connect_timeout: 10,
   });
-  
-  if (process.env.NODE_ENV !== 'production') {
-    globalForDb.pgClient = pgClient;
-  }
-  
-  client = pgClient;
-  db = drizzlePg(pgClient, { schema });
+  return drizzle(client, { schema });
 }
 
-export { db, client };
+export async function getDb() {
+  if (!dbPromise) {
+    dbPromise = createDb();
+  }
+  return dbPromise;
+}
+
+export type DB = ReturnType<typeof getDb> extends Promise<infer T> ? T : never;
+
+export { schema, provider };

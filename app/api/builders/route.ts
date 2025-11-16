@@ -1,22 +1,16 @@
-import { db } from '@/db';
-import { NextResponse } from 'next/server';
+import { getDb } from '@/lib/db/get-db';
+import { json } from '@/lib/utils/json';
+
+export const runtime = 'nodejs';
+export const preferredRegion = 'auto';
 
 export async function GET() {
   try {
+    const db = await getDb();
     const builders = await db.query.builders.findMany();
-    return NextResponse.json(builders || [], {
-      headers: {
-        'Cache-Control': 'no-store, no-cache, must-revalidate',
-      },
-    });
+    return json(builders ?? []);
   } catch (error) {
     console.error('Error fetching builders:', error);
-    // Return empty array with 200 status to prevent crashes
-    return NextResponse.json([], {
-      status: 200,
-      headers: {
-        'Cache-Control': 'no-store, no-cache, must-revalidate',
-      },
-    });
+    return json({ ok: false, error: (error as Error).message ?? 'Failed to load builders' }, 500);
   }
 }

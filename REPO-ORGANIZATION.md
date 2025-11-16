@@ -128,8 +128,7 @@ LUNAS-OS/
 │
 ├── 📁 scripts/                     # Build & utility scripts
 │   ├── dev/                       # Dev utilities
-│   │   ├── check-server.sh       # Server health check
-│   │   └── keep-server-alive.sh  # Server keepalive
+│   │   └── keep-server-alive.sh  # Keep the dev server running
 │   ├── seed.ts                    # Seed database
 │   ├── migrate-sqlite.ts          # SQLite migrations
 │   ├── migrate-pg.ts              # PostgreSQL migrations

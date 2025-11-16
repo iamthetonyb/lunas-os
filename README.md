@@ -2,17 +2,17 @@
 
 **Construction Cleanup Management System** - A comprehensive platform for managing construction cleanup operations, scheduling, invoicing, and crew dispatch.
 
-[![Next.js](https://img.shields.io/badge/Next.js-15.5.5-black)](https://nextjs.org/)
-[![React](https://img.shields.io/badge/React-19.0.0-blue)](https://react.dev/)
+[![Next.js](https://img.shields.io/badge/Next.js-16.0.3-black)](https://nextjs.org/)
+[![React](https://img.shields.io/badge/React-19.2.0-blue)](https://react.dev/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.x-blue)](https://www.typescriptlang.org/)
-[![Tailwind CSS](https://img.shields.io/badge/Tailwind-3.x-38bdf8)](https://tailwindcss.com/)
+[![Tailwind CSS](https://img.shields.io/badge/Tailwind-4.x-38bdf8)](https://tailwindcss.com/)
 
 ---
 
 ## 🚀 Quick Start
 
 ### Prerequisites
-- Node.js 20+ (v24.5.0 recommended)
+- Node.js 20 LTS (v20.18.1 recommended — see `.nvmrc`)
 - pnpm (package manager)
 - PostgreSQL 14+
 - Docker (optional, for database)
@@ -25,9 +25,10 @@ pnpm install
 
 # 2. Set up environment variables
 cp .env.example .env.local
-# Edit .env.local with your configuration
+# For SQLite dev: DATABASE_PROVIDER=sqlite and SQLITE_PATH=.data/lunas.db (default)
+# For Postgres: set DATABASE_URL and (optionally) DATABASE_PROVIDER=postgres
 
-# 3. Set up database (auto: generate, migrate, seed)
+# 3. Set up database (auto-detects provider)
 pnpm db:setup
 
 # 4. Start development server
@@ -63,7 +64,7 @@ Password: password
 
 ```
 lunas-os/
-├── app/                    # Next.js 15 app directory
+├── app/                    # Next.js 16 app directory
 │   ├── (auth)/            # Authentication routes
 │   ├── dashboard/         # Main dashboard
 │   ├── intake/            # Job intake management
@@ -97,11 +98,34 @@ pnpm dev:safe         # Start with safe mode script
 
 ### Database
 ```bash
-pnpm db:setup         # Complete setup (generate + migrate + seed)
-pnpm db:generate      # Generate migrations from schema
-pnpm db:migrate       # Run pending migrations
-pnpm db:seed          # Seed database with test data
-pnpm db:reset         # Reset and rebuild database
+# Auto-detects provider (Postgres when DATABASE_URL present, otherwise SQLite)
+pnpm db:setup
+
+# SQLite workflow
+pnpm db:generate:sqlite
+pnpm db:migrate:sqlite
+pnpm db:seed:sqlite
+pnpm db:sqlite          # generate + migrate + seed
+
+# Postgres workflow
+pnpm db:generate:pg
+pnpm db:migrate:pg
+pnpm db:seed:pg
+pnpm db:pg              # generate + migrate + seed
+
+pnpm db:reset           # Drop + re-run the selected provider
+```
+
+### Dual Database Workflow
+- `DATABASE_PROVIDER=sqlite` (or a missing `DATABASE_URL`) keeps everything in `.data/lunas.db` for fast local dev.
+- To switch to DigitalOcean/Postgres, set `DATABASE_URL`, optionally `DATABASE_PROVIDER=postgres`, then run `pnpm db:pg`.
+- Optional one-time data lift: copy SQLite data into Postgres before switching the provider.
+
+```bash
+DATABASE_PROVIDER=postgres \
+SQLITE_PATH=.data/lunas.db \
+DATABASE_URL='postgres://user:pass@host:5432/lunas?sslmode=require' \
+tsx scripts/copy-sqlite-to-pg.ts
 ```
 
 ### Building & Production
@@ -113,7 +137,8 @@ pnpm lint             # Run ESLint
 
 ### Testing
 ```bash
-pnpm test:unit        # Run unit tests with Vitest
+pnpm test             # Run unit tests with Vitest
+pnpm test:unit        # Same as pnpm test (kept for backwards compatibility)
 pnpm test:e2e         # Run E2E tests with Puppeteer
 ```
 
@@ -126,19 +151,24 @@ Create a `.env.local` file in the root directory. See `.env.example` for all ava
 ### Required Variables
 ```env
 # Database
-DATABASE_URL=postgresql://user:password@localhost:5432/lunas_db
+DATABASE_PROVIDER=postgres
+DATABASE_URL=postgresql://user:password@localhost:5432/lunas
 
 # Authentication
 NEXTAUTH_URL=http://localhost:4010
-NEXTAUTH_SECRET=your-secret-key-here
+AUTH_SECRET=your-secret-key-here
 
-# Development Credentials (optional, defaults provided)
-DEFAULT_USER_EMAIL=dispatcher@lunas.com
-DEFAULT_USER_PASSWORD=password
+# Dev login (seed data)
+DEV_EMAILS=dispatcher@lunas.com
+DEV_PASSWORD=password
 ```
 
 ### Optional Services
 ```env
+# Real-time (Ably)
+ABLY_API_KEY=
+NEXT_PUBLIC_ABLY_KEY=
+
 # Email (Resend)
 RESEND_API_KEY=
 
@@ -150,7 +180,25 @@ TWILIO_FROM=
 # File Storage (UploadThing or S3)
 STORAGE_DRIVER=uploadthing
 UPLOADTHING_SECRET=
-UPLOADTHING_APP_ID=
+
+# Automation / ingest
+CRON_SECRET=
+INGEST_URL=http://localhost:4010/api/ingest/pulte
+INGEST_TOKEN=
+
+# Billing
+TAX_RATE=0.000
+
+# Pulte harvester scripts
+PULTE_BASE_URL=https://bwp.pulte.com
+PULTE_USER=
+PULTE_PASS=
+PULTE_USERNAME=
+PULTE_PASSWORD=
+HARVEST_DEBUG=false
+HEADLESS=true
+START_DATE=
+END_DATE=
 ```
 
 > 🔒 **Security**: Never commit `.env.local` to version control. It's already in `.gitignore`.
@@ -217,11 +265,11 @@ git push origin your-branch
 ## 🏗 Architecture
 
 ### Tech Stack
-- **Framework**: Next.js 15.5.5 with App Router
+- **Framework**: Next.js 16.0.3 with App Router
 - **Language**: TypeScript 5.x
-- **UI**: React 19.1.0 + Tailwind CSS 4.x
+- **UI**: React 19.2.0 + Tailwind CSS 4.x
 - **Database**: PostgreSQL + Drizzle ORM
-- **Authentication**: NextAuth.js
+- **Authentication**: Auth.js (NextAuth v5)
 - **File Storage**: UploadThing / S3
 - **Testing**: Vitest (unit) + Puppeteer (E2E)
 - **Build Tool**: Turbopack (dev) / Webpack (prod)
@@ -229,7 +277,7 @@ git push origin your-branch
 ### Key Design Decisions
 
 #### 1. **App Router over Pages Router**
-Using Next.js 15's app directory for:
+Using Next.js 16's app directory for:
 - Server Components by default
 - Streaming and Suspense support
 - Improved layouts and nested routing
@@ -240,14 +288,12 @@ Enabled for faster development:
 - Initial compile: ~1.2s (vs 5s with Webpack)
 - HMR: <100ms (vs 500ms)
 - Memory: -30% usage
-- See `TURBOPACK-SETUP.md` for details
 
 #### 3. **Flexbox Layout System**
 Pure CSS Flexbox without absolute positioning:
 - Navigation sidebar (w-64, fixed width)
 - Main content (flex-1, fills remaining space)
 - No manual margin compensation
-- See `docs/sessions/LAYOUT-FIXES.md`
 
 #### 4. **Component Organization**
 ```
@@ -307,7 +353,7 @@ pnpm start
 ### Environment Setup
 Ensure all production environment variables are set:
 - `DATABASE_URL` (production database)
-- `NEXTAUTH_SECRET` (strong random string)
+- `AUTH_SECRET` (strong random string)
 - `NEXTAUTH_URL` (production URL)
 - API keys for external services
 
@@ -437,14 +483,10 @@ For detailed technical information about crash fixes, see the "Crash Analysis & 
 
 ### Core Documentation
 - **README.md** (this file) - Project overview and setup
+- **QUICK-START.md** - Fast local setup & workflows
 - **TROUBLESHOOTING.md** - Common issues and solutions
-- **TURBOPACK-SETUP.md** - Performance optimization details
-
-### Historical Documentation
-Located in `docs/sessions/`:
-- Session logs and status reports
-- Incremental improvements and fixes
-- Architecture evolution notes
+- **CHANGELOG.md** - Project history
+- **docs/TESTING.md** - E2E + regression testing guide
 
 ### AI Agent Guidelines
 When working with AI assistants (GitHub Copilot, Claude, Gemini):
@@ -543,41 +585,24 @@ The application experienced repeated crashes primarily when:
 const fetcher = (url: string) => fetch(url).then(res => res.json());
 ```
 
-**Solution**: Comprehensive error handling with timeouts and abort controllers:
+**Solution**: Centralized `fetchJSON` helper that forces `Accept: application/json`, adds timeouts, and surfaces friendly errors:
 ```typescript
-// NEW - Crash-proof
-const fetcher = async (url: string) => {
+import { fetchJSON } from '@/lib/utils/fetch-json';
+
+const fetcher = async <T,>(url: string): Promise<T> => {
   try {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 10000);
-    
-    const res = await fetch(url, {
-      signal: controller.signal,
-      headers: { 'Cache-Control': 'no-store', 'Pragma': 'no-cache' },
-      cache: 'no-store',
-    });
-    
-    clearTimeout(timeoutId);
-    
-    if (!res.ok) {
-      console.warn(`API failed: ${url} - ${res.status}`);
-      return []; // Return empty array instead of throwing
-    }
-    
-    return await res.json();
+    return await fetchJSON<T>(url);
   } catch (error) {
     console.error('Fetch error:', url, error);
-    return []; // Always return fallback data
+    return ([] as unknown) as T; // Always return fallback data for lists
   }
 };
 ```
 
 **Files Fixed**:
-- `components/services-crud.tsx`
-- `components/model-plans-crud.tsx`
-- `components/rates-crud.tsx`
-- `components/intake-form.tsx`
-- `components/tubs-windows-import.tsx`
+- `lib/utils/fetch-json.ts` (shared helper)
+- Page fetchers: `app/blue-book/page.tsx`, `app/schedule/page.tsx`, `app/users/page.tsx`, `app/work-log/page.tsx`, `app/t/[assignmentId]/page.tsx`, `app/invoicing/page.tsx`
+- Admin CRUD widgets: `components/services-crud.tsx`, `components/model-plans-crud.tsx`, `components/rates-crud.tsx`, `components/intake-form.tsx`
 
 #### 2. **SWR Aggressive Revalidation**
 **Problem**: SWR was revalidating too aggressively, causing cascade failures when APIs were slow.
@@ -648,12 +673,12 @@ useEffect(() => {
 #### Final Stable Stack (Current)
 ```json
 {
-  "next": "15.5.5",           // Latest stable with App Router
-  "react": "19.0.0",          // Stable production release (Dec 2024)
-  "react-dom": "19.0.0",      // Matches React version
-  "tailwindcss": "3.4.3",     // Stable v3 (not v4 beta)
-  "swr": "2.3.6",             // Latest stable
-  "typescript": "5.9.3"       // Latest TypeScript 5
+  "next": "16.0.3",
+  "react": "19.2.0",
+  "react-dom": "19.2.0",
+  "tailwindcss": "4",
+  "swr": "2.3.6",
+  "typescript": "5.x"
 }
 ```
 

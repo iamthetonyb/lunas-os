@@ -8,8 +8,9 @@ import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import Link from 'next/link';
+import { fetchJSON } from '@/lib/utils/fetch-json';
 
-const fetcher = (url: string) => fetch(url).then((res) => res.json());
+const fetcher = <T,>(url: string) => fetchJSON<T>(url);
 
 const schema = z.object({
   status: z.enum(['COMPLETE', 'NOT_DONE']),
@@ -40,21 +41,21 @@ export default function FieldTicketPage({ params }: { params: Promise<{ assignme
     const foremanSig = foremanSigRef.current?.toDataURL();
     const customerSig = customerSigRef.current?.toDataURL();
 
-    const response = await fetch(`/api/tickets/${params.assignmentId}`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        ...data,
-        foremanSig,
-        customerSig,
-      }),
-    });
-
-    if (response.ok) {
+    try {
+      await fetchJSON(`/api/tickets/${assignmentId}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          ...data,
+          foremanSig,
+          customerSig,
+        }),
+      });
       alert('Field ticket submitted successfully!');
-    } else {
+    } catch (error) {
+      console.error('Failed to submit field ticket', error);
       alert('Error submitting field ticket');
     }
   });

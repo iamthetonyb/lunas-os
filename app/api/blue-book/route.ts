@@ -1,10 +1,13 @@
-import { db } from '@/db';
+import { getDb } from '@/lib/db/get-db';
 import { blueBookEntries } from '@/db/schema';
-import { and, eq, isNull, count, like, or, desc, asc } from 'drizzle-orm';
-import { NextResponse } from 'next/server';
-import { withErrorHandling } from '@/lib/api-handler';
+import { and, eq, isNull, count, like, or, asc } from 'drizzle-orm';
+import { safe, ok } from '@/lib/api/http';
+import { requireMembership } from '@/lib/auth/guards';
 
-async function handler(req: Request) {
+export const runtime = 'nodejs';
+export const preferredRegion = 'auto';
+
+export const GET = safe(async (req: Request) => {
   const { searchParams } = new URL(req.url);
   const builderId = searchParams.get('builderId');
   const status = searchParams.get('status');
@@ -23,8 +26,8 @@ async function handler(req: Request) {
   if (builderId) {
     conditions.push(eq(blueBookEntries.builderId, builderId));
   }
-  if (status) {
-    conditions.push(eq(blueBookEntries.status, status as any));
+  if (status === 'PENDING' || status === 'COMPLETE') {
+    conditions.push(eq(blueBookEntries.status, status));
   }
   if (invoiced === 'false') {
     conditions.push(isNull(blueBookEntries.invoiceLineId));
@@ -56,11 +59,14 @@ async function handler(req: Request) {
           asc(blueBookEntries.createdAt),
         ];
 
+  await requireMembership(['admin', 'backoffice']);
+  const db = await getDb();
   const entries = await db.query.blueBookEntries.findMany({
     where,
     with: {
       builder: true,
       community: true,
+      modelPlan: true,
       service: true,
     },
     orderBy: orderByClauses,
@@ -68,34 +74,38 @@ async function handler(req: Request) {
   });
 
   const formatted = (entries || []).map((entry) => ({
-    id: entry.id,
-    builderId: entry.builderId,
-    builderName: entry.builder?.name ?? null,
-    communityId: entry.communityId,
-    communityName: entry.community?.name ?? null,
-    lot: entry.lot,
-    serviceId: entry.serviceId,
-    serviceName: entry.service?.name ?? entry.accountCategoryName ?? null,
-    status: entry.status,
-    amount: entry.amount,
-    invoiceNumber: entry.poNumber,
-    checkNumber: entry.checkNumber,
-    checkDate: entry.checkDate,
-    checkTotal: entry.checkTotal,
-    isAch: entry.isAch,
-    accountCategoryCode: entry.accountCategoryCode,
-    accountCategoryName: entry.accountCategoryName,
-    startDate: entry.startDate,
-    createdAt: entry.createdAt,
-    updatedAt: entry.updatedAt,
-  }));
+      id: entry.id,
+      builderId: entry.builderId,
+      builderName: entry.builder?.name ?? null,
+      communityId: entry.communityId,
+      communityName: entry.community?.name ?? null,
+      lot: entry.lot,
+      serviceId: entry.serviceId,
+      serviceName: entry.service?.name ?? entry.accountCategoryName ?? null,
+      status: entry.status,
+      amount: entry.amount,
+      invoiceNumber: entry.poNumber,
+      checkNumber: entry.checkNumber,
+      checkDate: entry.checkDate,
+      checkTotal: entry.checkTotal,
+      isAch: entry.isAch,
+      accountCategoryCode: entry.accountCategoryCode,
+      accountCategoryName: entry.accountCategoryName,
+      startDate: entry.startDate,
+      modelPlanId: entry.modelPlanId,
+      modelPlanCode: entry.modelPlan?.code ?? null,
+      modelPlanName: entry.modelPlan?.name ?? null,
+      modelPlanSqft: entry.modelPlan?.sqft ?? null,
+      createdAt: entry.createdAt,
+      updatedAt: entry.updatedAt,
+    }));
 
   if (isPaginated) {
     const totalQuery = db.select({ value: count() }).from(blueBookEntries);
     const totalResult = where ? await totalQuery.where(where) : await totalQuery;
     const total = Number(totalResult?.[0]?.value ?? 0);
 
-    return NextResponse.json({
+    return ok({
       page,
       pageSize,
       total,
@@ -103,7 +113,5 @@ async function handler(req: Request) {
     });
   }
 
-  return NextResponse.json(formatted);
-}
-
-export const GET = withErrorHandling(handler);
+  return ok(formatted);
+});

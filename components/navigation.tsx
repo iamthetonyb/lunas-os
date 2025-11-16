@@ -2,14 +2,15 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { signOut } from 'next-auth/react';
+import { signOut, useSession } from 'next-auth/react';
 import { useTheme } from '@/lib/theme-provider';
 import Image from 'next/image';
 import { useEffect, useState } from 'react';
 
-const navigation = [
+const baseNavigation = [
   { name: 'Dashboard', href: '/dashboard', icon: '📊' },
   { name: 'Intake', href: '/intake', icon: '📝' },
+  { name: 'Work Log', href: '/work-log', icon: '🧾' },
   { name: 'Schedule', href: '/schedule', icon: '📅' },
   { name: 'Dispatch', href: '/dispatch', icon: '🚚' },
   { name: 'Blue Book', href: '/blue-book', icon: '📘' },
@@ -24,10 +25,21 @@ export function Navigation() {
   const pathname = usePathname();
   const { theme, toggleTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
+  const { data: session } = useSession();
+  const role = session?.user?.role ?? undefined;
 
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  const contractorAllowed = new Set(['Dashboard', 'Intake', 'Work Log']);
+  const navigation =
+    role === 'contractor'
+      ? baseNavigation.filter((item) => contractorAllowed.has(item.name))
+      : baseNavigation;
+
+  const userDisplayName = session?.user?.name ?? 'User';
+  const userRoleLabel = role ? role.charAt(0).toUpperCase() + role.slice(1) : 'Team';
 
   return (
     <nav className="bg-white dark:bg-slate-800 shadow-lg h-screen w-64 flex flex-col overflow-y-auto transition-colors duration-300">
@@ -101,8 +113,10 @@ export function Navigation() {
               <span className="text-blue-600 dark:text-blue-300 font-semibold">U</span>
             </div>
             <div>
-              <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">User</p>
-              <p className="text-xs text-gray-500 dark:text-gray-400">Dispatcher</p>
+              <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+                {userDisplayName}
+              </p>
+              <p className="text-xs text-gray-500 dark:text-gray-400">{userRoleLabel}</p>
             </div>
           </div>
           <button

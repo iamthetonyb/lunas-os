@@ -1,6 +1,9 @@
-import { db } from '@/db';
-import { NextResponse } from 'next/server';
+import { getDb } from '@/lib/db/get-db';
 import * as XLSX from 'xlsx';
+
+export const runtime = 'nodejs';
+
+const db = await getDb();
 
 export async function GET() {
   const entries = await db.query.blueBookEntries.findMany();

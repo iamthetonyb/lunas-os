@@ -4,8 +4,9 @@ import { PageHeader } from '@/components/page-header';
 import useSWR from 'swr';
 import { useState } from 'react';
 import Link from 'next/link';
+import { fetchJSON } from '@/lib/utils/fetch-json';
 
-const fetcher = (url: string) => fetch(url).then((res) => res.json());
+const fetcher = <T,>(url: string) => fetchJSON<T>(url);
 
 export default function InvoicingPage() {
   const [builderId, setBuilderId] = useState<string | null>(null);
@@ -24,14 +25,19 @@ export default function InvoicingPage() {
 
   const handleBuildDraft = async () => {
     const entryIds = blueBookEntries?.map((e: any) => e.id) || [];
-    await fetch('/api/invoicing/build', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ builderId, entryIds }),
-    });
-    alert('Invoice draft created successfully!');
+    try {
+      await fetchJSON('/api/invoicing/build', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ builderId, entryIds }),
+      });
+      alert('Invoice draft created successfully!');
+    } catch (error) {
+      console.error('Failed to build invoice draft', error);
+      alert('Failed to build invoice draft');
+    }
   };
 
   return (

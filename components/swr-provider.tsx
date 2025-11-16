@@ -14,6 +14,7 @@ const globalFetcher = async (url: string) => {
       headers: {
         'Cache-Control': 'no-store',
         'Pragma': 'no-cache',
+        Accept: 'application/json',
       },
       cache: 'no-store',
     });

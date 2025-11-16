@@ -6,38 +6,15 @@ import { Dialog, Transition } from '@headlessui/react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
+import { fetchJSON } from '@/lib/utils/fetch-json';
 
-const fetcher = async (url: string) => {
+const fetcher = async <T,>(url: string): Promise<T> => {
   try {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 10000); // Increased to 10s
-    
-    const res = await fetch(url, {
-      signal: controller.signal,
-      headers: {
-        'Cache-Control': 'no-store',
-        'Pragma': 'no-cache',
-      },
-      cache: 'no-store',
-    });
-    
-    clearTimeout(timeoutId);
-    
-    if (!res.ok) {
-      console.warn(`API request failed: ${url} - Status: ${res.status}`);
-      // Return empty array for non-critical errors
-      if (res.status === 404 || res.status >= 500) {
-        return [];
-      }
-      throw new Error(`HTTP ${res.status}`);
-    }
-    
-    const data = await res.json();
-    return Array.isArray(data) ? data : [];
+    return await fetchJSON<T>(url);
   } catch (error) {
     console.error('Fetcher error for', url, error);
-    // Always return empty array to prevent crashes
-    return [];
+    // Returning empty array/object keeps UI stable for list fetchers
+    return ([] as unknown) as T;
   }
 };
 
@@ -109,18 +86,23 @@ export function RatesCrud() {
     const url = selectedRate ? `/api/contract-rates/${selectedRate.id}` : '/api/contract-rates';
     const method = selectedRate ? 'PUT' : 'POST';
 
-    await fetch(url, {
-      method,
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(data),
-    });
+    try {
+      await fetchJSON(url, {
+        method,
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(data),
+      });
 
-    mutate();
-    setIsOpen(false);
-    reset();
-    setSelectedRate(null);
+      mutate();
+      setIsOpen(false);
+      reset();
+      setSelectedRate(null);
+    } catch (error) {
+      console.error('Failed to save rate', error);
+      alert('Failed to save rate.');
+    }
   });
 
   const openModal = (rate: Rate | null = null) => {
@@ -134,10 +116,13 @@ export function RatesCrud() {
     
     setIsDeleting(id);
     try {
-      await fetch(`/api/contract-rates/${id}`, {
+      await fetchJSON(`/api/contract-rates/${id}`, {
         method: 'DELETE',
       });
       mutate();
+    } catch (error) {
+      console.error('Failed to delete rate', error);
+      alert('Failed to delete rate.');
     } finally {
       setIsDeleting(null);
     }

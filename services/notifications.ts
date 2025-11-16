@@ -1,7 +1,11 @@
+import 'server-only';
+
 import { Twilio } from 'twilio';
 import { Resend } from 'resend';
-import { db } from '@/db';
+import { getDb } from '@/lib/db/get-db';
 import { smsEmailLogs } from '@/db/schema';
+
+const db = await getDb();
 
 // Lazy initialization to avoid build-time errors when API keys are missing
 let twilioClient: Twilio | null = null;

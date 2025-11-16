@@ -1,7 +1,11 @@
-import { db } from '@/db';
+import 'server-only';
+
+import { getDb } from '@/lib/db/get-db';
 import { jobRequestServices, assignments, crews, dispatchBatches } from '@/db/schema';
 import { and, eq, lte, isNull, inArray } from 'drizzle-orm';
 import { sendSms, sendEmail } from './notifications';
+
+const db = await getDb();
 
 const translations = {
   en: {

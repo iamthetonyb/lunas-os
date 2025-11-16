@@ -1,6 +1,8 @@
-export const dynamic = 'force-dynamic';
 import { autoDraft } from '@/services/scheduling';
 import { NextResponse } from 'next/server';
+
+export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
 
 export async function POST(req: Request) {
   const { searchParams } = new URL(req.url);

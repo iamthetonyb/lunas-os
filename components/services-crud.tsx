@@ -7,37 +7,14 @@ import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Fragment } from 'react';
+import { fetchJSON } from '@/lib/utils/fetch-json';
 
 const fetcher = async (url: string) => {
   try {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 10000); // Increased to 10s
-    
-    const res = await fetch(url, {
-      signal: controller.signal,
-      headers: {
-        'Cache-Control': 'no-store',
-        'Pragma': 'no-cache',
-      },
-      cache: 'no-store',
-    });
-    
-    clearTimeout(timeoutId);
-    
-    if (!res.ok) {
-      console.warn(`API request failed: ${url} - Status: ${res.status}`);
-      // Return empty array for non-critical errors
-      if (res.status === 404 || res.status >= 500) {
-        return [];
-      }
-      throw new Error(`HTTP ${res.status}`);
-    }
-    
-    const data = await res.json();
+    const data = await fetchJSON<Service[]>(url);
     return Array.isArray(data) ? data : [];
   } catch (error) {
     console.error('Fetcher error for', url, error);
-    // Always return empty array to prevent crashes
     return [];
   }
 };
@@ -78,18 +55,22 @@ export function ServicesCrud() {
     const url = selectedService ? `/api/services/${selectedService.id}` : '/api/services';
     const method = selectedService ? 'PUT' : 'POST';
 
-    await fetch(url, {
-      method,
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(data),
-    });
-
-    mutate();
-    setIsOpen(false);
-    reset();
-    setSelectedService(null);
+    try {
+      await fetchJSON(url, {
+        method,
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(data),
+      });
+      mutate();
+      setIsOpen(false);
+      reset();
+      setSelectedService(null);
+    } catch (error) {
+      console.error('Failed to save service', error);
+      alert('Failed to save service.');
+    }
   });
 
   const openModal = (service: Service | null = null) => {
@@ -103,10 +84,13 @@ export function ServicesCrud() {
     
     setIsDeleting(id);
     try {
-      await fetch(`/api/services/${id}`, {
+      await fetchJSON(`/api/services/${id}`, {
         method: 'DELETE',
       });
       mutate();
+    } catch (error) {
+      console.error('Failed to delete service', error);
+      alert('Failed to delete service.');
     } finally {
       setIsDeleting(null);
     }

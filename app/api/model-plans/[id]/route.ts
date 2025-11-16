@@ -1,7 +1,11 @@
-import { db } from '@/db';
+import { getDb } from '@/lib/db/get-db';
 import { modelPlans } from '@/db/schema';
 import { eq } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
+
+export const runtime = 'nodejs';
+
+const db = await getDb();
 
 export async function PUT(req: Request, { params }: { params: { id: string } }) {
   const data = await req.json();

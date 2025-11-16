@@ -1,7 +1,11 @@
-import { db } from '@/db';
+import { getDb } from '@/lib/db/get-db';
 import { invoices, invoiceLines, blueBookEntries } from '@/db/schema';
 import { and, eq, inArray } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
+
+export const runtime = 'nodejs';
+
+const db = await getDb();
 
 export async function POST(req: Request) {
   const { builderId, entryIds } = await req.json();

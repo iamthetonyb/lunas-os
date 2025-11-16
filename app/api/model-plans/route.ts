@@ -1,10 +1,12 @@
-import { db } from '@/db';
+import { getDb } from '@/lib/db/get-db';
 import { modelPlans } from '@/db/schema';
 import { NextResponse } from 'next/server';
 import { withApiHandler, withTimeout, errorResponse } from '@/lib/api-helpers';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
+
+const db = await getDb();
 
 export async function GET() {
   return withApiHandler(

@@ -1,6 +1,8 @@
-export const dynamic = 'force-dynamic';
 import { approveAndSend } from '@/services/scheduling';
 import { NextResponse } from 'next/server';
+
+export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
 
 export async function POST(req: Request) {
   const { assignmentIds } = await req.json();

@@ -1,10 +1,15 @@
-import { db } from '@/db';
+import { getDb } from '@/lib/db/get-db';
 import { assignments } from '@/db/schema';
 import { and, eq, gte, lt } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 import { renderToStream } from '@react-pdf/renderer';
 import { RunSheetPdf } from '@/components/run-sheet-pdf';
 import QRCode from 'qrcode';
+
+export const runtime = 'nodejs';
+const db = await getDb();
+
+const db = await getDb();
 
 export async function GET(req: Request, { params }: { params: { crewId: string } }) {
   const { searchParams } = new URL(req.url);
