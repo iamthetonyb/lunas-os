@@ -420,6 +420,7 @@ export async function ingestPulteLive(options: IngestOptions): Promise<IngestSta
           checkDate: checkDateValue,
           checkTotal: Number.isFinite(item.checkTotal) ? item.checkTotal.toFixed(2) : null,
           isAch: !!item.isACH,
+          source: 'scraped' as const,
           ...(communityId ? { communityId } : {}),
           ...(serviceId ? { serviceId } : {}),
           ...(builderId ? { builderId } : {}),
