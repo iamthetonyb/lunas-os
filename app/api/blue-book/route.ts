@@ -46,16 +46,20 @@ export const GET = safe(async (req: Request) => {
   }
 
   const where = conditions.length > 0 ? and(...conditions) : undefined;
+  
+  // Default sort: community name, then start date, then check date
   const orderByClauses =
-    sortParam === 'startdate'
+    sortParam === 'checkdate'
       ? [
-          asc(blueBookEntries.startDate),
           asc(blueBookEntries.checkDate),
+          asc(blueBookEntries.startDate),
           asc(blueBookEntries.createdAt),
         ]
       : [
-          asc(blueBookEntries.checkDate),
+          // Default to startDate sorting with community grouping
+          asc(blueBookEntries.communityId),
           asc(blueBookEntries.startDate),
+          asc(blueBookEntries.checkDate),
           asc(blueBookEntries.createdAt),
         ];
 

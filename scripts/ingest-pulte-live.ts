@@ -9,7 +9,7 @@ import 'dotenv/config';
 import dayjs from 'dayjs';
 import yargs from 'yargs';
 import { hideBin } from 'yargs/helpers';
-import { harvestPulte, type HarvestResult } from './harvest-pulte';
+import { harvestPulteExcel, type HarvestResult } from './harvest-pulte-excel';
 import { getPgDrizzle } from './db-client';
 import { blueBookEntries, builders, communities, modelPlans, services } from '../db/schema';
 import { and, eq, sql } from 'drizzle-orm';
@@ -145,11 +145,11 @@ export async function ingestPulteLive(options: IngestOptions): Promise<IngestSta
   const startDate = dayjs(options.start).format('MM/DD/YYYY');
   const endDate = dayjs(options.end).format('MM/DD/YYYY');
   
-  // Harvest data
-  const harvestResult = await harvestPulte({
-    ...options,
+  // Harvest data using Excel harvester
+  const harvestResult = await harvestPulteExcel({
     start: startDate,
     end: endDate,
+    headless: options.headless,
   });
   
   console.log(`\n📥 Ingesting ${harvestResult.items.length} items into database...\n`);
@@ -194,21 +194,29 @@ export async function ingestPulteLive(options: IngestOptions): Promise<IngestSta
     const communityCache = new Map<string, string>();
     const serviceCache = new Map<string, string>();
     const modelPlanCache = new Map<string, string | null>();
-    const jobMap = new Map<string, { name: string | null; scarStartDate: string | null }>();
     
-    // Build job map from harvested jobs
-    for (const job of harvestResult.jobs) {
-      if (!job.communityCode) continue;
-      jobMap.set(job.communityCode, {
-        name: job.communityName || null,
-        scarStartDate: job.scarStartDate || null,
-      });
+    // Build job map from harvested items (Excel harvester embeds this data)
+    const jobMap = new Map<string, { 
+      name: string;
+      planName: string | null;
+      scarStartDate: string | null;
+    }>();
+    
+    for (const item of harvestResult.items) {
+      if (!item.communityCode) continue;
+      if (!jobMap.has(item.communityCode)) {
+        jobMap.set(item.communityCode, {
+          name: item.communityName || item.communityCode,
+          planName: item.planName || null,
+          scarStartDate: item.scarStartDate || null,
+        });
+      }
     }
     
     // Pre-populate communities from job map
     if (builderId && jobMap.size) {
       for (const [code, meta] of jobMap.entries()) {
-        await getCommunityId(code, meta.name ?? code);
+        await getCommunityId(code, meta.name);
       }
     }
     
@@ -293,23 +301,35 @@ export async function ingestPulteLive(options: IngestOptions): Promise<IngestSta
       return row.id;
     }
     
-    // Helper: get model plan
-    async function getModelPlanId(planNumber: string | null) {
-      if (!builderId || !planNumber) return null;
-      const key = planNumber.trim();
+    // Helper: get or create model plan
+    async function getModelPlanId(planCode: string | null, planName: string | null) {
+      if (!builderId || !planCode) return null;
+      const key = planCode.trim();
       if (!key) return null;
       
       if (modelPlanCache.has(key)) {
         return modelPlanCache.get(key) ?? null;
       }
       
-      const existing = await db.query.modelPlans.findFirst({
+      let existing = await db.query.modelPlans.findFirst({
         where: and(eq(modelPlans.builderId, builderId), eq(modelPlans.code, key)),
       });
       
+      // If not found by code and we have a name, try creating it
+      if (!existing && planName) {
+        const [newPlan] = await db.insert(modelPlans).values({
+          builderId,
+          code: key,
+          name: planName,
+        }).returning();
+        existing = newPlan;
+        stats.modelPlans.inserted++;
+        console.log(`  ✓ Created model plan: ${planName} (${key})`);
+      }
+      
       const value = existing?.id ?? null;
       modelPlanCache.set(key, value);
-      if (existing) {
+      if (existing && !stats.modelPlans.inserted) {
         stats.modelPlans.existing++;
       }
       return value;
@@ -333,11 +353,16 @@ export async function ingestPulteLive(options: IngestOptions): Promise<IngestSta
           continue;
         }
         
-        const { communityCode, lot } = splitJobNumber(jobNumberRaw);
+        const communityCode = item.communityCode || null;
+        const lot = item.lot || null;
         const accountCategory = parseAccountCategory(item.accountCategory);
         const jobMeta = communityCode ? jobMap.get(communityCode) : null;
+        
+        // Use SCAR start date from item (from Jobs tab), not invoice date
         const startDateValue =
-          parseDate(jobMeta?.scarStartDate) ?? parseDate(item.startDate);
+          parseDate(item.scarStartDate) ?? 
+          parseDate(jobMeta?.scarStartDate) ?? 
+          parseDate(item.startDate);
         const checkDateValue = parseDate(item.checkDate);
         
         // Track date range
@@ -352,10 +377,13 @@ export async function ingestPulteLive(options: IngestOptions): Promise<IngestSta
         
         const communityId = await getCommunityId(
           communityCode,
-          jobMeta?.name ?? communityCode
+          item.communityName || jobMeta?.name || communityCode
         );
         const serviceId = await getServiceId(accountCategory.code, accountCategory.name);
-        const modelPlanId = await getModelPlanId(item.planNumber);
+        const modelPlanId = await getModelPlanId(
+          item.planNumber || communityCode,
+          item.planName || jobMeta?.planName
+        );
         
         // Check for existing entry
         let existing = null;

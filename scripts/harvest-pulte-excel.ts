@@ -34,13 +34,16 @@ type LineItem = {
   invoiceAmount: number;
   jobNumber: string;
   jobAddress: string;
-  communityName: string | null;
+  communityCode: string;
+  communityName: string;
   accountCategory: string;
+  planName: string;
   planNumber: string;
   optionNumber: string;
   scarStartDate: string | null;
   completedDate: string | null;
   lineAmount: number;
+  lot: string;
 };
 
 export type HarvestResult = {
@@ -62,6 +65,46 @@ const CHROME_UA =
 
 const USER = process.env.PULTE_USERNAME || process.env.PULTE_USER;
 const PASS = process.env.PULTE_PASSWORD || process.env.PULTE_PASS;
+
+// Community code to name mapping from Pulte system
+const COMMUNITY_MAP: Record<string, string> = {
+  '8752': 'Brantley KL - 3500',
+  '8753': 'Brantley KL - 4500',
+  '8754': 'Brantley KL - 5500',
+  '8102': 'Caprock - 5500s',
+  '8352': 'Daylight at Cameron - 50/70',
+  '8354': 'Daylight at Warm Spring -50/70',
+  '7538': 'Delamar',
+  '8360': 'Delamar at Polaris - 3600',
+  '6937': 'DW Lake Las Vegas S1-4000',
+  '6938': 'DW Lake Las Vegas S2-4500',
+  '6939': 'DW Lake Las Vegas S3-5400',
+  '7768': 'DW LLV C2-3000',
+  '7769': 'DW LLV C2-4500',
+  '7770': 'DW LLV M5-5400',
+  '8361': 'Hayford at Polaris - 4500',
+  '7438': 'Hayford Collection',
+  '8101': 'Incline - 5500s',
+  '7893': 'Liberty Ct 8 - 3600',
+  '7892': 'Liberty Ct 8 - 4500',
+  '7891': 'Liberty Ct 8 - 5500',
+  '7002': 'Liberty-3600',
+  '8368': 'Luxury at Russell - 3600',
+  '8175': 'Luxury at Warm Springs - 3600',
+  '6231': 'Monument at Reverence',
+  '8367': 'Paldona at Buffalo - 3000',
+  '8366': 'Paldona at Cimarron - 3000',
+  '8174': 'Paldona at Warm Springs - 3000',
+  '7539': 'Quinn Canyon',
+  '7003': 'Rainbow Crossing Luxury-3600',
+  '3319': 'SCM North- 4200s/4500s',
+  '3320': 'SCM North- 5400s',
+  '3318': 'SCM North-3000s',
+  '3567': 'Suntero-4500',
+  '8365': 'Tenaya Spring at Cimarron-2500',
+  '8103': 'The Pointe - 7000s',
+  '7428': 'Wesley Park',
+};
 
 // ============================================================================
 // Utility functions
@@ -111,34 +154,51 @@ async function login(page: Page): Promise<boolean> {
 }
 
 // ============================================================================
-// Jobs scraping with community names
+// Jobs scraping with community names and plan info
 // ============================================================================
 
-async function scrapeJobsCommunityMap(page: Page): Promise<Map<string, { name: string; scarDate: string | null }>> {
-  const communityMap = new Map<string, { name: string; scarDate: string | null }>();
+async function scrapeJobsDetailMap(page: Page): Promise<Map<string, { 
+  communityCode: string;
+  communityName: string; 
+  planName: string | null;
+  scarDate: string | null;
+  lot: string | null;
+}>> {
+  const jobMap = new Map<string, { 
+    communityCode: string;
+    communityName: string; 
+    planName: string | null;
+    scarDate: string | null;
+    lot: string | null;
+  }>();
   
   try {
-    console.log('🏘️  Navigating to Jobs page for community names...');
+    console.log('🏘️  Navigating to Jobs page for detailed info...');
     await page.goto(JOBS_URL, { waitUntil: 'domcontentloaded' });
     await page.waitForLoadState('networkidle');
 
-    // Click search to load all jobs
-    const searchButton = page.getByRole('button', { name: /search/i }).first();
+    // Click search button (the blue one) to load all jobs
+    const searchButton = page.locator('button:has-text("Search"), button[type="submit"]').first();
     if (await searchButton.isVisible().catch(() => false)) {
+      console.log('  Clicking search button...');
       await searchButton.click();
       await page.waitForLoadState('networkidle');
-      await page.waitForTimeout(2000);
+      await page.waitForTimeout(3000);
     }
 
-    const jobs = await page.evaluate(() => {
+    // Extract job details from the table
+    const jobs = await page.evaluate((communityMapData: Record<string, string>) => {
       const results: Array<{
-        jobNumber: string | null;
-        communityName: string | null;
+        jobNumber: string;
+        communityCode: string;
+        communityName: string;
+        planName: string | null;
         scarStartDate: string | null;
+        lot: string | null;
       }> = [];
       
       const rows = Array.from(
-        document.querySelectorAll<HTMLTableRowElement>('#jobs-results-table tbody tr')
+        document.querySelectorAll<HTMLTableRowElement>('#jobs-results-table tbody tr, table tbody tr')
       );
 
       rows.forEach((row) => {
@@ -148,66 +208,85 @@ async function scrapeJobsCommunityMap(page: Page): Promise<Map<string, { name: s
 
         if (cells.length < 3) return;
 
-        // First column typically has community name and job number
-        const firstCol = cells[0] || '';
-        const jobNumberCell = cells[1] || cells[0];
-        
         // Extract job number (format: XXXX-XXXXX)
-        const jobMatch = jobNumberCell.match(/(\d{4})-(\d{5})/);
-        const jobNumber = jobMatch ? jobMatch[0] : null;
+        let jobNumber: string | null = null;
+        let communityCode: string | null = null;
         
-        // Extract community code from job number
-        const communityCode = jobMatch ? jobMatch[1] : null;
-        
-        // Community name is usually in first column or as part of a compound field
-        let communityName = firstCol.split('\n')[0]?.trim() || null;
-        if (communityName) {
-          // Remove trailing numbers and clean up
-          communityName = communityName.replace(/\s+\d+$/, '').replace(/-\s*$/, '').trim();
-        }
-        
-        // Look for SCAR start date (usually in later columns)
-        const dateRegex = /(\d{1,2})\/(\d{1,2})\/(\d{4})/;
-        let scarStartDate = null;
         for (const cell of cells) {
-          const match = cell.match(dateRegex);
-          if (match) {
-            scarStartDate = match[0];
+          const jobMatch = cell.match(/(\d{4})-(\d{5})/);
+          if (jobMatch) {
+            jobNumber = jobMatch[0];
+            communityCode = jobMatch[1];
             break;
           }
         }
-
-        if (communityCode && communityName) {
-          results.push({
-            jobNumber: communityCode,
-            communityName,
-            scarStartDate,
-          });
+        
+        if (!jobNumber || !communityCode) return;
+        
+        // Get community name from mapping
+        const communityName = communityMapData[communityCode] || communityCode;
+        
+        // Extract plan name (usually after "Plan Name" header or in specific column)
+        let planName: string | null = null;
+        for (let i = 0; i < cells.length; i++) {
+          const cell = cells[i];
+          if (cell && cell.length > 0 && cell.length < 50 && /^[A-Z0-9\s\-]+$/i.test(cell) && cell !== jobNumber) {
+            // Likely plan name - exclude dates, job numbers, etc
+            if (!/\d{1,2}\/\d{1,2}\/\d{4}/.test(cell) && !/^\d{4}-\d{5}$/.test(cell)) {
+              planName = cell;
+              break;
+            }
+          }
         }
+        
+        // Extract lot number from job number (last 5 digits)
+        const lot = jobNumber.split('-')[1] || null;
+        
+        // Look for SCAR start date (first date column, not invoice date)
+        const dateRegex = /(\d{1,2})\/(\d{1,2})\/(\d{4})/;
+        let scarStartDate: string | null = null;
+        for (let i = 0; i < cells.length; i++) {
+          const cell = cells[i];
+          const match = cell.match(dateRegex);
+          if (match) {
+            scarStartDate = match[0];
+            break; // Take first date as SCAR start date
+          }
+        }
+
+        results.push({
+          jobNumber,
+          communityCode,
+          communityName,
+          planName,
+          scarStartDate,
+          lot,
+        });
       });
 
       return results;
-    });
+    }, COMMUNITY_MAP);
 
-    console.log(`  Found ${jobs.length} job entries`);
+    console.log(`  Found ${jobs.length} job entries with details`);
     
     jobs.forEach((job) => {
-      if (job.jobNumber && job.communityName) {
-        if (!communityMap.has(job.jobNumber)) {
-          communityMap.set(job.jobNumber, {
-            name: job.communityName,
-            scarDate: job.scarStartDate,
-          });
-        }
+      if (job.jobNumber) {
+        jobMap.set(job.jobNumber, {
+          communityCode: job.communityCode,
+          communityName: job.communityName,
+          planName: job.planName,
+          scarDate: job.scarStartDate,
+          lot: job.lot,
+        });
       }
     });
 
-    console.log(`  Mapped ${communityMap.size} unique communities`);
+    console.log(`  Mapped ${jobMap.size} unique jobs with community names and plans`);
   } catch (error) {
     console.warn('⚠️ Failed to scrape jobs:', error instanceof Error ? error.message : error);
   }
 
-  return communityMap;
+  return jobMap;
 }
 
 // ============================================================================
@@ -297,7 +376,13 @@ async function downloadExcelExport(page: Page, start: string, end: string): Prom
   }
 }
 
-function parseExcelFile(filepath: string, communityMap: Map<string, { name: string; scarDate: string | null }>): LineItem[] {
+function parseExcelFile(filepath: string, jobMap: Map<string, { 
+  communityCode: string;
+  communityName: string; 
+  planName: string | null;
+  scarDate: string | null;
+  lot: string | null;
+}>): LineItem[] {
   const workbook = XLSX.readFile(filepath);
   const sheetName = workbook.SheetNames[0];
   const sheet = workbook.Sheets[sheetName];
@@ -307,10 +392,15 @@ function parseExcelFile(filepath: string, communityMap: Map<string, { name: stri
 
   data.forEach((row: any) => {
     // Map Excel columns to our structure
-    // Adjust these field names based on actual Excel export structure
     const jobNumber = String(row['Job Number'] || row['Job'] || row['JobNumber'] || '').trim();
     const communityCode = jobNumber.split('-')[0];
-    const communityInfo = communityMap.get(communityCode);
+    const lot = jobNumber.split('-')[1] || 'Unknown';
+    const jobInfo = jobMap.get(jobNumber);
+
+    // Use mapped community name, fallback to code mapping, then code itself
+    const communityName = jobInfo?.communityName || COMMUNITY_MAP[communityCode] || communityCode;
+    const planName = jobInfo?.planName || String(row['Plan'] || row['Plan Name'] || row['Plan Number'] || '');
+    const scarStartDate = jobInfo?.scarDate || row['SCAR Start'] || row['Start Date'] || null;
 
     items.push({
       checkDate: row['Check Date'] || row['CheckDate'] || '',
@@ -322,13 +412,16 @@ function parseExcelFile(filepath: string, communityMap: Map<string, { name: stri
       invoiceAmount: Number(row['Invoice Amount'] || row['InvoiceAmount'] || 0),
       jobNumber,
       jobAddress: row['Address'] || row['Job Address'] || row['JobAddress'] || '',
-      communityName: communityInfo?.name || communityCode,
+      communityCode,
+      communityName,
       accountCategory: row['Account Category'] || row['Category'] || '',
-      planNumber: String(row['Plan'] || row['Plan Number'] || ''),
+      planName,
+      planNumber: String(row['Plan Number'] || communityCode || ''),
       optionNumber: String(row['Option'] || row['Option Number'] || ''),
-      scarStartDate: communityInfo?.scarDate || row['SCAR Start'] || row['Start Date'] || null,
+      scarStartDate,
       completedDate: row['Completed Date'] || row['Completed'] || null,
       lineAmount: Number(row['Amount'] || row['Line Amount'] || row['LineAmount'] || 0),
+      lot,
     });
   });
 
@@ -368,8 +461,8 @@ export async function harvestPulteExcel(options: HarvestOptions): Promise<Harves
       console.log('🔐 Logged in and saved session state');
     }
 
-    // Get community names from Jobs tab
-    const communityMap = await scrapeJobsCommunityMap(page);
+    // Get job details including community names and plan info from Jobs tab
+    const jobMap = await scrapeJobsDetailMap(page);
 
     // Try Excel export first
     console.log(`📅 Searching date range: ${start} → ${end}`);
@@ -379,7 +472,7 @@ export async function harvestPulteExcel(options: HarvestOptions): Promise<Harves
 
     if (excelFile && fs.existsSync(excelFile)) {
       console.log('📊 Parsing Excel file...');
-      items = parseExcelFile(excelFile, communityMap);
+      items = parseExcelFile(excelFile, jobMap);
       console.log(`✅ Parsed ${items.length} line items from Excel`);
     } else {
       console.warn('⚠️ Excel export not available, falling back to web scraping');
