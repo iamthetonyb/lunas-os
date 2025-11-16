@@ -418,8 +418,16 @@ export default function BlueBookPage() {
 
     const communityMap = new Map<string, CommunityAccumulator>();
 
-    const normaliseCommunityKey = (entry: BlueBookEntry) =>
-      entry.communityId ?? `no-community:${entry.builderId ?? 'unknown'}`;
+    const normaliseCommunityKey = (entry: BlueBookEntry) => {
+      // Use community ID if available, otherwise use community name + builder ID to group
+      // This ensures same-named communities under same builder are grouped together
+      if (entry.communityId) {
+        return entry.communityId;
+      }
+      const communityName = entry.communityName?.toLowerCase().trim() || 'unknown';
+      const builderId = entry.builderId || 'unknown';
+      return `no-id:${builderId}:${communityName}`;
+    };
 
     entries.forEach((entry) => {
       const communityKey = normaliseCommunityKey(entry);
@@ -636,9 +644,13 @@ export default function BlueBookPage() {
               totalAmount,
             };
           })
-          .sort((a, b) =>
-            a.lotLabel.localeCompare(b.lotLabel, undefined, { numeric: true, sensitivity: 'base' })
-          );
+          .sort((a, b) => {
+            // Sort by earliest start date first, then by lot number
+            if (a.earliestStart !== b.earliestStart) {
+              return a.earliestStart - b.earliestStart;
+            }
+            return a.lotLabel.localeCompare(b.lotLabel, undefined, { numeric: true, sensitivity: 'base' });
+          });
 
         const earliestStart = community.entries.length
           ? Math.min(
@@ -843,6 +855,9 @@ export default function BlueBookPage() {
         accountCategoryCode: editingEntry.accountCategoryCode || '',
         checkNumber: editingEntry.checkNumber || '',
         checkDate: editingEntry.checkDate || '',
+        builderId: editingEntry.builderId || '',
+        communityId: editingEntry.communityId || '',
+        serviceId: editingEntry.serviceId || '',
       });
       setFormError(null);
     }

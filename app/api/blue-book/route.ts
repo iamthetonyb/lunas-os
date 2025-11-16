@@ -96,6 +96,7 @@ export const GET = safe(async (req: Request) => {
       modelPlanCode: entry.modelPlan?.code ?? null,
       modelPlanName: entry.modelPlan?.name ?? null,
       modelPlanSqft: entry.modelPlan?.sqft ?? null,
+      source: entry.source ?? 'scraped',
       createdAt: entry.createdAt,
       updatedAt: entry.updatedAt,
     }));
