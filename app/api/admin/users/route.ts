@@ -4,6 +4,7 @@ import { requireMembership } from '@/lib/auth/guards';
 import { eq } from 'drizzle-orm';
 import { z } from 'zod';
 import { safe, ok } from '@/lib/api/http';
+import { NextResponse } from 'next/server';
 
 export const runtime = 'nodejs';
 export const preferredRegion = 'auto';
@@ -81,20 +82,43 @@ export const GET = safe(async () => {
 export const POST = safe(async (req: Request) => {
   await requireMembership(['admin']);
   const db = await getDb();
-  const payload = membershipSchema.parse(await req.json());
+  
+  const body = await req.json();
+  console.log('Incoming membership update body:', body); // Log to server terminal
+  console.log('Body type:', typeof body, 'Keys:', Object.keys(body || {}));
+  
+  const parsed = membershipSchema.safeParse(body);
+  if (!parsed.success) {
+    console.error('Membership validation failed:', parsed.error.flatten());
+    return NextResponse.json(
+      { error: 'Validation failed', details: parsed.error.flatten() },
+      { status: 400 }
+    );
+  }
 
-  const [membership] = await db
-    .insert(orgMembers)
-    .values({
-      orgId: payload.orgId,
-      userId: payload.userId,
-      role: payload.role,
-    })
-    .onConflictDoUpdate({
-      target: orgMembers.orgMemberUnique,
-      set: { role: payload.role },
-    })
-    .returning();
+  const payload = parsed.data;
+  console.log('Parsed payload:', payload);
 
-  return ok(membership, { status: 201 });
+  try {
+    const [membership] = await db
+      .insert(orgMembers)
+      .values({
+        orgId: payload.orgId,
+        userId: payload.userId,
+        role: payload.role,
+      })
+      .onConflictDoUpdate({
+        target: orgMembers.orgMemberUnique,
+        set: { role: payload.role },
+      })
+      .returning();
+    
+    console.log('Membership saved successfully:', membership);
+    return ok(membership, { status: 201 });
+  } catch (dbErr: any) {
+    // Wrap DB operation in try/catch - Let 'safe' catch it
+    console.error('DB error during membership update:', dbErr);
+    console.error('DB error stack:', dbErr.stack);
+    throw dbErr;
+  }
 });

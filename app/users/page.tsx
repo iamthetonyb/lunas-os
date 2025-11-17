@@ -277,6 +277,9 @@ export default function UsersPage() {
   const handleMembershipSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!membership.userId || !membership.orgId) return;
+    
+    console.log('Submitting membership data:', membership); // Log payload to browser console
+    
     setBusy(true);
     try {
       await fetchJSON('/api/admin/users', {
@@ -286,9 +289,16 @@ export default function UsersPage() {
       });
       await mutate('/api/admin/users');
       alert('Membership saved.');
-    } catch (err) {
-      console.error(err);
-      alert('Failed to update membership.');
+    } catch (err: any) {
+      console.error('Membership submit failed with data:', err.data); // Log full server error.data
+      // Handle empty error.data
+      if (!err.data || Object.keys(err.data).length === 0) {
+        err.data = { error: 'Unknown server error' };
+      }
+      const errorMsg = err.data?.details 
+        ? 'Validation failed: ' + JSON.stringify(err.data.details)
+        : err.data?.error || err.message || 'Failed to update membership.';
+      alert(errorMsg);
     } finally {
       setBusy(false);
     }
@@ -447,7 +457,7 @@ export default function UsersPage() {
             <div className="flex items-end">
               <button
                 type="submit"
-                disabled={busy}
+                disabled={busy || !membership.userId || !membership.orgId}
                 className="w-full rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-50"
               >
                 Save Access

@@ -32,7 +32,8 @@ export function Navigation() {
     setMounted(true);
   }, []);
 
-  const contractorAllowed = new Set(['Dashboard', 'Intake', 'Work Log']);
+  // Include Dashboard as user specified
+  const contractorAllowed = new Set(['Dashboard', 'Intake', 'Work Log', 'Schedule']);
   const navigation =
     role === 'contractor'
       ? baseNavigation.filter((item) => contractorAllowed.has(item.name))

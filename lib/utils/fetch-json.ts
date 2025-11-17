@@ -50,6 +50,7 @@ export async function fetchJSON<T>(
     const data = await parseBody();
 
     if (!response.ok) {
+      console.error('Request failed with status', response.status, 'and data:', data);
       let message = 'Request failed';
       
       if (data && typeof data === 'object' && data !== null && 'error' in data) {
