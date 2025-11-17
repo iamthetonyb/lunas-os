@@ -26,21 +26,25 @@ export function Navigation() {
   const { theme, toggleTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
   const { data: session } = useSession();
-  const role = session?.user?.role ?? undefined;
+  // Use orgRole from org_members (admin/backoffice/contractor) instead of user role
+  const orgRole = session?.user?.orgRole ?? undefined;
+  const userRole = session?.user?.role ?? undefined;
 
   useEffect(() => {
     setMounted(true);
   }, []);
 
-  // Include Dashboard as user specified
+  // Include Dashboard as user specified - contractor is the org role for foremen/contractors
   const contractorAllowed = new Set(['Dashboard', 'Intake', 'Work Log', 'Schedule']);
   const navigation =
-    role === 'contractor'
+    orgRole === 'contractor'
       ? baseNavigation.filter((item) => contractorAllowed.has(item.name))
       : baseNavigation;
 
   const userDisplayName = session?.user?.name ?? 'User';
-  const userRoleLabel = role ? role.charAt(0).toUpperCase() + role.slice(1) : 'Team';
+  const userRoleLabel = orgRole 
+    ? (orgRole === 'backoffice' ? 'Back Office' : orgRole.charAt(0).toUpperCase() + orgRole.slice(1))
+    : (userRole ? userRole.charAt(0).toUpperCase() + userRole.slice(1) : 'Team');
 
   return (
     <nav className="bg-white dark:bg-slate-800 shadow-lg h-screen w-64 flex flex-col overflow-y-auto transition-colors duration-300">

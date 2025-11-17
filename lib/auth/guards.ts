@@ -55,7 +55,12 @@ export async function requireMembership(allowed: string[] = []) {
     const role = String((membership as any).role ?? '').toLowerCase();
     const ok = allowed.map((item) => item.toLowerCase()).includes(role);
     if (!ok) {
-      throw new ForbiddenError('Insufficient role');
+      console.error('[guards] Role check failed:', {
+        userRole: role,
+        requiredRoles: allowed,
+        userEmail: user!.email,
+      });
+      throw new ForbiddenError(`Insufficient role. Required: ${allowed.join('|')}, Current: ${role}`);
     }
   }
   return membership;

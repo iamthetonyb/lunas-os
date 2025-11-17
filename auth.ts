@@ -6,6 +6,7 @@ import { DrizzleAdapter } from '@auth/drizzle-adapter';
 import { getDb } from '@/lib/db/get-db';
 import { z } from 'zod';
 import { eq } from 'drizzle-orm';
+import bcrypt from 'bcrypt';
 
 export const { handlers, auth, signIn, signOut } = NextAuth(async () => {
   const db = await getDb();
@@ -31,18 +32,55 @@ export const { handlers, auth, signIn, signOut } = NextAuth(async () => {
             password: z.string().min(1),
           })
           .safeParse(raw);
-        if (!parsed.success) return null;
+        if (!parsed.success) {
+          console.log('[auth] Invalid credentials format');
+          return null;
+        }
         const { email, password } = parsed.data;
 
+        // First check dev credentials (fallback for admin access)
         if (
           devPassword &&
           devEmails.includes(email.toLowerCase()) &&
           password === devPassword
         ) {
+          console.log('[auth] Valid dev credentials for:', email);
           return { id: email, email, name: email.split('@')[0] };
         }
 
-        return null;
+        // Check database users with hashed passwords
+        try {
+          const user = await db.query.users.findFirst({
+            where: (users, { eq }) => eq(users.email, email),
+          });
+
+          if (!user) {
+            console.log('[auth] User not found:', email);
+            return null;
+          }
+
+          if (!user.passwordHash) {
+            console.log('[auth] User has no password hash:', email);
+            return null;
+          }
+
+          const passwordValid = await bcrypt.compare(password, user.passwordHash);
+          
+          if (!passwordValid) {
+            console.log('[auth] Invalid password for:', email);
+            return null;
+          }
+
+          console.log('[auth] Valid credentials from DB for:', email);
+          return { 
+            id: user.id, 
+            email: user.email, 
+            name: user.name || email.split('@')[0] 
+          };
+        } catch (error) {
+          console.error('[auth] Error checking credentials:', error);
+          return null;
+        }
       },
     }),
   ];
@@ -76,22 +114,41 @@ export const { handlers, auth, signIn, signOut } = NextAuth(async () => {
     adapter: DrizzleAdapter(db) as any,
     providers,
     callbacks: {
-      // Add role from org_members to the session
+      // Add role and orgId from org_members to the session
       async jwt({ token, user }) {
         if (user?.id) {
-          // Load membership role from org_members table
-          const membership = await db.query.orgMembers.findFirst({
-            where: (orgMembers, { eq }) => eq(orgMembers.userId, user.id),
+          // Load user from users table
+          const dbUser = await db.query.users.findFirst({
+            where: (users, { eq }) => eq(users.id, user.id),
           });
-          if (membership) {
-            token.role = membership.role;
+          if (dbUser) {
+            token.userId = dbUser.id;
+            token.userRole = dbUser.role;
+            
+            // Load org membership (role + orgId)
+            const membership = await db.query.orgMembers.findFirst({
+              where: (orgMembers, { eq }) => eq(orgMembers.userId, dbUser.id),
+            });
+            if (membership) {
+              token.orgId = membership.orgId;
+              token.orgRole = membership.role;
+            }
           }
         }
         return token;
       },
       async session({ session, token }) {
-        if (token?.role) {
-          session.user.role = token.role as string;
+        if (token?.userId) {
+          session.user.id = token.userId as string;
+        }
+        if (token?.userRole) {
+          session.user.role = token.userRole as string;
+        }
+        if (token?.orgId) {
+          session.user.orgId = token.orgId as string;
+        }
+        if (token?.orgRole) {
+          session.user.orgRole = token.orgRole as string;
         }
         return session;
       },

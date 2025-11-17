@@ -14,7 +14,8 @@ import {
 export const runtime = 'nodejs';
 
 export const GET = safe(async (req, context) => {
-  const membership = await requireMembership();
+  // Allow any authenticated user with org membership (no specific role required)
+  const membership = await requireMembership([]);
   const db = await getDb();
 
   const baseRows = await db

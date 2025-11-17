@@ -26,11 +26,25 @@ type RecentIntake = {
 };
 
 export default function DashboardPage() {
-  const { data: blueBookEntries = [] } = useSWR<any[]>('/api/blue-book', fetcher, {
+  // Fetch current user membership to check role
+  const { data: membership } = useSWR<{ userId: string; orgId: string; role: string } | null>('/api/me', fetcher, {
     revalidateOnFocus: false,
     revalidateOnReconnect: false,
     shouldRetryOnError: false,
   });
+
+  // Only fetch blue book if user is admin or backoffice
+  const canAccessBlueBook = membership?.role === 'admin' || membership?.role === 'backoffice';
+  
+  const { data: blueBookEntries = [] } = useSWR<any[]>(
+    canAccessBlueBook ? '/api/blue-book' : null,
+    fetcher,
+    {
+      revalidateOnFocus: false,
+      revalidateOnReconnect: false,
+      shouldRetryOnError: false,
+    }
+  );
   const { data: recentIntakes = [] } = useSWR<RecentIntake[]>(
     '/api/job-requests/recent',
     fetcher,
@@ -74,43 +88,45 @@ export default function DashboardPage() {
           ))}
         </div>
 
-        {/* Blue Book Snapshot - Now takes full width where Quick Actions were */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
-          {/* Blue Book Info Card */}
-          <div className="lg:col-span-1">
-            <div className="bg-gradient-to-br from-blue-500 to-blue-700 dark:from-blue-600 dark:to-blue-900 rounded-lg shadow-lg p-6 text-white">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-xl font-bold">📘 Blue Book</h2>
-                <Link 
-                  href="/blue-book"
-                  className="text-sm bg-white/20 hover:bg-white/30 px-3 py-1 rounded-full transition-colors backdrop-blur-sm"
-                >
-                  View All →
-                </Link>
-              </div>
-              <div className="space-y-3">
-                <div className="bg-white/10 backdrop-blur-sm rounded-lg p-4">
-                  <p className="text-sm opacity-90 mb-1">Total Projects</p>
-                  <p className="text-3xl font-bold">{blueBookEntries.length}</p>
+        {/* Blue Book Snapshot and Recent Intakes - Layout depends on user role */}
+        <div className={`grid grid-cols-1 ${canAccessBlueBook ? 'lg:grid-cols-3' : ''} gap-6 mb-8`}>
+          {/* Blue Book Info Card - Only for admin/backoffice */}
+          {canAccessBlueBook && (
+            <div className="lg:col-span-1">
+              <div className="bg-gradient-to-br from-blue-500 to-blue-700 dark:from-blue-600 dark:to-blue-900 rounded-lg shadow-lg p-6 text-white">
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="text-xl font-bold">📘 Blue Book</h2>
+                  <Link 
+                    href="/blue-book"
+                    className="text-sm bg-white/20 hover:bg-white/30 px-3 py-1 rounded-full transition-colors backdrop-blur-sm"
+                  >
+                    View All →
+                  </Link>
                 </div>
-                <div className="bg-white/10 backdrop-blur-sm rounded-lg p-4">
-                  <p className="text-sm opacity-90 mb-1">Active</p>
-                  <p className="text-2xl font-bold">
-                    {blueBookEntries.filter((e: any) => e.status !== 'COMPLETE').length}
-                  </p>
-                </div>
-                <div className="bg-white/10 backdrop-blur-sm rounded-lg p-4">
-                  <p className="text-sm opacity-90 mb-1">Completed</p>
-                  <p className="text-2xl font-bold">
-                    {blueBookEntries.filter((e: any) => e.status === 'COMPLETE').length}
-                  </p>
+                <div className="space-y-3">
+                  <div className="bg-white/10 backdrop-blur-sm rounded-lg p-4">
+                    <p className="text-sm opacity-90 mb-1">Total Projects</p>
+                    <p className="text-3xl font-bold">{blueBookEntries.length}</p>
+                  </div>
+                  <div className="bg-white/10 backdrop-blur-sm rounded-lg p-4">
+                    <p className="text-sm opacity-90 mb-1">Active</p>
+                    <p className="text-2xl font-bold">
+                      {blueBookEntries.filter((e: any) => e.status !== 'COMPLETE').length}
+                    </p>
+                  </div>
+                  <div className="bg-white/10 backdrop-blur-sm rounded-lg p-4">
+                    <p className="text-sm opacity-90 mb-1">Completed</p>
+                    <p className="text-2xl font-bold">
+                      {blueBookEntries.filter((e: any) => e.status === 'COMPLETE').length}
+                    </p>
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
+          )}
 
           {/* Recent Intake Submissions */}
-          <div className="lg:col-span-2">
+          <div className={canAccessBlueBook ? 'lg:col-span-2' : ''}>
             <div className="bg-white dark:bg-slate-800 rounded-lg shadow-sm border border-gray-200 dark:border-slate-700 p-6">
               <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Recent Intakes</h2>
               {recentIntakes.length === 0 ? (
@@ -160,18 +176,19 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {/* Blue Book Recent Entries Table */}
-        <div>
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Recent Blue Book Entries</h2>
-            <Link 
-              href="/blue-book"
-              className="text-sm text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 font-medium transition-colors"
-            >
-              View All Entries →
-            </Link>
-          </div>
-          <div className="bg-white dark:bg-slate-800 rounded-lg shadow-sm border border-gray-200 dark:border-slate-700 overflow-hidden">
+        {/* Blue Book Recent Entries Table - Only for admin/backoffice */}
+        {canAccessBlueBook && (
+          <div>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Recent Blue Book Entries</h2>
+              <Link 
+                href="/blue-book"
+                className="text-sm text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 font-medium transition-colors"
+              >
+                View All Entries →
+              </Link>
+            </div>
+            <div className="bg-white dark:bg-slate-800 rounded-lg shadow-sm border border-gray-200 dark:border-slate-700 overflow-hidden">
             {blueBookEntries.length === 0 ? (
               <div className="p-8 text-center">
                 <div className="text-5xl mb-3">📘</div>
@@ -248,8 +265,9 @@ export default function DashboardPage() {
                 </table>
               </div>
             )}
+            </div>
           </div>
-        </div>
+        )}
       </main>
     </>
   );

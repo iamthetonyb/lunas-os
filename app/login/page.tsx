@@ -24,12 +24,22 @@ function LoginForm() {
         callbackUrl 
       });
       
+      console.log('Sign-in result:', res); // Debug log
+      
+      if (res?.error) {
+        // NextAuth returns error string if auth failed
+        alert('Invalid email or password. Please check your credentials and try again.');
+        setIsLoading(false);
+        return;
+      }
+      
       if (res?.ok) {
         router.push(callbackUrl);
       } else {
         alert('Invalid credentials. Please try again.');
       }
-    } catch {
+    } catch (err) {
+      console.error('Login error:', err);
       alert('An error occurred. Please try again.');
     } finally {
       setIsLoading(false);
@@ -72,7 +82,7 @@ function LoginForm() {
                 id="email" 
                 name="email" 
                 type="email" 
-                placeholder="dispatcher@lunas.com"
+                placeholder="admin@lunas.local"
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-gray-900"
                 autoComplete="username"
                 required 
@@ -157,7 +167,7 @@ function LoginForm() {
           
           <div className="mt-4 text-center text-sm text-gray-600">
             <p>Default credentials:</p>
-            <p className="text-xs text-gray-500 mt-1">dispatcher@lunas.com / password</p>
+            <p className="text-xs text-gray-500 mt-1">admin@lunas.local / dev</p>
           </div>
         </div>
       </div>
