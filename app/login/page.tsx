@@ -122,6 +122,16 @@ function LoginForm() {
             </button>
           </form>
 
+          <div className="mt-4 text-center">
+            <button
+              type="button"
+              onClick={() => router.push('/forgot-password')}
+              className="text-sm text-blue-600 hover:text-blue-700 hover:underline"
+            >
+              Forgot your password?
+            </button>
+          </div>
+
           <div className="mt-6">
             <div className="relative">
               <div className="absolute inset-0 flex items-center">

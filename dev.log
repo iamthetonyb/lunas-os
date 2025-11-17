@@ -9,9 +9,32 @@
    - Environments: .env.local
 
  ✓ Starting...
- ✓ Ready in 719ms
- GET /dashboard 200 in 2.7s (compile: 2.5s, render: 244ms)
- GET /api/blue-book 200 in 2.6s (compile: 2.2s, render: 428ms)
- GET /api/job-requests/recent 200 in 2.6s (compile: 2.3s, render: 308ms)
- GET /api/auth/session 200 in 3.1s (compile: 3.0s, render: 12ms)
- GET /api/auth/session 200 in 11ms (compile: 4ms, render: 6ms)
+ ✓ Ready in 1305ms
+ ○ Compiling /login ...
+ GET /login 200 in 4.6s (compile: 4.2s, render: 393ms)
+ GET /api/auth/session 200 in 4.1s (compile: 4.0s, render: 101ms)
+ GET /api/auth/session 200 in 26ms (compile: 10ms, render: 17ms)
+[31m[auth][error][0m MissingCSRF: CSRF token was missing during an action callback. Read more at https://errors.authjs.dev#missingcsrf
+    at validateCSRF (/Users/abenton333/LUNAS-OS/.next/dev/server/chunks/02706_@auth_core_90dc97b1._.js:1228:11)
+    at AuthInternal (/Users/abenton333/LUNAS-OS/.next/dev/server/chunks/02706_@auth_core_90dc97b1._.js:5147:309)
+    at async Auth (/Users/abenton333/LUNAS-OS/.next/dev/server/chunks/02706_@auth_core_90dc97b1._.js:5370:34)
+    at async AppRouteRouteModule.do (/Users/abenton333/LUNAS-OS/node_modules/.pnpm/next@16.0.3_@babel+core@7.28.4_@playwright+test@1.56.1_react-dom@19.2.0_react@19.2.0__react@19.2.0/node_modules/next/dist/compiled/next-server/app-route-turbo.runtime.dev.js:5:37789)
+    at async AppRouteRouteModule.handle (/Users/abenton333/LUNAS-OS/node_modules/.pnpm/next@16.0.3_@babel+core@7.28.4_@playwright+test@1.56.1_react-dom@19.2.0_react@19.2.0__react@19.2.0/node_modules/next/dist/compiled/next-server/app-route-turbo.runtime.dev.js:5:45045)
+    at async responseGenerator (/Users/abenton333/LUNAS-OS/.next/dev/server/chunks/1223a_next_d1e52e85._.js:16107:38)
+    at async AppRouteRouteModule.handleResponse (/Users/abenton333/LUNAS-OS/node_modules/.pnpm/next@16.0.3_@babel+core@7.28.4_@playwright+test@1.56.1_react-dom@19.2.0_react@19.2.0__react@19.2.0/node_modules/next/dist/compiled/next-server/app-route-turbo.runtime.dev.js:1:187851)
+    at async handleResponse (/Users/abenton333/LUNAS-OS/.next/dev/server/chunks/1223a_next_d1e52e85._.js:16169:32)
+    at async handler (/Users/abenton333/LUNAS-OS/.next/dev/server/chunks/1223a_next_d1e52e85._.js:16222:13)
+    at async DevServer.renderToResponseWithComponentsImpl (/Users/abenton333/LUNAS-OS/node_modules/.pnpm/next@16.0.3_@babel+core@7.28.4_@playwright+test@1.56.1_react-dom@19.2.0_react@19.2.0__react@19.2.0/node_modules/next/dist/server/base-server.js:1413:9)
+    at async DevServer.renderPageComponent (/Users/abenton333/LUNAS-OS/node_modules/.pnpm/next@16.0.3_@babel+core@7.28.4_@playwright+test@1.56.1_react-dom@19.2.0_react@19.2.0__react@19.2.0/node_modules/next/dist/server/base-server.js:1465:24)
+    at async DevServer.renderToResponseImpl (/Users/abenton333/LUNAS-OS/node_modules/.pnpm/next@16.0.3_@babel+core@7.28.4_@playwright+test@1.56.1_react-dom@19.2.0_react@19.2.0__react@19.2.0/node_modules/next/dist/server/base-server.js:1515:32)
+    at async DevServer.pipeImpl (/Users/abenton333/LUNAS-OS/node_modules/.pnpm/next@16.0.3_@babel+core@7.28.4_@playwright+test@1.56.1_react-dom@19.2.0_react@19.2.0__react@19.2.0/node_modules/next/dist/server/base-server.js:1021:25)
+    at async NextNodeServer.handleCatchallRenderRequest (/Users/abenton333/LUNAS-OS/node_modules/.pnpm/next@16.0.3_@babel+core@7.28.4_@playwright+test@1.56.1_react-dom@19.2.0_react@19.2.0__react@19.2.0/node_modules/next/dist/server/next-server.js:394:17)
+    at async DevServer.handleRequestImpl (/Users/abenton333/LUNAS-OS/node_modules/.pnpm/next@16.0.3_@babel+core@7.28.4_@playwright+test@1.56.1_react-dom@19.2.0_react@19.2.0__react@19.2.0/node_modules/next/dist/server/base-server.js:912:17)
+    at async /Users/abenton333/LUNAS-OS/node_modules/.pnpm/next@16.0.3_@babel+core@7.28.4_@playwright+test@1.56.1_react-dom@19.2.0_react@19.2.0__react@19.2.0/node_modules/next/dist/server/dev/next-dev-server.js:382:20
+    at async Span.traceAsyncFn (/Users/abenton333/LUNAS-OS/node_modules/.pnpm/next@16.0.3_@babel+core@7.28.4_@playwright+test@1.56.1_react-dom@19.2.0_react@19.2.0__react@19.2.0/node_modules/next/dist/trace/trace.js:157:20)
+    at async DevServer.handleRequest (/Users/abenton333/LUNAS-OS/node_modules/.pnpm/next@16.0.3_@babel+core@7.28.4_@playwright+test@1.56.1_react-dom@19.2.0_react@19.2.0__react@19.2.0/node_modules/next/dist/server/dev/next-dev-server.js:378:24)
+    at async invokeRender (/Users/abenton333/LUNAS-OS/node_modules/.pnpm/next@16.0.3_@babel+core@7.28.4_@playwright+test@1.56.1_react-dom@19.2.0_react@19.2.0__react@19.2.0/node_modules/next/dist/server/lib/router-server.js:240:21)
+    at async handleRequest (/Users/abenton333/LUNAS-OS/node_modules/.pnpm/next@16.0.3_@babel+core@7.28.4_@playwright+test@1.56.1_react-dom@19.2.0_react@19.2.0__react@19.2.0/node_modules/next/dist/server/lib/router-server.js:436:24)
+    at async requestHandlerImpl (/Users/abenton333/LUNAS-OS/node_modules/.pnpm/next@16.0.3_@babel+core@7.28.4_@playwright+test@1.56.1_react-dom@19.2.0_react@19.2.0__react@19.2.0/node_modules/next/dist/server/lib/router-server.js:484:13)
+    at async Server.requestListener (/Users/abenton333/LUNAS-OS/node_modules/.pnpm/next@16.0.3_@babel+core@7.28.4_@playwright+test@1.56.1_react-dom@19.2.0_react@19.2.0__react@19.2.0/node_modules/next/dist/server/lib/start-server.js:226:13)
+ POST /api/auth/callback/credentials 302 in 35ms (compile: 12ms, render: 23ms)

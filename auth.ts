@@ -38,17 +38,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth(async () => {
         }
         const { email, password } = parsed.data;
 
-        // First check dev credentials (fallback for admin access)
-        if (
-          devPassword &&
-          devEmails.includes(email.toLowerCase()) &&
-          password === devPassword
-        ) {
-          console.log('[auth] Valid dev credentials for:', email);
-          return { id: email, email, name: email.split('@')[0] };
-        }
-
-        // Check database users with hashed passwords
+        // Check database users first
         try {
           const user = await db.query.users.findFirst({
             where: (users, { eq }) => eq(users.email, email),
@@ -59,6 +49,21 @@ export const { handlers, auth, signIn, signOut } = NextAuth(async () => {
             return null;
           }
 
+          // Check dev credentials (fallback for admin access)
+          if (
+            devPassword &&
+            devEmails.includes(email.toLowerCase()) &&
+            password === devPassword
+          ) {
+            console.log('[auth] Valid dev credentials for:', email);
+            return { 
+              id: user.id, 
+              email: user.email, 
+              name: user.name || email.split('@')[0] 
+            };
+          }
+
+          // Check hashed password
           if (!user.passwordHash) {
             console.log('[auth] User has no password hash:', email);
             return null;

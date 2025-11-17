@@ -11,7 +11,7 @@ const postgres = require('postgres');
   console.log('[migrate] DATABASE_URL =', url);
 
   const client = postgres(url, {
-    ssl: process.env.NODE_ENV === 'production' ? 'require' : undefined,
+    ssl: false, // Never use SSL for localhost
   });
   const db = drizzle(client);
 
