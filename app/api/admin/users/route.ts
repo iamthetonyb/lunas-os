@@ -84,12 +84,12 @@ export const POST = safe(async (req: Request) => {
   const db = await getDb();
   
   const body = await req.json();
-  console.log('Incoming membership update body:', body); // Log to server terminal
-  console.log('Body type:', typeof body, 'Keys:', Object.keys(body || {}));
+  console.log('[POST /api/admin/users] Incoming membership update body:', body);
+  console.log('[POST /api/admin/users] Body type:', typeof body, 'Keys:', Object.keys(body || {}));
   
   const parsed = membershipSchema.safeParse(body);
   if (!parsed.success) {
-    console.error('Membership validation failed:', parsed.error.flatten());
+    console.error('[POST /api/admin/users] Membership validation failed:', parsed.error.flatten());
     return NextResponse.json(
       { error: 'Validation failed', details: parsed.error.flatten() },
       { status: 400 }
@@ -97,9 +97,35 @@ export const POST = safe(async (req: Request) => {
   }
 
   const payload = parsed.data;
-  console.log('Parsed payload:', payload);
+  console.log('[POST /api/admin/users] Parsed payload:', payload);
 
   try {
+    // First check if user and org exist
+    const userExists = await db.query.users.findFirst({
+      where: eq(users.id, payload.userId),
+    });
+    
+    if (!userExists) {
+      console.error('[POST /api/admin/users] User not found:', payload.userId);
+      return NextResponse.json(
+        { error: 'User not found', details: `User ID ${payload.userId} does not exist` },
+        { status: 404 }
+      );
+    }
+    
+    const orgExists = await db.query.orgs.findFirst({
+      where: eq(orgs.id, payload.orgId),
+    });
+    
+    if (!orgExists) {
+      console.error('[POST /api/admin/users] Org not found:', payload.orgId);
+      return NextResponse.json(
+        { error: 'Organization not found', details: `Org ID ${payload.orgId} does not exist` },
+        { status: 404 }
+      );
+    }
+
+    console.log('[POST /api/admin/users] Upserting membership...');
     const [membership] = await db
       .insert(orgMembers)
       .values({
@@ -108,17 +134,19 @@ export const POST = safe(async (req: Request) => {
         role: payload.role,
       })
       .onConflictDoUpdate({
-        target: orgMembers.orgMemberUnique,
+        target: [orgMembers.orgId, orgMembers.userId],
         set: { role: payload.role },
       })
       .returning();
     
-    console.log('Membership saved successfully:', membership);
+    console.log('[POST /api/admin/users] Membership saved successfully:', membership);
     return ok(membership, { status: 201 });
   } catch (dbErr: any) {
-    // Wrap DB operation in try/catch - Let 'safe' catch it
-    console.error('DB error during membership update:', dbErr);
-    console.error('DB error stack:', dbErr.stack);
+    console.error('[POST /api/admin/users] DB error during membership update:', dbErr);
+    console.error('[POST /api/admin/users] DB error message:', dbErr.message);
+    console.error('[POST /api/admin/users] DB error stack:', dbErr.stack);
+    console.error('[POST /api/admin/users] DB error code:', dbErr.code);
+    console.error('[POST /api/admin/users] DB error detail:', dbErr.detail);
     throw dbErr;
   }
 });

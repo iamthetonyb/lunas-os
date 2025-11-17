@@ -5,6 +5,7 @@ import AzureAD from 'next-auth/providers/azure-ad';
 import { DrizzleAdapter } from '@auth/drizzle-adapter';
 import { getDb } from '@/lib/db/get-db';
 import { z } from 'zod';
+import { eq } from 'drizzle-orm';
 
 export const { handlers, auth, signIn, signOut } = NextAuth(async () => {
   const db = await getDb();
@@ -74,5 +75,26 @@ export const { handlers, auth, signIn, signOut } = NextAuth(async () => {
     pages: { signIn: '/login' },
     adapter: DrizzleAdapter(db) as any,
     providers,
+    callbacks: {
+      // Add role from org_members to the session
+      async jwt({ token, user }) {
+        if (user?.id) {
+          // Load membership role from org_members table
+          const membership = await db.query.orgMembers.findFirst({
+            where: (orgMembers, { eq }) => eq(orgMembers.userId, user.id),
+          });
+          if (membership) {
+            token.role = membership.role;
+          }
+        }
+        return token;
+      },
+      async session({ session, token }) {
+        if (token?.role) {
+          session.user.role = token.role as string;
+        }
+        return session;
+      },
+    },
   };
 });

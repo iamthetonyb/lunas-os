@@ -29,17 +29,29 @@ export function safe<T extends { params: any }>(
     } catch (error: any) {
       const msg = error?.message || String(error);
       // Enhanced error logging with stack trace
-      console.error('API Handler Error:', msg, error?.stack || '');
-      console.error('Full error object:', error);
+      console.error('[safe wrapper] API Handler Error:', msg);
+      console.error('[safe wrapper] Stack:', error?.stack || '(no stack)');
+      console.error('[safe wrapper] Full error object:', JSON.stringify(error, Object.getOwnPropertyNames(error)));
       
       // Handle Zod errors specially
       if (error instanceof z.ZodError) {
-        return err('Validation failed', 400, error);
+        return NextResponse.json(
+          { error: 'Validation failed', details: error.flatten() },
+          { status: 400 }
+        );
       }
       
-      // Return error with details even if empty
+      // Return error with details - ensure we always return a valid JSON response
+      const errorResponse = {
+        error: msg || 'Internal server error',
+        details: error?.detail || error?.code || error?.toString?.() || 'Unknown error',
+        stack: process.env.NODE_ENV === 'development' ? error?.stack : undefined
+      };
+      
+      console.error('[safe wrapper] Returning error response:', errorResponse);
+      
       return NextResponse.json(
-        { error: 'Internal server error', details: msg || 'Unknown' },
+        errorResponse,
         { status: (error as any)?.status ?? 500 }
       );
     }

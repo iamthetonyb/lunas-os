@@ -52,20 +52,32 @@ export async function fetchJSON<T>(
     if (!response.ok) {
       console.error('Request failed with status', response.status, 'and data:', data);
       let message = 'Request failed';
+      let details = null;
       
-      if (data && typeof data === 'object' && data !== null && 'error' in data) {
-        if (typeof data.error === 'string' && data.error) {
-          message = data.error;
-        } else if (typeof data.error === 'object' && data.error && 'message' in data.error) {
-          message = String(data.error.message || 'Request failed');
+      if (data && typeof data === 'object' && data !== null) {
+        if ('error' in data) {
+          if (typeof data.error === 'string' && data.error) {
+            message = data.error;
+          } else if (typeof data.error === 'object' && data.error && 'message' in data.error) {
+            message = String(data.error.message || 'Request failed');
+          }
+        }
+        if ('details' in data) {
+          details = data.details;
         }
       } else if (response.statusText) {
         message = response.statusText;
       }
       
+      // If we got a 500 with no useful data, make it more descriptive
+      if (!data || (typeof data === 'object' && Object.keys(data).length === 0)) {
+        message = `Server error (${response.status}): The server encountered an error. Check server logs for details.`;
+        details = 'No error details returned from server';
+      }
+      
       const error = new Error(message);
       (error as Error & { status?: number; data?: unknown }).status = response.status;
-      (error as Error & { status?: number; data?: unknown }).data = data;
+      (error as Error & { status?: number; data?: unknown }).data = data || { error: message, details };
       throw error;
     }
 

@@ -1,0 +1,17 @@
+
+> lunas-os@0.1.0 dev /Users/abenton333/LUNAS-OS
+> PORT=${PORT:-4010} next dev -p ${PORT:-4010}
+
+ ⚠ You are using a non-standard "NODE_ENV" value in your environment. This creates inconsistencies in the project and is strongly advised against. Read more: https://nextjs.org/docs/messages/non-standard-node-env
+   ▲ Next.js 16.0.3 (Turbopack)
+   - Local:         http://localhost:4010
+   - Network:       http://192.168.0.185:4010
+   - Environments: .env.local
+
+ ✓ Starting...
+ ✓ Ready in 719ms
+ GET /dashboard 200 in 2.7s (compile: 2.5s, render: 244ms)
+ GET /api/blue-book 200 in 2.6s (compile: 2.2s, render: 428ms)
+ GET /api/job-requests/recent 200 in 2.6s (compile: 2.3s, render: 308ms)
+ GET /api/auth/session 200 in 3.1s (compile: 3.0s, render: 12ms)
+ GET /api/auth/session 200 in 11ms (compile: 4ms, render: 6ms)

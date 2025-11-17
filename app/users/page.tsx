@@ -259,7 +259,11 @@ function UserModal({
 
 export default function UsersPage() {
   const { data, isLoading, error } = useSWR<AdminUsersResponse>('/api/admin/users', fetcher);
-  const [membership, setMembership] = useState({
+  const [membership, setMembership] = useState<{
+    userId: string;
+    orgId: string;
+    role: 'admin' | 'backoffice' | 'contractor';
+  }>({
     userId: '',
     orgId: '',
     role: 'contractor',
@@ -447,7 +451,7 @@ export default function UsersPage() {
               <select
                 className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2"
                 value={membership.role}
-                onChange={(e) => setMembership((prev) => ({ ...prev, role: e.target.value }))}
+                onChange={(e) => setMembership((prev) => ({ ...prev, role: e.target.value as 'admin' | 'backoffice' | 'contractor' }))}
               >
                 <option value="admin">Admin</option>
                 <option value="backoffice">Back Office</option>
