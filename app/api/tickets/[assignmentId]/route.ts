@@ -2,18 +2,21 @@ import { getDb } from '@/lib/db/get-db';
 import { fieldTickets, assignments, blueBookEntries } from '@/db/schema';
 import { eq } from 'drizzle-orm';
 import { json } from '@/lib/utils/json';
+import type { NextRequest } from 'next/server';
 
 export const runtime = 'nodejs';
 export const preferredRegion = 'auto';
 
-export async function POST(req: Request, { params }: { params: { assignmentId: string } }) {
+export async function POST(req: NextRequest, { params }: { params: Promise<{ assignmentId: string }> }) {
   try {
+    const resolvedParams = await params;
+    const { assignmentId } = resolvedParams;
     const db = await getDb();
     const data = await req.json();
     const { status, notes, windows, tubs, foremanSig, customerSig } = data;
 
     const existingTicket = await db.query.fieldTickets.findFirst({
-      where: eq(fieldTickets.assignmentId, params.assignmentId),
+      where: eq(fieldTickets.assignmentId, assignmentId),
     });
 
     const ticketRows = existingTicket
@@ -32,7 +35,7 @@ export async function POST(req: Request, { params }: { params: { assignmentId: s
       : await db
           .insert(fieldTickets)
           .values({
-            assignmentId: params.assignmentId,
+            assignmentId: assignmentId,
             status: 'SUBMITTED',
             notes,
             items: { windows, tubs },
@@ -47,10 +50,10 @@ export async function POST(req: Request, { params }: { params: { assignmentId: s
     await db
       .update(assignments)
       .set({ status })
-      .where(eq(assignments.id, params.assignmentId));
+      .where(eq(assignments.id, assignmentId));
 
     const assignmentDetails = await db.query.assignments.findFirst({
-      where: eq(assignments.id, params.assignmentId),
+      where: eq(assignments.id, assignmentId),
       with: {
         jobRequestService: {
           with: {
@@ -70,7 +73,7 @@ export async function POST(req: Request, { params }: { params: { assignmentId: s
         serviceId: assignmentDetails.jobRequestService.serviceId,
         poNumber: assignmentDetails.jobRequestService.jobRequest.poNumber,
         status: 'COMPLETE',
-        assignmentId: params.assignmentId,
+        assignmentId: assignmentId,
         ticketId: ticket.id,
       });
     }

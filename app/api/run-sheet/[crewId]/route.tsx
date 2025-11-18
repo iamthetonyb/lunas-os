@@ -1,14 +1,16 @@
 import { getDb } from '@/lib/db/get-db';
 import { assignments } from '@/db/schema';
 import { and, eq, gte, lt } from 'drizzle-orm';
-import { NextResponse } from 'next/server';
+import { NextResponse, type NextRequest } from 'next/server';
 import { renderToStream } from '@react-pdf/renderer';
 import { RunSheetPdf } from '@/components/run-sheet-pdf';
 import QRCode from 'qrcode';
 
 export const runtime = 'nodejs';
 
-export async function GET(req: Request, { params }: { params: { crewId: string } }) {
+export async function GET(req: NextRequest, { params }: { params: Promise<{ crewId: string }> }) {
+  const resolvedParams = await params;
+  const { crewId } = resolvedParams;
   const db = await getDb();
   const { searchParams } = new URL(req.url);
   const date = searchParams.get('date');
@@ -23,7 +25,7 @@ export async function GET(req: Request, { params }: { params: { crewId: string }
 
   const crewAssignments = await db.query.assignments.findMany({
     where: and(
-      eq(assignments.crewId, params.crewId),
+      eq(assignments.crewId, crewId),
       gte(assignments.scheduledStart, startDate),
       lt(assignments.scheduledStart, endDate)
     ),
