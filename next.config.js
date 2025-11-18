@@ -3,9 +3,8 @@ module.exports = {
   reactStrictMode: true,
   // Empty turbopack config to silence webpack warning
   turbopack: {},
-  experimental: {
-    serverComponentsExternalPackages: ['@react-email/render', 'resend', 'bcryptjs'],
-  },
+  // Moved from experimental (deprecated in Next.js 16+)
+  serverExternalPackages: ['@react-email/render', 'resend', 'bcryptjs'],
   webpack: (config, { isServer }) => {
     // Defensive aliases for optional Keyv adapters (prevent bundling errors)
     config.resolve = config.resolve || {};

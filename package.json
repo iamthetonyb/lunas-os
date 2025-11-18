@@ -2,6 +2,7 @@
   "name": "lunas-os",
   "version": "0.1.0",
   "private": true,
+  "packageManager": "pnpm@10.22.0",
   "scripts": {
     "dev": "PORT=${PORT:-4010} next dev -p ${PORT:-4010}",
     "dev:safe": "./dev-start.sh",

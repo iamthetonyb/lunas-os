@@ -2,15 +2,20 @@ import { getDb } from '@/lib/db/get-db';
 import { assignments } from '@/db/schema';
 import { eq } from 'drizzle-orm';
 import { json } from '@/lib/utils/json';
+import type { NextRequest } from 'next/server';
 
 export const runtime = 'nodejs';
 export const preferredRegion = 'auto';
 
-export async function GET(_: Request, { params }: { params: { id: string } }) {
+// Handle Promise params per Next.js 16 dynamic route requirements
+export async function GET(_: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
+    const resolvedParams = await params;
+    const { id } = resolvedParams;
+    
     const db = await getDb();
     const assignment = await db.query.assignments.findFirst({
-      where: eq(assignments.id, params.id),
+      where: eq(assignments.id, id),
     });
 
     if (!assignment) {
