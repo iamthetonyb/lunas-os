@@ -7,11 +7,9 @@ import { RunSheetPdf } from '@/components/run-sheet-pdf';
 import QRCode from 'qrcode';
 
 export const runtime = 'nodejs';
-const db = await getDb();
-
-const db = await getDb();
 
 export async function GET(req: Request, { params }: { params: { crewId: string } }) {
+  const db = await getDb();
   const { searchParams } = new URL(req.url);
   const date = searchParams.get('date');
 
