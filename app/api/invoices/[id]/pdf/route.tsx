@@ -1,3 +1,4 @@
+import { NextRequest } from 'next/server';
 import { getDb } from '@/lib/db/get-db';
 import { invoices } from '@/db/schema';
 import { eq } from 'drizzle-orm';
@@ -8,11 +9,15 @@ import { json } from '@/lib/utils/json';
 export const runtime = 'nodejs';
 export const preferredRegion = 'auto';
 
-export async function GET(req: Request, { params }: { params: { id: string } }) {
+export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
+    // Await params Promise (Next.js 16+ requirement)
+    const resolved = await params;
+    const { id } = resolved;
+    
     const db = await getDb();
     const invoice = await db.query.invoices.findFirst({
-      where: eq(invoices.id, params.id),
+      where: eq(invoices.id, id),
       with: {
         invoiceLines: true,
         builder: true,
