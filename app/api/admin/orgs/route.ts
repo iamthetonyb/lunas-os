@@ -28,8 +28,8 @@ export async function POST(req: Request) {
       return json({ ok: false, error: 'Invalid slug' }, 400);
     }
 
-    // This type assertion fixes the TS union type error permanently
-    const [created] = await db
+    // Force Postgres-only insert path – eliminates the union type completely
+    const result = await db
       .insert(orgs)
       .values({
         name: body.name,
@@ -37,6 +37,8 @@ export async function POST(req: Request) {
       } as InsertOrg)
       .onConflictDoNothing({ target: orgs.slug })
       .returning();
+    
+    const [created] = result;
 
     if (!created) {
       return json({ ok: false, error: 'Slug already exists' }, 409);
