@@ -97,7 +97,6 @@ export const GET = safe(async (req: Request) => {
       invoiceNumber: entry.poNumber,
       amount: entry.amount,
       status: entry.status,
-      walkTime: entry.walkTime,
     };
   });
 

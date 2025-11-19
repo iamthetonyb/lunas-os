@@ -17,37 +17,27 @@ export async function POST(req: Request) {
     ),
     with: {
       service: true,
-      jobRequestService: {
-        with: {
-          jobRequest: {
-            with: {
-              modelPlan: true,
-            },
-          },
-        },
-      },
+      modelPlan: true,
     },
   });
 
   let subtotal = 0;
   const newInvoiceLinesData = entriesToInvoice.map(entry => {
     let qty = 1;
-    if (entry.service.unitKind === 'PER_SQFT') {
-      qty = Number(entry.jobRequestService.jobRequest.modelPlan?.sqft) || 1;
-    } else if (entry.service.unitKind === 'PER_UNIT') {
-      // @ts-ignore
-      qty = entry.items?.windows || entry.items?.tubs || 1;
+    if (entry.service && entry.service.unitKind === 'PER_SQFT') {
+      qty = Number(entry.modelPlan?.sqft) || 1;
     }
 
-    const amount = qty * (Number(entry.amount) || 0);
+    const unitPrice = Number(entry.amount) || 0;
+    const amount = qty * unitPrice;
     subtotal += amount;
 
     return {
-      description: entry.service.name,
-      qty,
-      unit: entry.service.unitKind,
-      unitPrice: Number(entry.amount) || 0,
-      amount,
+      description: entry.service?.name || 'Unknown Service',
+      qty: String(qty),
+      unit: entry.service?.unitKind || 'EACH',
+      unitPrice: String(unitPrice.toFixed(2)),
+      amount: String(amount.toFixed(2)),
       blueBookId: entry.id,
     };
   });
@@ -58,9 +48,9 @@ export async function POST(req: Request) {
 
   const newInvoice = await db.insert(invoices).values({
     builderId,
-    subtotal,
-    tax,
-    total,
+    subtotal: String(subtotal.toFixed(2)),
+    tax: String(tax.toFixed(2)),
+    total: String(total.toFixed(2)),
     status: 'DRAFT',
   }).returning();
 
@@ -72,9 +62,11 @@ export async function POST(req: Request) {
   ).returning();
 
   for (const line of createdInvoiceLines) {
-    await db.update(blueBookEntries).set({
-      invoiceLineId: line.id,
-    }).where(eq(blueBookEntries.id, line.blueBookId));
+    if (line.blueBookId) {
+      await db.update(blueBookEntries).set({
+        invoiceLineId: line.id,
+      }).where(eq(blueBookEntries.id, line.blueBookId));
+    }
   }
 
   return NextResponse.json(newInvoice[0]);

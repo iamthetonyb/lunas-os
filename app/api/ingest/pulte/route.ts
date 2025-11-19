@@ -247,7 +247,7 @@ async function handler(req: Request) {
       ? item.lineAmount.toFixed(2)
       : '0.00';
 
-    const status = item.completedDate ? 'COMPLETE' : 'PENDING';
+    const status: 'COMPLETE' | 'PENDING' = item.completedDate ? 'COMPLETE' : 'PENDING';
 
     if (existing) {
       const updateValues = {

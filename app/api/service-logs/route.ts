@@ -23,18 +23,19 @@ export const GET = safe(async (req) => {
 
   if (search) {
     const pattern = `%${search}%`;
-    filters.push(
-      or(
-        ilike(serviceLogs.projectName, pattern),
-        ilike(serviceLogs.builder, pattern),
-        ilike(serviceLogs.community, pattern),
-        ilike(serviceLogs.address, pattern),
-        ilike(serviceLogs.lot, pattern),
-        ilike(serviceLogs.serviceType, pattern),
-        ilike(serviceLogs.category, pattern),
-        ilike(serviceLogs.explainWork, pattern)
-      )
+    const searchCondition = or(
+      ilike(serviceLogs.projectName, pattern),
+      ilike(serviceLogs.builder, pattern),
+      ilike(serviceLogs.community, pattern),
+      ilike(serviceLogs.address, pattern),
+      ilike(serviceLogs.lot, pattern),
+      ilike(serviceLogs.serviceType, pattern),
+      ilike(serviceLogs.category, pattern),
+      ilike(serviceLogs.explainWork, pattern)
     );
+    if (searchCondition) {
+      filters.push(searchCondition);
+    }
   }
 
   const rows = await db
@@ -77,14 +78,14 @@ export const POST = safe(async (req) => {
       status: payload.status ?? null,
       timeIn: payload.timeIn ?? null,
       timeOut: payload.timeOut ?? null,
-      hours: payload.hours ?? null,
+      hours: payload.hours != null ? String(payload.hours) : null,
       team: payload.team?.length ? payload.team : null,
       extras: payload.extras ?? null,
       supervisor: payload.supervisor ?? null,
       foreman: payload.foreman ?? null,
       crewLeader: payload.crewLeader ?? null,
       explainWork: payload.explainWork ?? null,
-      amount: payload.amount ?? null,
+      amount: payload.amount != null ? String(payload.amount) : null,
       source: payload.source ?? 'manual',
       photos: payload.photos?.length ? payload.photos : null,
       createdBy: membership.userId,

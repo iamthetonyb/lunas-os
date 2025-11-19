@@ -75,15 +75,15 @@ export async function POST(req: Request) {
       status: item.status ?? null,
       timeIn: item.timeIn ?? null,
       timeOut: item.timeOut ?? null,
-      hours: item.hours ?? null,
+      hours: item.hours != null ? String(item.hours) : null,
       team: item.team ?? null,
       extras: item.extras ?? null,
       supervisor: item.supervisor ?? null,
       foreman: item.foreman ?? null,
       crewLeader: item.crewLeader ?? null,
       explainWork: item.explainWork ?? null,
-      amount: item.amount ?? null,
-      source: 'pulte-scrape',
+      amount: item.amount != null ? String(item.amount) : null,
+      source: 'pulte-scrape' as const,
       externalId: item.externalId ?? null,
     };
 

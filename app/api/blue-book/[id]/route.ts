@@ -40,7 +40,9 @@ export async function PATCH(req: Request, { params: paramsPromise }: { params: P
 
   if ('lot' in body) updates.lot = body.lot?.trim() || null;
   if ('startDate' in body) updates.startDate = normalizeDate(body.startDate);
-  if ('status' in body && body.status) updates.status = body.status;
+  if ('status' in body && body.status && ['COMPLETE', 'PENDING'].includes(body.status)) {
+    updates.status = body.status as 'COMPLETE' | 'PENDING';
+  }
   if ('invoiceNumber' in body) updates.poNumber = body.invoiceNumber?.trim() || null;
   if ('amount' in body) {
     const amountNumber = typeof body.amount === 'string' ? Number(body.amount) : body.amount;
