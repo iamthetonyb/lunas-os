@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { eq } from 'drizzle-orm';
 import { randomBytes } from 'crypto';
-import { getDb } from '@/lib/db/get-db';
+import { db } from '@/lib/db';
 import { users } from '@/db/schema/users';
 
 const schema = z.object({
@@ -22,7 +22,6 @@ export async function POST(req: NextRequest) {
     }
     
     const { email } = parsed.data;
-    const db = getDb();
     
     // Find user by email
     const [user] = await db

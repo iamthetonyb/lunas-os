@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { eq, and, gt } from 'drizzle-orm';
 import bcrypt from 'bcryptjs';
-import { getDb } from '@/lib/db/get-db';
+import { db } from '@/lib/db';
 import { users } from '@/db/schema/users';
 
 const schema = z.object({
@@ -23,7 +23,6 @@ export async function POST(req: NextRequest) {
     }
     
     const { token, password } = parsed.data;
-    const db = getDb();
     
     // Find user with valid reset token
     const [user] = await db
