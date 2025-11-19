@@ -1,4 +1,4 @@
-import { getDb } from '@/lib/db/get-db';
+import { db } from '@/lib/db';
 import { orgs } from '@/db/schema';
 import { requireMembership } from '@/lib/auth/guards';
 import { z } from 'zod';
@@ -16,7 +16,6 @@ const createOrgSchema = z.object({
 export async function POST(req: Request) {
   try {
     await requireMembership(['admin']);
-    const db = await getDb();
     const body = createOrgSchema.parse(await req.json());
 
     const slug = body.slug ? slugify(body.slug) : slugify(body.name);
