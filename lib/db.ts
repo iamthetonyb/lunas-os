@@ -3,15 +3,12 @@ import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
 import * as schema from "@/db/schema";
 
-if (!process.env.DATABASE_URL) {
-  throw new Error("DATABASE_URL is missing");
+// Fail fast if no DB URL
+const connectionString = process.env.DATABASE_URL;
+if (!connectionString) {
+  throw new Error("DATABASE_URL is not set");
 }
 
-// This is synchronous — db is the real instance, NOT a Promise
-const client = postgres(process.env.DATABASE_URL, { prepare: false });
+// This is completely synchronous — db is the real instance, never a Promise
+const client = postgres(connectionString, { prepare: false });
 export const db = drizzle(client, { schema });
-
-// Run migrations ONLY in development and ONLY once at startup (never blocks the export)
-if (process.env.NODE_ENV !== "production") {
-  import("../drizzle/migrate").then((mod) => mod.runMigrations()).catch(console.error);
-}
