@@ -45,7 +45,8 @@
     "harvest:pulte:excel": "pnpm tsx --env-file=.env.harvester scripts/harvest-pulte-excel.ts",
     "harvest:pulte:old": "tsx --env-file=.env.harvester workers/pulte-harvester/pulte.scrape.ts",
     "harvest:pulte:bootstrap": "HEADLESS=false tsx --env-file=.env.harvester workers/pulte-harvester/pulte.scrape.ts",
-    "ingest:pulte:live": "pnpm tsx --env-file=.env.harvester scripts/ingest-pulte-live.ts"
+    "ingest:pulte:live": "pnpm tsx --env-file=.env.harvester scripts/ingest-pulte-live.ts",
+    "db:migrate": "tsx drizzle/migrate.ts"
   },
   "dependencies": {
     "@auth/core": "^0.34.3",

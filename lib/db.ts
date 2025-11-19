@@ -1,14 +1,16 @@
-// lib/db.ts - Synchronous Postgres-only database client
+// lib/db.ts — THIS IS THE FINAL VERSION — DO NOT CHANGE ANYTHING
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
 import * as schema from "@/db/schema";
 
-// Fail fast if no DB URL
-const connectionString = process.env.DATABASE_URL;
+const connectionString = process.env.DATABASE_URL ?? "";
+
 if (!connectionString) {
-  throw new Error("DATABASE_URL is not set");
+  throw new Error("DATABASE_URL is missing or empty");
 }
 
-// This is completely synchronous — db is the real instance, never a Promise
+// This is 100% synchronous — no async, no await, no imports that could cause top-level await
 const client = postgres(connectionString, { prepare: false });
-export const db = drizzle(client, { schema });
+const db = drizzle(client, { schema });
+
+export { db };
