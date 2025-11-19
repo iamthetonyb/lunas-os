@@ -5,6 +5,7 @@ import { NextResponse, type NextRequest } from 'next/server';
 import { renderToStream } from '@react-pdf/renderer';
 import { RunSheetPdf } from '@/components/run-sheet-pdf';
 import QRCode from 'qrcode';
+import { Readable } from 'stream';
 
 export const runtime = 'nodejs';
 
@@ -51,7 +52,11 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ crew
 
   const pdfStream = await renderToStream(<RunSheetPdf assignments={assignmentsWithQrCodes} />);
   
-  return new Response(pdfStream, {
+  // Convert Node Readable to web ReadableStream
+  const webStream = Readable.toWeb(pdfStream) as ReadableStream<any>;
+
+  // Now return the converted stream
+  return new Response(webStream, {
     headers: {
       'Content-Type': 'application/pdf',
     },
