@@ -18,17 +18,26 @@ export function RunSheetPdf({ assignments }: { assignments: any[] }) {
       <Page size="A4" style={styles.page}>
         <View style={styles.section}>
           <Text>Run Sheet</Text>
-          {assignments.map(assignment => (
-            <View key={assignment.id}>
-              <Text>Builder: {assignment.jobRequestService.jobRequest.builder.name}</Text>
-              <Text>Community: {assignment.jobRequestService.jobRequest.community.name}</Text>
-              <Text>Lot: {assignment.jobRequestService.jobRequest.lot}</Text>
-              <Text>Service: {assignment.jobRequestService.service.name}</Text>
-              <Text>Walk Time: {assignment.jobRequestService.walkTime}</Text>
-              <Text>Notes: {assignment.jobRequestService.jobRequest.notes}</Text>
-              <Image src={assignment.qrCodeDataUrl} style={{ width: 50, height: 50 }} />
-            </View>
-          ))}
+          {assignments.map(assignment => {
+            const jobRequest = assignment?.jobRequestService?.jobRequest;
+            const builder = jobRequest?.builder;
+            const community = jobRequest?.community;
+            const service = assignment?.jobRequestService?.service;
+            
+            return (
+              <View key={assignment.id}>
+                <Text>Builder: {builder?.name || 'N/A'}</Text>
+                <Text>Community: {community?.name || 'N/A'}</Text>
+                <Text>Lot: {jobRequest?.lot || 'N/A'}</Text>
+                <Text>Service: {service?.name || 'N/A'}</Text>
+                <Text>Walk Time: {assignment?.jobRequestService?.walkTime || 'N/A'}</Text>
+                <Text>Notes: {jobRequest?.notes || 'N/A'}</Text>
+                {assignment?.qrCodeDataUrl && (
+                  <Image src={assignment.qrCodeDataUrl} style={{ width: 50, height: 50 }} />
+                )}
+              </View>
+            );
+          })}
         </View>
       </Page>
     </Document>
