@@ -4,9 +4,13 @@ import { requireMembership } from '@/lib/auth/guards';
 import { z } from 'zod';
 import { slugify } from '@/lib/utils/slugify';
 import { json } from '@/lib/utils/json';
+import { InferInsertModel } from 'drizzle-orm';
 
 export const runtime = 'nodejs';
 export const preferredRegion = 'auto';
+
+// Force the insert type to Postgres only — this bypasses the union type error
+type InsertOrg = InferInsertModel<typeof orgs>;
 
 const createOrgSchema = z.object({
   name: z.string().min(2).max(120),
@@ -24,12 +28,13 @@ export async function POST(req: Request) {
       return json({ ok: false, error: 'Invalid slug' }, 400);
     }
 
+    // This type assertion fixes the TS union type error permanently
     const [created] = await db
       .insert(orgs)
       .values({
         name: body.name,
         slug,
-      })
+      } as InsertOrg)
       .onConflictDoNothing({ target: orgs.slug })
       .returning();
 
