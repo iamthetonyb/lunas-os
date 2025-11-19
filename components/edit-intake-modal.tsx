@@ -188,11 +188,11 @@ function EditIntakeForm({ intake, onSuccess, onClose }: { intake: RecentIntake; 
         </div>
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">Builder</label>
-          <Controller name="builderId" control={control} render={({ field }) => <SearchableSelect {...field} options={builderOptions} placeholder="Builder" />} />
+          <Controller name="builderId" control={control} render={({ field }) => <SearchableSelect {...field} value={field.value || ''} options={builderOptions} placeholder="Builder" />} />
         </div>
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">Model/Plan</label>
-          <Controller name="modelPlanId" control={control} render={({ field }) => <SearchableSelect {...field} options={modelPlanOptions} placeholder="Model/Plan" />} />
+          <Controller name="modelPlanId" control={control} render={({ field }) => <SearchableSelect {...field} value={field.value || ''} options={modelPlanOptions} placeholder="Model/Plan" />} />
         </div>
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">Lot</label>

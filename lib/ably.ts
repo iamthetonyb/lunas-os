@@ -1,9 +1,9 @@
 import 'server-only';
 import Ably from 'ably/promises';
 
-let ablyRest: Ably.RestPromise | null = null;
+let ablyRest: any | null = null;
 
-function getAblyRest(): Ably.RestPromise | null {
+function getAblyRest(): any | null {
   if (!process.env.ABLY_API_KEY) {
     return null;
   }

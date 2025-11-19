@@ -75,7 +75,7 @@ export function ServicesCrud() {
 
   const openModal = (service: Service | null = null) => {
     setSelectedService(service);
-    reset(service || {});
+    reset(service as any || {});
     setIsOpen(true);
   };
 

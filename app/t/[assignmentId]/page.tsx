@@ -25,7 +25,7 @@ export default function FieldTicketPage({ params }: { params: Promise<{ assignme
   // Unwrap params using React.use() for Next.js 15
   const { assignmentId } = use(params);
   
-  const { data: assignment, error } = useSWR(`/api/assignments/${assignmentId}`, fetcher);
+  const { data: assignment, error } = useSWR<any>(`/api/assignments/${assignmentId}`, fetcher);
   const foremanSigRef = useRef<SignatureCanvas>(null);
   const customerSigRef = useRef<SignatureCanvas>(null);
 
@@ -62,7 +62,7 @@ export default function FieldTicketPage({ params }: { params: Promise<{ assignme
 
   if (error) return (
     <>
-      <PageHeader title="Field Ticket" description={`Assignment ${params.assignmentId}`} />
+      <PageHeader title="Field Ticket" description={`Assignment ${assignmentId}`} />
       <main className="px-6 py-6">
         <div className="bg-red-50 border border-red-200 rounded-lg p-4">
           <p className="text-red-600">Failed to load assignment</p>
@@ -73,7 +73,7 @@ export default function FieldTicketPage({ params }: { params: Promise<{ assignme
 
   if (!assignment) return (
     <>
-      <PageHeader title="Field Ticket" description={`Assignment ${params.assignmentId}`} />
+      <PageHeader title="Field Ticket" description={`Assignment ${assignmentId}`} />
       <main className="px-6 py-6">
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
           <p className="text-gray-600">Loading assignment...</p>

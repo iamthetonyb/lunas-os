@@ -23,7 +23,10 @@ const schema = z.object({
   serviceId: z.string().min(1, 'Service is required'),
   modelPlanId: z.string().optional(),
   basis: z.string().min(1, 'Basis is required'),
-  rate: z.coerce.number().min(0, 'Rate must be positive'),
+  rate: z.preprocess((val) => {
+    if (typeof val === 'string') return parseFloat(val);
+    return val;
+  }, z.number().min(0, 'Rate must be positive')),
   unitLabel: z.string().optional(),
   effectiveOn: z.string().min(1, 'Effective date is required'),
   expiresOn: z.string().optional(),
@@ -77,7 +80,7 @@ export function RatesCrud() {
     watch,
     formState: { errors, isSubmitting },
   } = useForm<FormData>({
-    resolver: zodResolver(schema),
+    resolver: zodResolver(schema) as any,
   });
 
   const selectedBuilderId = watch('builderId');
@@ -107,7 +110,17 @@ export function RatesCrud() {
 
   const openModal = (rate: Rate | null = null) => {
     setSelectedRate(rate);
-    reset(rate || {});
+    if (rate) {
+      // Convert null values to undefined for the form
+      reset({
+        ...rate,
+        modelPlanId: rate.modelPlanId ?? undefined,
+        unitLabel: rate.unitLabel ?? undefined,
+        expiresOn: rate.expiresOn ?? undefined,
+      });
+    } else {
+      reset({});
+    }
     setIsOpen(true);
   };
 

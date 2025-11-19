@@ -10,9 +10,8 @@ class UploadThingProvider implements StorageProvider {
   private utApi: UTApi;
 
   constructor() {
-    this.utApi = new UTApi({
-      apiKey: process.env.UPLOADTHING_SECRET,
-    });
+    // UTApi now reads UPLOADTHING_SECRET from env automatically
+    this.utApi = new UTApi();
   }
 
   async upload(file: File, options: { folder: string; filename?: string }): Promise<{ url: string; key: string; size?: number; contentType?: string }> {
@@ -29,8 +28,8 @@ class UploadThingProvider implements StorageProvider {
   }
 
   async getUrl(key: string): Promise<string> {
-    const files = await this.utApi.getFileUrls([key]);
-    return files[0].url;
+    const result = await this.utApi.getFileUrls([key]);
+    return result.data[0].url;
   }
 
   async delete(key: string): Promise<void> {

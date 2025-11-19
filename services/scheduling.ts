@@ -38,7 +38,7 @@ export async function autoDraft(date: Date) {
 
   // Group by Community -> Service
   const groupedByCommunity = unassignedJobRequestServices.reduce((acc, jrs) => {
-    const communityId = jrs.jobRequest.communityId;
+    const communityId = (jrs as any).jobRequest?.communityId;
     if (!communityId) return acc;
     if (!acc[communityId]) {
       acc[communityId] = {};
@@ -57,7 +57,7 @@ export async function autoDraft(date: Date) {
   for (const communityId in groupedByCommunity) {
     for (const serviceId in groupedByCommunity[communityId]) {
       const jrsGroup = groupedByCommunity[communityId][serviceId];
-      const requiredSkills = jrsGroup[0].service.code;
+      const requiredSkills = (jrsGroup[0] as any).service?.code;
 
       const suitableCrews = availableCrews.filter(crew => 
         crew.skills?.includes(requiredSkills) && 
@@ -72,7 +72,7 @@ export async function autoDraft(date: Date) {
           const newAssignment = {
             jobRequestServiceId: jrs.id,
             crewId: crew.id,
-            status: 'DRAFT',
+            status: 'DRAFT' as const,
           };
           draftAssignments.push(newAssignment);
         }
@@ -90,8 +90,8 @@ export async function autoDraft(date: Date) {
 export async function approveAndSend(assignmentIds: string[]) {
   // Create a dispatch batch
   const newDispatchBatch = await db.insert(dispatchBatches).values({
-    serviceDate: new Date(),
-    status: 'SENT',
+    serviceDate: new Date().toISOString(),
+    status: 'SENT' as const,
   }).returning();
 
   // Update assignments
@@ -126,8 +126,8 @@ export async function approveAndSend(assignmentIds: string[]) {
   // Send notifications
   for (const crewId in assignmentsByCrew) {
     const crewAssignments = assignmentsByCrew[crewId];
-    const foreman = crewAssignments[0].crew.foreman;
-    const lang = foreman.preferredLang?.toLowerCase() || 'en';
+    const foreman = (crewAssignments[0] as any).crew?.foreman;
+    const lang = foreman?.preferredLang?.toLowerCase() || 'en';
     
     const t = (key: string, replacements: { [key: string]: string }) => {
       // @ts-ignore

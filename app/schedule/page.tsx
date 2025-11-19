@@ -90,7 +90,7 @@ export default function SchedulePage() {
     '/api/assignments?status=DRAFT',
     fetcher
   );
-  const { data: crews } = useSWR('/api/crews', fetcher);
+  const { data: crews } = useSWR<any[]>('/api/crews', fetcher);
   const scheduleRange = useMemo(() => {
     const start = new Date(date);
     const end = new Date(start);

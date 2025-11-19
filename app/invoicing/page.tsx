@@ -10,8 +10,8 @@ const fetcher = <T,>(url: string) => fetchJSON<T>(url);
 
 export default function InvoicingPage() {
   const [builderId, setBuilderId] = useState<string | null>(null);
-  const { data: builders } = useSWR('/api/builders', fetcher);
-  const { data: blueBookEntries } = useSWR(
+  const { data: builders } = useSWR<any[]>('/api/builders', fetcher);
+  const { data: blueBookEntries } = useSWR<any[]>(
     builderId ? `/api/blue-book?builderId=${builderId}&status=COMPLETE&invoiced=false` : null, 
     fetcher
   );
@@ -24,7 +24,7 @@ export default function InvoicingPage() {
   ];
 
   const handleBuildDraft = async () => {
-    const entryIds = blueBookEntries?.map((e: any) => e.id) || [];
+    const entryIds = Array.isArray(blueBookEntries) ? blueBookEntries.map((e: any) => e.id) : [];
     try {
       await fetchJSON('/api/invoicing/build', {
         method: 'POST',
@@ -65,7 +65,7 @@ export default function InvoicingPage() {
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
               >
                 <option value="">-- Select Builder --</option>
-                {builders?.map((builder: any) => (
+                {Array.isArray(builders) && builders.map((builder: any) => (
                   <option key={builder.id} value={builder.id}>
                     {builder.name}
                   </option>

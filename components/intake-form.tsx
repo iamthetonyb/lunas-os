@@ -12,7 +12,7 @@ import {
 } from 'react';
 import dayjs from 'dayjs';
 import { fetchJSON } from '@/lib/utils/fetch-json';
-import { SearchableSelect, SearchableMultiSelect, type SelectOption } from './searchable-select';
+import { SearchableSelect, SearchableMultiSelect } from './searchable-select';
 
 const REQUESTED_BY_LIST = ['Anahi', 'Chayo', 'Blanca', 'Raudel', 'Francisco'] as const;
 type RequestedByName = (typeof REQUESTED_BY_LIST)[number];

@@ -64,14 +64,19 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ ass
       },
     });
 
-    if (assignmentDetails) {
+    // Type guard: ensure nested properties exist before accessing
+    // Using type assertion to work around Drizzle ORM type inference issue
+    if (assignmentDetails && (assignmentDetails as any).jobRequestService?.jobRequest) {
+      const jobRequest = (assignmentDetails as any).jobRequestService.jobRequest;
+      const serviceId = (assignmentDetails as any).jobRequestService.serviceId;
+      
       await db.insert(blueBookEntries).values({
-        builderId: assignmentDetails.jobRequestService.jobRequest.builderId,
-        communityId: assignmentDetails.jobRequestService.jobRequest.communityId,
-        lot: assignmentDetails.jobRequestService.jobRequest.lot,
-        modelPlanId: assignmentDetails.jobRequestService.jobRequest.modelPlanId,
-        serviceId: assignmentDetails.jobRequestService.serviceId,
-        poNumber: assignmentDetails.jobRequestService.jobRequest.poNumber,
+        builderId: jobRequest.builderId,
+        communityId: jobRequest.communityId,
+        lot: jobRequest.lot,
+        modelPlanId: jobRequest.modelPlanId,
+        serviceId: serviceId,
+        poNumber: jobRequest.poNumber,
         status: 'COMPLETE',
         assignmentId: assignmentId,
         ticketId: ticket.id,

@@ -11,8 +11,7 @@ import {
 } from '@/lib/validation/service-log';
 import dynamic from 'next/dynamic';
 import { mutate } from 'swr';
-import { UploadButton } from '@uploadthing/react';
-import type { OurFileRouter } from '@/app/api/uploadthing/core';
+import { UploadButton } from '@/lib/uploadthing-components';
 import { useSession } from 'next-auth/react';
 import { fetchJSON } from '@/lib/utils/fetch-json';
 
@@ -108,7 +107,7 @@ export default function WorkLogPage() {
   }
 
   return (
-    <OrgRealtimeProvider orgId={session?.user?.orgId}>
+    <OrgRealtimeProvider orgId={session?.user?.orgId ?? undefined}>
       <main className="px-6 py-6 space-y-6">
       <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
         <div>
@@ -523,7 +522,7 @@ function AddServiceDrawer({
                       <label className="text-sm font-medium text-gray-700">Photos</label>
                       {uploading && <span className="text-xs text-gray-500">Uploading…</span>}
                     </div>
-                    <UploadButton<OurFileRouter>
+                    <UploadButton
                       endpoint="imageUploader"
                       onUploadProgress={() => setUploading(true)}
                       onClientUploadComplete={(files) => {
@@ -863,7 +862,7 @@ function EditServiceLogModal({
                     <div className="flex items-center justify-between">
                       <label className="text-sm font-medium text-gray-700">Photos</label>
                     </div>
-                    <UploadButton<OurFileRouter>
+                    <UploadButton
                       endpoint="imageUploader"
                       onUploadProgress={() => {}}
                       onClientUploadComplete={(files) => {
