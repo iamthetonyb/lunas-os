@@ -1,7 +1,7 @@
 import NextAuth from 'next-auth';
 import Credentials from 'next-auth/providers/credentials';
 import Google from 'next-auth/providers/google';
-import AzureAD from 'next-auth/providers/azure-ad';
+import MicrosoftEntraID from 'next-auth/providers/microsoft-entra-id';
 import { DrizzleAdapter } from '@auth/drizzle-adapter';
 import { getDb } from '@/lib/db/get-db';
 import { z } from 'zod';
@@ -103,7 +103,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth(async () => {
   // Add Microsoft/Azure AD OAuth if configured
   if (process.env.AZURE_AD_CLIENT_ID && process.env.AZURE_AD_CLIENT_SECRET && process.env.AZURE_AD_TENANT_ID) {
     providers.push(
-      AzureAD({
+      MicrosoftEntraID({
         clientId: process.env.AZURE_AD_CLIENT_ID,
         clientSecret: process.env.AZURE_AD_CLIENT_SECRET,
         issuer: `https://login.microsoftonline.com/${process.env.AZURE_AD_TENANT_ID}/v2.0`,
