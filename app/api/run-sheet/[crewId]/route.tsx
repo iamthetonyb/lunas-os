@@ -52,10 +52,10 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ crew
 
   const pdfStream = await renderToStream(<RunSheetPdf assignments={assignmentsWithQrCodes} />);
   
-  // Convert Node.js Readable → web ReadableStream (what Response expects)
+  // renderToStream returns a Node.js Readable - convert to web ReadableStream
+  // @ts-ignore - Readable.toWeb exists at runtime but types may conflict
   const webStream = Readable.toWeb(pdfStream);
 
-  // Return the PDF stream — types now match perfectly
   return new Response(webStream, {
     headers: {
       'Content-Type': 'application/pdf',
