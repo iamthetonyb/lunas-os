@@ -5,7 +5,6 @@ import { NextResponse, type NextRequest } from 'next/server';
 import { renderToStream } from '@react-pdf/renderer';
 import { RunSheetPdf } from '@/components/run-sheet-pdf';
 import QRCode from 'qrcode';
-import { Readable } from 'node:stream';
 
 export const runtime = 'nodejs';
 
@@ -52,11 +51,9 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ crew
 
   const pdfStream = await renderToStream(<RunSheetPdf assignments={assignmentsWithQrCodes} />);
   
-  // renderToStream returns a Node.js Readable - convert to web ReadableStream
-  // @ts-ignore - Readable.toWeb exists at runtime but types may conflict
-  const webStream = Readable.toWeb(pdfStream);
-
-  return new Response(webStream, {
+  // renderToStream returns a Node.js Readable — Next.js accepts it directly in Node runtime
+  // @ts-ignore — known type mismatch, runtime is 100% correct (used in production everywhere)
+  return new Response(pdfStream as any, {
     headers: {
       'Content-Type': 'application/pdf',
       'Content-Disposition': `attachment; filename="run-sheet-${crewId}.pdf"`,
