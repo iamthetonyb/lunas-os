@@ -304,7 +304,8 @@ export function IntakeForm() {
   useEffect(() => {
     if (communityId) {
       const community = communityMap.get(communityId);
-      if (community?.builderId && !builderId) {
+      // Update builder if community has one, regardless of current selection
+      if (community?.builderId && community.builderId !== builderId) {
         setValue('builderId', community.builderId, { shouldValidate: true });
       }
     }

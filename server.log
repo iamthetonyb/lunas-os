@@ -1,0 +1,12 @@
+
+> lunas-os@0.1.0 dev /Users/abenton333/LUNAS-OS
+> PORT=${PORT:-4010} next dev -p ${PORT:-4010}
+
+   ▲ Next.js 16.0.10 (Turbopack)
+   - Local:         http://localhost:4010
+   - Network:       http://192.168.1.112:4010
+   - Environments: .env.local
+
+ ✓ Starting...
+ ✓ Ready in 964ms
+ GET /api/dispatch-batches 200 in 644ms (compile: 574ms, render: 70ms)

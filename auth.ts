@@ -6,7 +6,7 @@ import { DrizzleAdapter } from '@auth/drizzle-adapter';
 import { getDb } from '@/lib/db/get-db';
 import { z } from 'zod';
 import { eq } from 'drizzle-orm';
-import bcrypt from 'bcrypt';
+import bcrypt from 'bcryptjs';
 
 export const { handlers, auth, signIn, signOut } = NextAuth(async () => {
   const db = await getDb();
@@ -26,6 +26,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth(async () => {
         password: { label: 'Password', type: 'password' },
       },
       async authorize(raw) {
+        console.log('[auth] Authorizing...');
         const parsed = z
           .object({
             email: z.string().email(),
@@ -33,10 +34,12 @@ export const { handlers, auth, signIn, signOut } = NextAuth(async () => {
           })
           .safeParse(raw);
         if (!parsed.success) {
-          console.log('[auth] Invalid credentials format');
+          console.log('[auth] Invalid credentials format', parsed.error);
           return null;
         }
         const { email, password } = parsed.data;
+
+        console.log('[auth] Checking user:', email);
 
         // Check database users first
         try {
@@ -45,9 +48,11 @@ export const { handlers, auth, signIn, signOut } = NextAuth(async () => {
           });
 
           if (!user) {
-            console.log('[auth] User not found:', email);
+            console.log('[auth] User not found in DB:', email);
             return null;
           }
+
+          console.log('[auth] User found:', user.id, user.role);
 
           // Check dev credentials (fallback for admin access)
           if (
@@ -56,10 +61,10 @@ export const { handlers, auth, signIn, signOut } = NextAuth(async () => {
             password === devPassword
           ) {
             console.log('[auth] Valid dev credentials for:', email);
-            return { 
-              id: user.id, 
-              email: user.email, 
-              name: user.name || email.split('@')[0] 
+            return {
+              id: user.id,
+              email: user.email,
+              name: user.name || email.split('@')[0]
             };
           }
 
@@ -69,18 +74,20 @@ export const { handlers, auth, signIn, signOut } = NextAuth(async () => {
             return null;
           }
 
+          console.log('[auth] Verifying password...');
           const passwordValid = await bcrypt.compare(password, user.passwordHash);
-          
+          console.log('[auth] Password valid:', passwordValid);
+
           if (!passwordValid) {
             console.log('[auth] Invalid password for:', email);
             return null;
           }
 
           console.log('[auth] Valid credentials from DB for:', email);
-          return { 
-            id: user.id, 
-            email: user.email, 
-            name: user.name || email.split('@')[0] 
+          return {
+            id: user.id,
+            email: user.email,
+            name: user.name || email.split('@')[0]
           };
         } catch (error) {
           console.error('[auth] Error checking credentials:', error);
@@ -129,7 +136,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth(async () => {
           if (dbUser) {
             token.userId = dbUser.id;
             token.userRole = dbUser.role;
-            
+
             // Load org membership (role + orgId)
             const membership = await db.query.orgMembers.findFirst({
               where: (orgMembers, { eq }) => eq(orgMembers.userId, dbUser.id),
