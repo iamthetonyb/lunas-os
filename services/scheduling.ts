@@ -5,8 +5,6 @@ import { jobRequestServices, assignments, crews, dispatchBatches } from '@/db/sc
 import { and, eq, lte, isNull, inArray } from 'drizzle-orm';
 import { sendSms, sendEmail } from './notifications';
 
-const db = await getDb();
-
 const translations = {
   en: {
     schedule_notification: 'Lunas schedule for {{date}}: {{count}} jobs. Run sheet: {{link}}',
@@ -17,77 +15,86 @@ const translations = {
 };
 
 export async function autoDraft(date: Date) {
-  const allJrs = await db.query.jobRequestServices.findMany({
-    where: lte(jobRequestServices.walkTime, date.toISOString()),
-    with: {
-      service: true,
-      jobRequest: {
-        with: {
-          community: true,
+  const db = await getDb();
+
+  try {
+    const allJrs = await db.query.jobRequestServices.findMany({
+      where: lte(jobRequestServices.walkTime, date.toISOString()),
+      with: {
+        service: true,
+        jobRequest: {
+          with: {
+            community: true,
+          },
         },
       },
-    },
-  });
+    });
 
-  const allAssignments = await db.query.assignments.findMany();
-  const assignedJrsIds = new Set(allAssignments.map(a => a.jobRequestServiceId));
+    const allAssignments = await db.query.assignments.findMany();
+    const assignedJrsIds = new Set(allAssignments.map(a => a.jobRequestServiceId));
 
-  const unassignedJobRequestServices = allJrs.filter(jrs => !assignedJrsIds.has(jrs.id));
+    const unassignedJobRequestServices = allJrs.filter(jrs => !assignedJrsIds.has(jrs.id));
 
-  const availableCrews = await db.query.crews.findMany();
+    const availableCrews = await db.query.crews.findMany();
 
-  // Group by Community -> Service
-  const groupedByCommunity = unassignedJobRequestServices.reduce((acc, jrs) => {
-    const communityId = (jrs as any).jobRequest?.communityId;
-    if (!communityId) return acc;
-    if (!acc[communityId]) {
-      acc[communityId] = {};
-    }
-    const serviceId = jrs.serviceId;
-    if (!serviceId) return acc;
-    if (!acc[communityId][serviceId]) {
-      acc[communityId][serviceId] = [];
-    }
-    acc[communityId][serviceId].push(jrs);
-    return acc;
-  }, {} as { [communityId: string]: { [serviceId: string]: typeof unassignedJobRequestServices } });
+    // Group by Community -> Service
+    const groupedByCommunity = unassignedJobRequestServices.reduce((acc, jrs) => {
+      const communityId = (jrs as any).jobRequest?.communityId;
+      if (!communityId) return acc;
+      if (!acc[communityId]) {
+        acc[communityId] = {};
+      }
+      const serviceId = jrs.serviceId;
+      if (!serviceId) return acc;
+      if (!acc[communityId][serviceId]) {
+        acc[communityId][serviceId] = [];
+      }
+      acc[communityId][serviceId].push(jrs);
+      return acc;
+    }, {} as { [communityId: string]: { [serviceId: string]: typeof unassignedJobRequestServices } });
 
-  const draftAssignments = [];
+    const draftAssignments = [];
 
-  for (const communityId in groupedByCommunity) {
-    for (const serviceId in groupedByCommunity[communityId]) {
-      const jrsGroup = groupedByCommunity[communityId][serviceId];
-      const requiredSkills = (jrsGroup[0] as any).service?.code;
+    for (const communityId in groupedByCommunity) {
+      for (const serviceId in groupedByCommunity[communityId]) {
+        const jrsGroup = groupedByCommunity[communityId][serviceId];
+        const requiredSkills = (jrsGroup[0] as any).service?.code;
 
-      const suitableCrews = availableCrews.filter(crew => 
-        crew.skills?.includes(requiredSkills) && 
-        (crew.capacityPerDay || 0) > 0 // A simple capacity check
-      );
+        const suitableCrews = availableCrews.filter(crew =>
+          crew.skills?.includes(requiredSkills) &&
+          (crew.capacityPerDay || 0) > 0 // A simple capacity check
+        );
 
-      if (suitableCrews.length > 0) {
-        // Simple round-robin assignment for now
-        const crew = suitableCrews[0]; 
-        
-        for (const jrs of jrsGroup) {
-          const newAssignment = {
-            jobRequestServiceId: jrs.id,
-            crewId: crew.id,
-            status: 'DRAFT' as const,
-          };
-          draftAssignments.push(newAssignment);
+        if (suitableCrews.length > 0) {
+          // Simple round-robin assignment for now
+          const crew = suitableCrews[0];
+
+          for (const jrs of jrsGroup) {
+            const newAssignment = {
+              jobRequestServiceId: jrs.id,
+              crewId: crew.id,
+              status: 'DRAFT' as const,
+            };
+            draftAssignments.push(newAssignment);
+          }
         }
       }
     }
-  }
 
-  if (draftAssignments.length > 0) {
-    await db.insert(assignments).values(draftAssignments);
-  }
+    if (draftAssignments.length > 0) {
+      await db.insert(assignments).values(draftAssignments);
+    }
 
-  return draftAssignments;
+    return draftAssignments;
+  } catch (error) {
+    console.error('[scheduling] autoDraft error:', error);
+    throw error;
+  }
 }
 
 export async function approveAndSend(assignmentIds: string[]) {
+  const db = await getDb();
+
   // Create a dispatch batch
   const newDispatchBatch = await db.insert(dispatchBatches).values({
     serviceDate: new Date().toISOString(),
@@ -113,7 +120,7 @@ export async function approveAndSend(assignmentIds: string[]) {
   });
 
   // Group assignments by crew
-  const assignmentsByCrew = updatedAssignments.reduce((acc, assignment) => {
+  const assignmentsByCrew = updatedAssignments.reduce((acc: { [crewId: string]: typeof updatedAssignments }, assignment) => {
     const crewId = assignment.crewId;
     if (!crewId) return acc;
     if (!acc[crewId]) {
@@ -128,7 +135,7 @@ export async function approveAndSend(assignmentIds: string[]) {
     const crewAssignments = assignmentsByCrew[crewId];
     const foreman = (crewAssignments[0] as any).crew?.foreman;
     const lang = foreman?.preferredLang?.toLowerCase() || 'en';
-    
+
     const t = (key: string, replacements: { [key: string]: string }) => {
       // @ts-ignore
       let translation = translations[lang]?.[key] || translations.en[key];
@@ -141,7 +148,7 @@ export async function approveAndSend(assignmentIds: string[]) {
     const message = t('schedule_notification', {
       date: new Date().toLocaleDateString(),
       count: String(crewAssignments.length),
-      link: `http://localhost:3000/dispatch/${newDispatchBatch[0].id}`, // This should be a public URL
+      link: `http://localhost:4010/dispatch/${newDispatchBatch[0].id}`,
     });
 
     if (foreman?.phone) {

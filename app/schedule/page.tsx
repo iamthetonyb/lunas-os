@@ -21,21 +21,21 @@ type ForemanConfig = {
 
 const FOREMEN_DIRECTORY: ForemanConfig[] = [
   { id: 'anahi', name: 'Anahi', codes: ['22702'], keywords: ['sweep'] },
-  { id: 'chayo', name: 'Chayo', codes: ['22712'], keywords: ['tubs', 'windows', 'q/a'] },
   { id: 'blanca', name: 'Blanca', keywords: ['power wash', 'wash'] },
-  { id: 'raudel', name: 'Raudel', keywords: ['final clean', 'touch'] },
+  { id: 'chayo', name: 'Chayo', codes: ['22712'], keywords: ['tubs', 'windows', 'q/a'] },
   { id: 'francisco', name: 'Francisco', keywords: ['extra', 'service'] },
-];
+  { id: 'raudel', name: 'Raudel', keywords: ['final clean', 'touch'] },
+].sort((a, b) => a.name.localeCompare(b.name));
 const UNASSIGNED_FOREMAN = { id: 'unassigned', name: 'Unassigned' };
 
-// Full crew list for dispatch
+// Full crew list for dispatch (sorted alphabetically)
 const CREW_MEMBERS = [
-  'Carmen', 'Yadira', 'Luis D', 'Letty', 'Johnny', 'Adriana',
-  'Lupe', 'Blanca', 'Pancho', 'Raudel', 'Chayo', 'Anahi',
-  'Paco M', 'Fernando', 'Ricardo', 'Susana', 'Guillermo', 'Kimberley',
-  'Alan', 'Lupe P', 'Antonio M', 'Sergio C', 'Alejandro', 'Francisco',
-  'Jose V', 'Efren', 'Sergio E', 'Arnulfo', 'Ignacio', 'Bicho',
-  'Ramon M', 'Rogelio', 'Paco L', 'Alfonso', 'Conchita'
+  'Adriana', 'Alan', 'Alejandro', 'Alfonso', 'Anahi', 'Antonio M',
+  'Arnulfo', 'Bicho', 'Blanca', 'Carmen', 'Chayo', 'Conchita',
+  'Efren', 'Fernando', 'Francisco', 'Guillermo', 'Ignacio', 'Johnny',
+  'Jose V', 'Kimberley', 'Letty', 'Luis D', 'Lupe', 'Lupe P',
+  'Paco L', 'Paco M', 'Pancho', 'Ramon M', 'Raudel', 'Ricardo',
+  'Rogelio', 'Sergio C', 'Sergio E', 'Susana', 'Yadira'
 ];
 
 // Helper: Get next business day (skip weekends)
@@ -95,6 +95,12 @@ type DispatchModalState = {
   selectedCrew: string;
 };
 
+type RescheduleModalState = {
+  isOpen: boolean;
+  job: DecoratedJob | null;
+  selectedDate: string;
+};
+
 function resolveForemanForJob(job: UpcomingJob): ForemanConfig | typeof UNASSIGNED_FOREMAN {
   // First priority: Use the requestedBy field if it matches a foreman name
   if (job.requestedBy) {
@@ -134,7 +140,12 @@ export default function SchedulePage() {
     selectedForeman: '',
     selectedCrew: '',
   });
-  const [rescheduledJobs, setRescheduledJobs] = useState<Set<string>>(new Set());
+  const [rescheduleModal, setRescheduleModal] = useState<RescheduleModalState>({
+    isOpen: false,
+    job: null,
+    selectedDate: '',
+  });
+  const [rescheduledJobs, setRescheduledJobs] = useState<Map<string, string>>(new Map()); // jobId -> new date
 
   // Check if current user is a contractor (foreman/crew)
   const isContractor = session?.user?.role === 'FOREMAN' || session?.user?.role === 'CREW';
@@ -265,16 +276,30 @@ export default function SchedulePage() {
     }
   };
 
-  const handleReschedule = async (jobId: string) => {
+  const openRescheduleModal = (job: DecoratedJob) => {
     const nextDay = getNextBusinessDay(new Date());
+    setRescheduleModal({
+      isOpen: true,
+      job,
+      selectedDate: nextDay.toISOString().split('T')[0],
+    });
+  };
+
+  const closeRescheduleModal = () => {
+    setRescheduleModal({ isOpen: false, job: null, selectedDate: '' });
+  };
+
+  const handleRescheduleConfirm = async () => {
+    if (!rescheduleModal.job || !rescheduleModal.selectedDate) return;
     try {
       await fetchJSON('/api/schedule/reschedule', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ jobId, newDate: nextDay.toISOString().split('T')[0] }),
+        body: JSON.stringify({ jobId: rescheduleModal.job.id, newDate: rescheduleModal.selectedDate }),
       });
-      setRescheduledJobs((prev) => new Set(prev).add(jobId));
+      setRescheduledJobs((prev) => new Map(prev).set(rescheduleModal.job!.id, rescheduleModal.selectedDate));
       mutateAssignments();
+      closeRescheduleModal();
     } catch (error) {
       console.error('Failed to reschedule job', error);
       alert('Failed to reschedule job. Please try again.');
@@ -420,9 +445,11 @@ export default function SchedulePage() {
 
                     const walkTime = (job as { walkTime?: string | null; walk_time?: string | null })
                       .walkTime ?? (job as { walk_time?: string | null }).walk_time ?? null;
+                    const rescheduledDate = rescheduledJobs.get(job.id);
                     const notesParts = [
                       job.lot ? `Lot ${job.lot}` : null,
                       walkTime ? `Walk ${walkTime}` : null,
+                      rescheduledDate ? `Rescheduled to ${new Date(rescheduledDate).toLocaleDateString()}` : null,
                     ].filter(Boolean);
                     const notes = notesParts.join(' • ') || '—';
 
@@ -472,7 +499,7 @@ export default function SchedulePage() {
                               </button>
                             )}
                             <button
-                              onClick={() => handleReschedule(job.id)}
+                              onClick={() => openRescheduleModal(job)}
                               className="px-3 py-1 bg-purple-500 text-white text-xs rounded hover:bg-purple-600"
                               disabled={isRescheduled}
                             >
@@ -593,6 +620,82 @@ export default function SchedulePage() {
                       className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       Dispatch
+                    </button>
+                  </div>
+                </Dialog.Panel>
+              </Transition.Child>
+            </div>
+          </div>
+        </Dialog>
+      </Transition>
+
+      {/* Reschedule Modal */}
+      <Transition appear show={rescheduleModal.isOpen} as={Fragment}>
+        <Dialog as="div" className="relative z-50" onClose={closeRescheduleModal}>
+          <Transition.Child
+            as={Fragment}
+            enter="ease-out duration-200"
+            enterFrom="opacity-0"
+            enterTo="opacity-100"
+            leave="ease-in duration-150"
+            leaveFrom="opacity-100"
+            leaveTo="opacity-0"
+          >
+            <div className="fixed inset-0 bg-black/30" />
+          </Transition.Child>
+
+          <div className="fixed inset-0 overflow-y-auto">
+            <div className="flex min-h-full items-center justify-center p-4">
+              <Transition.Child
+                as={Fragment}
+                enter="ease-out duration-200"
+                enterFrom="scale-95 opacity-0"
+                enterTo="scale-100 opacity-100"
+                leave="ease-in duration-150"
+                leaveFrom="scale-100 opacity-100"
+                leaveTo="scale-95 opacity-0"
+              >
+                <Dialog.Panel className="w-full max-w-md rounded-lg bg-white p-6 shadow-2xl">
+                  <Dialog.Title className="text-lg font-semibold text-gray-900 mb-4">
+                    Reschedule Job
+                  </Dialog.Title>
+
+                  {rescheduleModal.job && (
+                    <div className="mb-4 p-3 bg-gray-50 rounded-lg text-sm">
+                      <p><strong>Community:</strong> {getFriendlyName(rescheduleModal.job.communityName || '')}</p>
+                      <p><strong>Lot:</strong> {rescheduleModal.job.lot || '—'}</p>
+                      <p><strong>Service:</strong> {rescheduleModal.job.serviceDisplay}</p>
+                    </div>
+                  )}
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Select New Date
+                    </label>
+                    <input
+                      type="date"
+                      value={rescheduleModal.selectedDate}
+                      onChange={(e) => setRescheduleModal((prev) => ({ ...prev, selectedDate: e.target.value }))}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+                    />
+                    <p className="mt-1 text-xs text-gray-500">
+                      Next business day auto-selected. Change if needed.
+                    </p>
+                  </div>
+
+                  <div className="flex justify-end gap-2 mt-6">
+                    <button
+                      onClick={closeRescheduleModal}
+                      className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={handleRescheduleConfirm}
+                      disabled={!rescheduleModal.selectedDate}
+                      className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      Confirm Reschedule
                     </button>
                   </div>
                 </Dialog.Panel>
