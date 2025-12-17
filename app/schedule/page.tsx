@@ -2,10 +2,13 @@
 
 import { PageHeader } from '@/components/page-header';
 import Link from 'next/link';
-import { useEffect, useMemo, useState } from 'react';
-import useSWR from 'swr';
+import { useEffect, useMemo, useState, Fragment } from 'react';
+import useSWR, { mutate } from 'swr';
+import { useSession } from 'next-auth/react';
 import { ScheduleKanban } from '@/components/schedule-kanban';
 import { fetchJSON } from '@/lib/utils/fetch-json';
+import { getFriendlyName } from '@/lib/utils/community-display';
+import { Dialog, Transition } from '@headlessui/react';
 
 const fetcher = <T,>(url: string) => fetchJSON<T>(url);
 
@@ -24,6 +27,37 @@ const FOREMEN_DIRECTORY: ForemanConfig[] = [
   { id: 'francisco', name: 'Francisco', keywords: ['extra', 'service'] },
 ];
 const UNASSIGNED_FOREMAN = { id: 'unassigned', name: 'Unassigned' };
+
+// Full crew list for dispatch
+const CREW_MEMBERS = [
+  'Carmen', 'Yadira', 'Luis D', 'Letty', 'Johnny', 'Adriana',
+  'Lupe', 'Blanca', 'Pancho', 'Raudel', 'Chayo', 'Anahi',
+  'Paco M', 'Fernando', 'Ricardo', 'Susana', 'Guillermo', 'Kimberley',
+  'Alan', 'Lupe P', 'Antonio M', 'Sergio C', 'Alejandro', 'Francisco',
+  'Jose V', 'Efren', 'Sergio E', 'Arnulfo', 'Ignacio', 'Bicho',
+  'Ramon M', 'Rogelio', 'Paco L', 'Alfonso', 'Conchita'
+];
+
+// Helper: Get next business day (skip weekends)
+function getNextBusinessDay(fromDate: Date): Date {
+  const next = new Date(fromDate);
+  next.setDate(next.getDate() + 1);
+  // If Friday (5), skip to Monday
+  if (fromDate.getDay() === 5) {
+    next.setDate(next.getDate() + 2);
+  }
+  return next;
+}
+
+// Helper: Get service-based row color
+function getServiceRowColor(serviceName: string, isDispatched: boolean, isRescheduled: boolean): string {
+  if (isRescheduled) return 'bg-purple-100';
+  const lower = serviceName.toLowerCase();
+  if (lower.includes('tub') || lower.includes('window')) return 'bg-green-100';
+  if (lower.includes('sweep')) return isDispatched ? 'bg-yellow-200' : 'bg-yellow-100';
+  if (lower.includes('power wash') || lower.includes('wash')) return 'bg-blue-100';
+  return 'bg-white';
+}
 
 type UpcomingJob = {
   id: string;
@@ -54,11 +88,18 @@ type DraftAssignment = {
   crewId?: string | null;
 };
 
+type DispatchModalState = {
+  isOpen: boolean;
+  job: DecoratedJob | null;
+  selectedForeman: string;
+  selectedCrew: string;
+};
+
 function resolveForemanForJob(job: UpcomingJob): ForemanConfig | typeof UNASSIGNED_FOREMAN {
   // First priority: Use the requestedBy field if it matches a foreman name
   if (job.requestedBy) {
     const requestedByLower = job.requestedBy.toLowerCase().trim();
-    const byName = FOREMEN_DIRECTORY.find((foreman) => 
+    const byName = FOREMEN_DIRECTORY.find((foreman) =>
       foreman.name.toLowerCase() === requestedByLower ||
       foreman.id.toLowerCase() === requestedByLower
     );
@@ -85,8 +126,20 @@ function resolveForemanForJob(job: UpcomingJob): ForemanConfig | typeof UNASSIGN
 }
 
 export default function SchedulePage() {
+  const { data: session } = useSession();
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
-  const { data: assignments, mutate } = useSWR<DraftAssignment[]>(
+  const [dispatchModal, setDispatchModal] = useState<DispatchModalState>({
+    isOpen: false,
+    job: null,
+    selectedForeman: '',
+    selectedCrew: '',
+  });
+  const [rescheduledJobs, setRescheduledJobs] = useState<Set<string>>(new Set());
+
+  // Check if current user is a contractor (foreman/crew)
+  const isContractor = session?.user?.role === 'FOREMAN' || session?.user?.role === 'CREW';
+
+  const { data: assignments, mutate: mutateAssignments } = useSWR<DraftAssignment[]>(
     '/api/assignments?status=DRAFT',
     fetcher
   );
@@ -164,12 +217,90 @@ export default function SchedulePage() {
     return decoratedJobs.filter((job) => job.foremanId === activeForemanId);
   }, [activeForemanId, decoratedJobs]);
 
+  // Group jobs by community for display
+  const jobsByCommunity = useMemo(() => {
+    const grouped: Record<string, DecoratedJob[]> = {};
+    visibleJobs.forEach((job) => {
+      const community = job.communityName || 'Unknown';
+      if (!grouped[community]) grouped[community] = [];
+      grouped[community].push(job);
+    });
+    // Sort communities alphabetically
+    return Object.entries(grouped).sort(([a], [b]) => a.localeCompare(b));
+  }, [visibleJobs]);
+
+  const openDispatchModal = (job: DecoratedJob) => {
+    setDispatchModal({
+      isOpen: true,
+      job,
+      selectedForeman: '',
+      selectedCrew: '',
+    });
+  };
+
+  const closeDispatchModal = () => {
+    setDispatchModal({ isOpen: false, job: null, selectedForeman: '', selectedCrew: '' });
+  };
+
+  const handleDispatch = async () => {
+    if (!dispatchModal.job || !dispatchModal.selectedForeman || !dispatchModal.selectedCrew) {
+      alert('Please select both a foreman and crew member.');
+      return;
+    }
+    try {
+      await fetchJSON('/api/schedule/dispatch', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          jobId: dispatchModal.job.id,
+          foremanName: dispatchModal.selectedForeman,
+          crewName: dispatchModal.selectedCrew,
+        }),
+      });
+      mutateAssignments();
+      closeDispatchModal();
+    } catch (error) {
+      console.error('Failed to dispatch job', error);
+      alert('Failed to dispatch job. Please try again.');
+    }
+  };
+
+  const handleReschedule = async (jobId: string) => {
+    const nextDay = getNextBusinessDay(new Date());
+    try {
+      await fetchJSON('/api/schedule/reschedule', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ jobId, newDate: nextDay.toISOString().split('T')[0] }),
+      });
+      setRescheduledJobs((prev) => new Set(prev).add(jobId));
+      mutateAssignments();
+    } catch (error) {
+      console.error('Failed to reschedule job', error);
+      alert('Failed to reschedule job. Please try again.');
+    }
+  };
+
+  const handleMarkComplete = async (jobId: string) => {
+    try {
+      await fetchJSON('/api/schedule/complete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ jobId }),
+      });
+      mutateAssignments();
+    } catch (error) {
+      console.error('Failed to mark job complete', error);
+      alert('Failed to mark job complete. Please try again.');
+    }
+  };
+
   const handleAutoDraft = async () => {
     try {
       await fetchJSON(`/api/schedule/auto-draft?date=${date}`, {
         method: 'POST',
       });
-      mutate();
+      mutateAssignments();
     } catch (error) {
       console.error('Failed to auto-draft schedule', error);
       alert('Auto-draft failed. Please try again.');
@@ -186,7 +317,7 @@ export default function SchedulePage() {
         },
         body: JSON.stringify({ assignmentIds }),
       });
-      mutate();
+      mutateAssignments();
     } catch (error) {
       console.error('Failed to approve schedule', error);
       alert('Failed to approve assignments.');
@@ -195,8 +326,8 @@ export default function SchedulePage() {
 
   return (
     <>
-      <PageHeader 
-        title="Schedule" 
+      <PageHeader
+        title="Schedule"
         description="Manage job scheduling and crew assignments"
         action={
           <div className="flex gap-2">
@@ -206,7 +337,7 @@ export default function SchedulePage() {
               onChange={(e) => setDate(e.target.value)}
               className="px-3 py-2 border border-gray-300 rounded-lg"
             />
-            <button 
+            <button
               onClick={handleAutoDraft}
               className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
             >
@@ -234,11 +365,10 @@ export default function SchedulePage() {
           <div className="mb-4 flex flex-wrap items-center gap-2">
             <button
               type="button"
-              className={`rounded-full border px-4 py-2 text-sm transition ${
-                activeForemanId === 'all'
-                  ? 'border-blue-500 bg-blue-500 text-white'
-                  : 'border-gray-300 bg-white text-gray-700 hover:border-blue-400'
-              }`}
+              className={`rounded-full border px-4 py-2 text-sm transition ${activeForemanId === 'all'
+                ? 'border-blue-500 bg-blue-500 text-white'
+                : 'border-gray-300 bg-white text-gray-700 hover:border-blue-400'
+                }`}
               onClick={() => setActiveForemanId('all')}
             >
               All Foremen ({decoratedJobs.length})
@@ -247,11 +377,10 @@ export default function SchedulePage() {
               <button
                 key={foreman.id}
                 type="button"
-                className={`rounded-full border px-4 py-2 text-sm transition ${
-                  activeForemanId === foreman.id
-                    ? 'border-blue-500 bg-blue-500 text-white'
-                    : 'border-gray-300 bg-white text-gray-700 hover:border-blue-400'
-                }`}
+                className={`rounded-full border px-4 py-2 text-sm transition ${activeForemanId === foreman.id
+                  ? 'border-blue-500 bg-blue-500 text-white'
+                  : 'border-gray-300 bg-white text-gray-700 hover:border-blue-400'
+                  }`}
                 onClick={() => setActiveForemanId(foreman.id)}
               >
                 {foreman.name} ({foreman.count})
@@ -274,6 +403,7 @@ export default function SchedulePage() {
                     <th className="px-4 py-2 text-left text-xs font-semibold text-gray-500 uppercase">Community</th>
                     <th className="px-4 py-2 text-left text-xs font-semibold text-gray-500 uppercase">Services</th>
                     <th className="px-4 py-2 text-left text-xs font-semibold text-gray-500 uppercase">Notes</th>
+                    <th className="px-4 py-2 text-left text-xs font-semibold text-gray-500 uppercase">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
@@ -300,25 +430,18 @@ export default function SchedulePage() {
                       ? new Date(job.startDate).toLocaleDateString()
                       : null;
 
-                    const serviceClasses = [
-                      'inline-flex items-center rounded-md px-3 py-1 text-sm font-medium transition',
-                      isPowerWashService
-                        ? 'bg-blue-100 text-blue-800'
-                        : isSweepService
-                          ? 'bg-yellow-100 text-yellow-800'
-                          : 'bg-gray-100 text-gray-800',
-                      isExtraService ? 'text-red-600' : '',
-                    ]
-                      .filter(Boolean)
-                      .join(' ');
+                    const isRescheduled = rescheduledJobs.has(job.id);
+                    const rowColor = getServiceRowColor(serviceLabel, false, isRescheduled);
 
                     return (
-                      <tr key={job.id}>
+                      <tr key={job.id} className={rowColor}>
                         <td className="px-4 py-2 text-sm text-gray-900">{foreman}</td>
                         <td className="px-4 py-2 text-sm text-gray-900">{builder}</td>
-                        <td className="px-4 py-2 text-sm text-gray-900">{community}</td>
+                        <td className="px-4 py-2 text-sm text-gray-900">{getFriendlyName(community)}</td>
                         <td className="px-4 py-2 text-sm text-gray-900">
-                          <span className={serviceClasses}>{serviceLabel}</span>
+                          <span className="inline-flex items-center rounded-md px-3 py-1 text-sm font-medium">
+                            {serviceLabel}
+                          </span>
                         </td>
                         <td className="px-4 py-2 text-sm text-gray-900">
                           {startDateStamp && (
@@ -327,6 +450,35 @@ export default function SchedulePage() {
                             </span>
                           )}
                           {notes}
+                        </td>
+                        <td className="px-4 py-2 text-sm text-gray-900">
+                          <div className="flex gap-2">
+                            {!isContractor ? (
+                              /* Admin view: Dispatch to button */
+                              <button
+                                onClick={() => openDispatchModal(job)}
+                                className="px-3 py-1 bg-blue-500 text-white text-xs rounded hover:bg-blue-600"
+                              >
+                                Dispatch to
+                              </button>
+                            ) : (
+                              /* Contractor view: Green checkmark for job done */
+                              <button
+                                onClick={() => handleMarkComplete(job.id)}
+                                className="px-2 py-1 bg-green-500 text-white text-xs rounded hover:bg-green-600"
+                                title="Mark job complete"
+                              >
+                                ✓
+                              </button>
+                            )}
+                            <button
+                              onClick={() => handleReschedule(job.id)}
+                              className="px-3 py-1 bg-purple-500 text-white text-xs rounded hover:bg-purple-600"
+                              disabled={isRescheduled}
+                            >
+                              Reschedule
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     );
@@ -339,8 +491,8 @@ export default function SchedulePage() {
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
           <div className="flex justify-between items-center mb-4">
             <h2 className="text-lg font-semibold text-gray-900">Draft Assignments</h2>
-            <button 
-              onClick={handleApproveAndSend} 
+            <button
+              onClick={handleApproveAndSend}
               disabled={!assignments || assignments.length === 0}
               className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
             >
@@ -354,6 +506,101 @@ export default function SchedulePage() {
           )}
         </div>
       </main>
+
+      {/* Dispatch Modal */}
+      <Transition appear show={dispatchModal.isOpen} as={Fragment}>
+        <Dialog as="div" className="relative z-50" onClose={closeDispatchModal}>
+          <Transition.Child
+            as={Fragment}
+            enter="ease-out duration-200"
+            enterFrom="opacity-0"
+            enterTo="opacity-100"
+            leave="ease-in duration-150"
+            leaveFrom="opacity-100"
+            leaveTo="opacity-0"
+          >
+            <div className="fixed inset-0 bg-black/30" />
+          </Transition.Child>
+
+          <div className="fixed inset-0 overflow-y-auto">
+            <div className="flex min-h-full items-center justify-center p-4">
+              <Transition.Child
+                as={Fragment}
+                enter="ease-out duration-200"
+                enterFrom="scale-95 opacity-0"
+                enterTo="scale-100 opacity-100"
+                leave="ease-in duration-150"
+                leaveFrom="scale-100 opacity-100"
+                leaveTo="scale-95 opacity-0"
+              >
+                <Dialog.Panel className="w-full max-w-md rounded-lg bg-white p-6 shadow-2xl">
+                  <Dialog.Title className="text-lg font-semibold text-gray-900 mb-4">
+                    Dispatch Job
+                  </Dialog.Title>
+
+                  {dispatchModal.job && (
+                    <div className="mb-4 p-3 bg-gray-50 rounded-lg text-sm">
+                      <p><strong>Community:</strong> {getFriendlyName(dispatchModal.job.communityName || '')}</p>
+                      <p><strong>Lot:</strong> {dispatchModal.job.lot || '—'}</p>
+                      <p><strong>Service:</strong> {dispatchModal.job.serviceDisplay}</p>
+                    </div>
+                  )}
+
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Select Foreman
+                      </label>
+                      <select
+                        value={dispatchModal.selectedForeman}
+                        onChange={(e) => setDispatchModal((prev) => ({ ...prev, selectedForeman: e.target.value }))}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                      >
+                        <option value="">Choose foreman...</option>
+                        {FOREMEN_DIRECTORY.map((f) => (
+                          <option key={f.id} value={f.name}>{f.name}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Select Crew Member
+                      </label>
+                      <select
+                        value={dispatchModal.selectedCrew}
+                        onChange={(e) => setDispatchModal((prev) => ({ ...prev, selectedCrew: e.target.value }))}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                      >
+                        <option value="">Choose crew member...</option>
+                        {CREW_MEMBERS.map((crew) => (
+                          <option key={crew} value={crew}>{crew}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+
+                  <div className="flex justify-end gap-2 mt-6">
+                    <button
+                      onClick={closeDispatchModal}
+                      className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={handleDispatch}
+                      disabled={!dispatchModal.selectedForeman || !dispatchModal.selectedCrew}
+                      className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      Dispatch
+                    </button>
+                  </div>
+                </Dialog.Panel>
+              </Transition.Child>
+            </div>
+          </div>
+        </Dialog>
+      </Transition>
     </>
   );
 }

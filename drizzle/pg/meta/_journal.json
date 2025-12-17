@@ -15,6 +15,13 @@
       "when": 1763354787962,
       "tag": "0001_useful_princess_powerful",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1766002369901,
+      "tag": "0002_amusing_doctor_strange",
+      "breakpoints": true
     }
   ]
 }

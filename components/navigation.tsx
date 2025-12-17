@@ -10,7 +10,7 @@ import { useEffect, useState } from 'react';
 const baseNavigation = [
   { name: 'Dashboard', href: '/dashboard', icon: '📊' },
   { name: 'Intake', href: '/intake', icon: '📝' },
-  { name: 'Work Log', href: '/work-log', icon: '🧾' },
+  { name: 'Extra Work', href: '/work-log', icon: '🧾' },
   { name: 'Schedule', href: '/schedule', icon: '📅' },
   { name: 'Dispatch', href: '/dispatch', icon: '🚚' },
   { name: 'Blue Book', href: '/blue-book', icon: '📘' },
@@ -35,14 +35,15 @@ export function Navigation() {
   }, []);
 
   // Include Dashboard as user specified - contractor is the org role for foremen/contractors
-  const contractorAllowed = new Set(['Dashboard', 'Intake', 'Work Log', 'Schedule']);
+  // Extra Work is NOT allowed for contractors (only admin/backoffice)
+  const contractorAllowed = new Set(['Dashboard', 'Intake', 'Schedule']);
   const navigation =
     orgRole === 'contractor'
       ? baseNavigation.filter((item) => contractorAllowed.has(item.name))
       : baseNavigation;
 
   const userDisplayName = session?.user?.name ?? 'User';
-  const userRoleLabel = orgRole 
+  const userRoleLabel = orgRole
     ? (orgRole === 'backoffice' ? 'Back Office' : orgRole.charAt(0).toUpperCase() + orgRole.slice(1))
     : (userRole ? userRole.charAt(0).toUpperCase() + userRole.slice(1) : 'Team');
 
@@ -52,7 +53,7 @@ export function Navigation() {
       <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
         <div className="flex items-center justify-center mb-2">
           {mounted && (
-            <Image 
+            <Image
               src={theme === 'dark' ? '/lunas-dark-logo.png' : '/lunas-light-logo.png'}
               alt="Lunas OS"
               width={120}
@@ -78,8 +79,8 @@ export function Navigation() {
               href={item.href}
               className={`
                 flex items-center gap-3 px-4 py-3 my-1 rounded-lg transition-colors
-                ${isActive 
-                  ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 font-semibold' 
+                ${isActive
+                  ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 font-semibold'
                   : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
                 }
               `}
@@ -110,7 +111,7 @@ export function Navigation() {
             </button>
           </div>
         )}
-        
+
         {/* User Info */}
         <div className="px-6 py-4">
           <div className="flex items-center gap-3 mb-3">
