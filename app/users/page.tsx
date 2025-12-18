@@ -2,7 +2,7 @@
 
 import { PageHeader } from '@/components/page-header';
 import useSWR, { mutate } from 'swr';
-import { useMemo, useState, Fragment } from 'react';
+import { useMemo, useState, Fragment, useEffect } from 'react';
 import { fetchJSON } from '@/lib/utils/fetch-json';
 import { Dialog, Transition } from '@headlessui/react';
 
@@ -49,14 +49,36 @@ function UserModal({
 }) {
   const isEdit = !!user;
   const [formData, setFormData] = useState<UserFormData>({
-    name: user?.name || '',
-    email: user?.email || '',
-    phone: user?.phone || '',
+    name: '',
+    email: '',
+    phone: '',
     password: '',
     confirmPassword: '',
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
+
+  // Reset form when user prop changes (for edit vs create)
+  useEffect(() => {
+    if (user) {
+      setFormData({
+        name: user.name || '',
+        email: user.email || '',
+        phone: user.phone || '',
+        password: '',
+        confirmPassword: '',
+      });
+    } else {
+      setFormData({
+        name: '',
+        email: '',
+        phone: '',
+        password: '',
+        confirmPassword: '',
+      });
+    }
+    setError('');
+  }, [user, open]);
 
   const handleChange = (field: keyof UserFormData, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
@@ -281,9 +303,9 @@ export default function UsersPage() {
   const handleMembershipSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!membership.userId || !membership.orgId) return;
-    
+
     console.log('Submitting membership data:', membership); // Log payload to browser console
-    
+
     setBusy(true);
     try {
       await fetchJSON('/api/admin/users', {
@@ -299,7 +321,7 @@ export default function UsersPage() {
       if (!err.data || Object.keys(err.data).length === 0) {
         err.data = { error: 'Unknown server error' };
       }
-      const errorMsg = err.data?.details 
+      const errorMsg = err.data?.details
         ? 'Validation failed: ' + JSON.stringify(err.data.details)
         : err.data?.error || err.message || 'Failed to update membership.';
       alert(errorMsg);
@@ -342,6 +364,22 @@ export default function UsersPage() {
   const handleUserModalClose = () => {
     setUserModalOpen(false);
     setEditingUser(null);
+  };
+
+  const handleDeleteUser = async (userId: string, userName: string | null) => {
+    if (!confirm(`Are you sure you want to delete user "${userName || 'Unknown'}"? This action cannot be undone.`)) {
+      return;
+    }
+    try {
+      await fetchJSON(`/api/admin/users/${userId}`, {
+        method: 'DELETE',
+      });
+      await mutate('/api/admin/users');
+      alert('User deleted successfully.');
+    } catch (err: any) {
+      console.error(err);
+      alert(err.message || 'Failed to delete user.');
+    }
   };
 
   return (
@@ -398,12 +436,20 @@ export default function UsersPage() {
                         )}
                       </td>
                       <td className="px-4 py-3">
-                        <button
-                          onClick={() => handleEditUser(user)}
-                          className="text-blue-600 hover:text-blue-800 font-medium text-sm"
-                        >
-                          Edit
-                        </button>
+                        <div className="flex gap-3">
+                          <button
+                            onClick={() => handleEditUser(user)}
+                            className="text-blue-600 hover:text-blue-800 font-medium text-sm"
+                          >
+                            Edit
+                          </button>
+                          <button
+                            onClick={() => handleDeleteUser(user.id, user.name)}
+                            className="text-red-600 hover:text-red-800 font-medium text-sm"
+                          >
+                            Delete
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   ))}

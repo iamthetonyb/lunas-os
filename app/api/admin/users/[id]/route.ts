@@ -76,3 +76,30 @@ export const PUT = safe(async (req: Request, { params: paramsPromise }: { params
     phone: updatedUser.phone,
   });
 });
+
+export const DELETE = safe(async (req: Request, { params: paramsPromise }: { params: Promise<{ id: string }> }) => {
+  await requireMembership(['admin']);
+  const db = await getDb();
+
+  const params = await paramsPromise;
+  const paramsParsed = paramsSchema.safeParse(params);
+  if (!paramsParsed.success) {
+    return err('Invalid user ID', 400);
+  }
+
+  const { id: userId } = paramsParsed.data;
+
+  // Check if user exists
+  const existingUser = await db.query.users.findFirst({
+    where: (users, { eq }) => eq(users.id, userId),
+  });
+
+  if (!existingUser) {
+    return err('User not found', 404);
+  }
+
+  // Delete user (this will cascade delete memberships if configured in schema)
+  await db.delete(users).where(eq(users.id, userId));
+
+  return ok({ message: 'User deleted successfully' });
+});

@@ -147,3 +147,5 @@ Error fetching dispatch batch detail: TypeError: Cannot read properties of undef
  ✓ Compiled in 306ms
  ✓ Compiled in 87ms
  ✓ Compiled in 204ms
+ ✓ Compiled in 265ms
+ ✓ Compiled in 134ms
