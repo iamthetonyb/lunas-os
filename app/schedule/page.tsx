@@ -640,13 +640,13 @@ export default function SchedulePage() {
                 leaveFrom="scale-100 opacity-100"
                 leaveTo="scale-95 opacity-0"
               >
-                <Dialog.Panel className="w-full max-w-md rounded-lg bg-white p-6 shadow-2xl">
-                  <Dialog.Title className="text-lg font-semibold text-gray-900 mb-4">
+                <Dialog.Panel className="w-full max-w-md rounded-lg bg-white dark:bg-slate-800 p-6 shadow-2xl">
+                  <Dialog.Title className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
                     Dispatch Job
                   </Dialog.Title>
 
                   {dispatchModal.job && (
-                    <div className="mb-4 p-3 bg-gray-50 rounded-lg text-sm">
+                    <div className="mb-4 p-3 bg-gray-50 dark:bg-slate-700 rounded-lg text-sm text-gray-900 dark:text-gray-100">
                       <p><strong>Community:</strong> {getFriendlyName(dispatchModal.job.communityName || '')}</p>
                       <p><strong>Lot:</strong> {dispatchModal.job.lot || '—'}</p>
                       <p><strong>Service:</strong> {dispatchModal.job.serviceDisplay}</p>
@@ -656,8 +656,8 @@ export default function SchedulePage() {
                   <div className="space-y-4">
                     {/* Show the assigned foreman (from table dropdown) */}
                     {dispatchModal.job && (
-                      <div className="p-2 bg-blue-50 rounded-lg">
-                        <p className="text-sm">
+                      <div className="p-2 bg-blue-50 dark:bg-blue-900/30 rounded-lg">
+                        <p className="text-sm text-gray-900 dark:text-gray-100">
                           <strong>Assigned Foreman:</strong>{' '}
                           {selectedForemenMap.get(dispatchModal.job.id) || 'Not selected - use table dropdown first'}
                         </p>
@@ -665,13 +665,13 @@ export default function SchedulePage() {
                     )}
 
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                         Select Crew Member
                       </label>
                       <select
                         value={dispatchModal.selectedCrew}
                         onChange={(e) => setDispatchModal((prev) => ({ ...prev, selectedCrew: e.target.value }))}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                        className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-700 text-gray-900 dark:text-white"
                       >
                         <option value="">Choose crew member...</option>
                         {CREW_MEMBERS.map((crew) => (
@@ -684,7 +684,7 @@ export default function SchedulePage() {
                   <div className="flex justify-end gap-2 mt-6">
                     <button
                       onClick={closeDispatchModal}
-                      className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
+                      className="px-4 py-2 border border-gray-300 dark:border-slate-600 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-slate-700"
                     >
                       Cancel
                     </button>
@@ -729,13 +729,13 @@ export default function SchedulePage() {
                 leaveFrom="scale-100 opacity-100"
                 leaveTo="scale-95 opacity-0"
               >
-                <Dialog.Panel className="w-full max-w-md rounded-lg bg-white p-6 shadow-2xl">
-                  <Dialog.Title className="text-lg font-semibold text-gray-900 mb-4">
+                <Dialog.Panel className="w-full max-w-md rounded-lg bg-white dark:bg-slate-800 p-6 shadow-2xl">
+                  <Dialog.Title className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
                     Reschedule Job
                   </Dialog.Title>
 
                   {rescheduleModal.job && (
-                    <div className="mb-4 p-3 bg-gray-50 rounded-lg text-sm">
+                    <div className="mb-4 p-3 bg-gray-50 dark:bg-slate-700 rounded-lg text-sm text-gray-900 dark:text-gray-100">
                       <p><strong>Community:</strong> {getFriendlyName(rescheduleModal.job.communityName || '')}</p>
                       <p><strong>Lot:</strong> {rescheduleModal.job.lot || '—'}</p>
                       <p><strong>Service:</strong> {rescheduleModal.job.serviceDisplay}</p>
@@ -743,16 +743,16 @@ export default function SchedulePage() {
                   )}
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                       Select New Date
                     </label>
                     <input
                       type="date"
                       value={rescheduleModal.selectedDate}
                       onChange={(e) => setRescheduleModal((prev) => ({ ...prev, selectedDate: e.target.value }))}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-purple-500 bg-white dark:bg-slate-700 text-gray-900 dark:text-white"
                     />
-                    <p className="mt-1 text-xs text-gray-500">
+                    <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
                       Next business day auto-selected. Change if needed.
                     </p>
                   </div>
@@ -760,7 +760,7 @@ export default function SchedulePage() {
                   <div className="flex justify-end gap-2 mt-6">
                     <button
                       onClick={closeRescheduleModal}
-                      className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
+                      className="px-4 py-2 border border-gray-300 dark:border-slate-600 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-slate-700"
                     >
                       Cancel
                     </button>
