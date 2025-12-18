@@ -146,6 +146,20 @@ export default function SchedulePage() {
     selectedDate: '',
   });
   const [rescheduledJobs, setRescheduledJobs] = useState<Map<string, string>>(new Map()); // jobId -> new date
+  const [selectedForemenMap, setSelectedForemenMap] = useState<Map<string, string>>(new Map()); // jobId -> foremanName
+
+  // Handle inline foreman selection
+  const handleForemanSelect = (jobId: string, foremanName: string) => {
+    setSelectedForemenMap(prev => {
+      const newMap = new Map(prev);
+      if (foremanName === '') {
+        newMap.delete(jobId);
+      } else {
+        newMap.set(jobId, foremanName);
+      }
+      return newMap;
+    });
+  };
 
   // Check if current user is a contractor (foreman/crew)
   const isContractor = session?.user?.role === 'FOREMAN' || session?.user?.role === 'CREW';
@@ -224,9 +238,19 @@ export default function SchedulePage() {
   }, [activeForemanId, foremanTabs]);
 
   const visibleJobs = useMemo(() => {
-    if (activeForemanId === 'all') return decoratedJobs;
-    return decoratedJobs.filter((job) => job.foremanId === activeForemanId);
-  }, [activeForemanId, decoratedJobs]);
+    let jobs = activeForemanId === 'all' ? decoratedJobs : decoratedJobs.filter((job) => job.foremanId === activeForemanId);
+
+    // For contractors, filter to only show jobs assigned to them
+    if (isContractor && session?.user?.name) {
+      const userName = session.user.name.toLowerCase();
+      jobs = jobs.filter(job => {
+        const assignedForeman = selectedForemenMap.get(job.id);
+        return assignedForeman?.toLowerCase() === userName;
+      });
+    }
+
+    return jobs;
+  }, [activeForemanId, decoratedJobs, isContractor, session?.user?.name, selectedForemenMap]);
 
   // Group jobs by community for display
   const jobsByCommunity = useMemo(() => {
@@ -423,7 +447,7 @@ export default function SchedulePage() {
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50">
                   <tr>
-                    <th className="px-4 py-2 text-left text-xs font-semibold text-gray-500 uppercase">Foreman</th>
+                    <th className="px-4 py-2 text-left text-xs font-semibold text-gray-500 uppercase">Assign Foreman</th>
                     <th className="px-4 py-2 text-left text-xs font-semibold text-gray-500 uppercase">Builder</th>
                     <th className="px-4 py-2 text-left text-xs font-semibold text-gray-500 uppercase">Community</th>
                     <th className="px-4 py-2 text-left text-xs font-semibold text-gray-500 uppercase">Services</th>
@@ -462,7 +486,24 @@ export default function SchedulePage() {
 
                     return (
                       <tr key={job.id} className={rowColor}>
-                        <td className="px-4 py-2 text-sm text-gray-900">{foreman}</td>
+                        <td className="px-4 py-2 text-sm">
+                          {!isContractor ? (
+                            <select
+                              value={selectedForemenMap.get(job.id) || ''}
+                              onChange={(e) => handleForemanSelect(job.id, e.target.value)}
+                              className={`w-full px-2 py-1 border rounded text-sm ${selectedForemenMap.get(job.id) ? 'border-green-500 bg-green-50' : 'border-gray-300'}`}
+                            >
+                              <option value="">Select Foreman...</option>
+                              {FOREMEN_DIRECTORY.map((f) => (
+                                <option key={f.id} value={f.name}>{f.name}</option>
+                              ))}
+                            </select>
+                          ) : (
+                            <span className="font-medium text-gray-900">
+                              {selectedForemenMap.get(job.id) || 'Not assigned'}
+                            </span>
+                          )}
+                        </td>
                         <td className="px-4 py-2 text-sm text-gray-900">{builder}</td>
                         <td className="px-4 py-2 text-sm text-gray-900">{getFriendlyName(community)}</td>
                         <td className="px-4 py-2 text-sm text-gray-900">
