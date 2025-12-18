@@ -91,7 +91,7 @@ export async function POST(request: NextRequest) {
                 .update(jobRequestServices)
                 .set({
                     assignedForemanName: foremanName,
-                    updatedAt: new Date(),
+                    // updatedAt: new Date(), // Column does not exist
                 })
                 .where(eq(jobRequestServices.id, jobId));
         } else if (bbe) {
