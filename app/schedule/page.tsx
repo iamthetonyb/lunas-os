@@ -75,6 +75,8 @@ type UpcomingJob = {
   walkTime?: string | null;
   walk_time?: string | null;
   requestedBy?: string | null;
+  assignedForemanName?: string | null;
+  jobRequestServiceId?: string | null;
 };
 
 type DecoratedJob = UpcomingJob & {
@@ -148,8 +150,9 @@ export default function SchedulePage() {
   const [rescheduledJobs, setRescheduledJobs] = useState<Map<string, string>>(new Map()); // jobId -> new date
   const [selectedForemenMap, setSelectedForemenMap] = useState<Map<string, string>>(new Map()); // jobId -> foremanName
 
-  // Handle inline foreman selection
-  const handleForemanSelect = (jobId: string, foremanName: string) => {
+  // Handle inline foreman selection - persist to database
+  const handleForemanSelect = async (jobId: string, foremanName: string) => {
+    // Update local state immediately for responsive UI
     setSelectedForemenMap(prev => {
       const newMap = new Map(prev);
       if (foremanName === '') {
@@ -159,6 +162,19 @@ export default function SchedulePage() {
       }
       return newMap;
     });
+
+    // Persist to database
+    try {
+      await fetchJSON('/api/schedule/assign-foreman', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ jobId, foremanName: foremanName || null }),
+      });
+      // Refresh data to ensure consistency
+      mutateAssignments();
+    } catch (error) {
+      console.error('Failed to save foreman assignment:', error);
+    }
   };
 
   // Check if current user is a contractor (foreman/crew)
@@ -183,6 +199,22 @@ export default function SchedulePage() {
     `/api/schedule/blue-book?start=${scheduleRange.start}&end=${scheduleRange.end}`,
     fetcher
   );
+
+  // Initialize foreman map from saved data when jobs load
+  useEffect(() => {
+    if (upcomingJobs && upcomingJobs.length > 0) {
+      const initialMap = new Map<string, string>();
+      upcomingJobs.forEach((job) => {
+        const jobId = job.jobRequestServiceId || job.id;
+        if (job.assignedForemanName) {
+          initialMap.set(jobId, job.assignedForemanName);
+        }
+      });
+      if (initialMap.size > 0) {
+        setSelectedForemenMap(initialMap);
+      }
+    }
+  }, [upcomingJobs]);
 
   const decoratedJobs = useMemo<DecoratedJob[]>(
     () =>
