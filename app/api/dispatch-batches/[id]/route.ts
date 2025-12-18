@@ -99,3 +99,25 @@ export async function GET(
         return json({ error: (error as Error).message ?? 'Failed to load dispatch batch' }, 500);
     }
 }
+
+export async function DELETE(
+    request: Request,
+    { params }: { params: Promise<{ id: string }> }
+) {
+    const { id } = await params;
+
+    try {
+        const db = await getDb();
+
+        // Delete assignments linked to this batch first
+        await db.delete(assignments).where(eq(assignments.dispatchBatchId, id));
+
+        // Delete the dispatch batch
+        await db.delete(dispatchBatches).where(eq(dispatchBatches.id, id));
+
+        return json({ ok: true, message: 'Dispatch batch deleted' });
+    } catch (error) {
+        console.error('Error deleting dispatch batch:', error);
+        return json({ error: (error as Error).message ?? 'Failed to delete dispatch batch' }, 500);
+    }
+}

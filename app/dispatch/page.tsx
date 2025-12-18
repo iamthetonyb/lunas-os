@@ -2,10 +2,9 @@
 
 import { PageHeader } from '@/components/page-header';
 import Link from 'next/link';
-import useSWR from 'swr';
+import useSWR, { mutate } from 'swr';
 import { fetchJSON } from '@/lib/utils/fetch-json';
 import { useSession } from 'next-auth/react';
-import { getFriendlyName } from '@/lib/utils/community-display';
 
 const fetcher = <T,>(url: string) => fetchJSON<T>(url);
 
@@ -16,24 +15,16 @@ type DispatchBatch = {
   crewName: string;
   foremanName: string;
   jobCount: number;
-  jobs?: DispatchJob[];
-};
-
-type DispatchJob = {
-  id: string;
-  communityName: string;
-  lot: string;
-  serviceName: string;
-  walkTime?: string | null;
 };
 
 export default function DispatchPage() {
   const { data: session } = useSession();
   const isContractor = session?.user?.role === 'FOREMAN' || session?.user?.role === 'CREW';
+  const isAdmin = session?.user?.role === 'ADMIN';
   const currentUserName = session?.user?.name;
 
   // Fetch dispatch batches from API
-  const { data: batches = [] } = useSWR<DispatchBatch[]>(
+  const { data: batches = [], mutate: mutateBatches } = useSWR<DispatchBatch[]>(
     '/api/dispatch-batches',
     fetcher
   );
@@ -45,6 +36,21 @@ export default function DispatchPage() {
       batch.crewName?.toLowerCase() === currentUserName.toLowerCase()
     )
     : batches;
+
+  const handleDelete = async (batchId: string) => {
+    if (!confirm('Are you sure you want to delete this dispatch batch? This action cannot be undone.')) {
+      return;
+    }
+    try {
+      await fetchJSON(`/api/dispatch-batches/${batchId}`, {
+        method: 'DELETE',
+      });
+      mutateBatches();
+    } catch (error) {
+      console.error('Failed to delete batch', error);
+      alert('Failed to delete dispatch batch. Please try again.');
+    }
+  };
 
   return (
     <>
@@ -125,13 +131,23 @@ export default function DispatchPage() {
                             {batch.jobCount}
                           </span>
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          <Link
-                            href={`/dispatch/${batch.id}`}
-                            className="text-blue-600 hover:text-blue-800 font-medium"
-                          >
-                            View Details →
-                          </Link>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm">
+                          <div className="flex gap-2">
+                            <Link
+                              href={`/dispatch/${batch.id}`}
+                              className="text-blue-600 hover:text-blue-800 font-medium"
+                            >
+                              View Details
+                            </Link>
+                            {isAdmin && (
+                              <button
+                                onClick={() => handleDelete(batch.id)}
+                                className="text-red-600 hover:text-red-800 font-medium"
+                              >
+                                Delete
+                              </button>
+                            )}
+                          </div>
                         </td>
                       </tr>
                     );

@@ -300,17 +300,19 @@ export default function SchedulePage() {
   };
 
   const handleDispatch = async () => {
-    if (!dispatchModal.job || !dispatchModal.selectedForeman || !dispatchModal.selectedCrew) {
-      alert('Please select both a foreman and crew member.');
+    if (!dispatchModal.job || !dispatchModal.selectedCrew) {
+      alert('Please select a crew member.');
       return;
     }
+    // Get foreman from the inline table selector
+    const foremanName = selectedForemenMap.get(dispatchModal.job.id) || 'Unassigned';
     try {
       await fetchJSON('/api/schedule/dispatch', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           jobId: dispatchModal.job.id,
-          foremanName: dispatchModal.selectedForeman,
+          foremanName: foremanName,
           crewName: dispatchModal.selectedCrew,
         }),
       });
@@ -637,21 +639,15 @@ export default function SchedulePage() {
                   )}
 
                   <div className="space-y-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Select Foreman
-                      </label>
-                      <select
-                        value={dispatchModal.selectedForeman}
-                        onChange={(e) => setDispatchModal((prev) => ({ ...prev, selectedForeman: e.target.value }))}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                      >
-                        <option value="">Choose foreman...</option>
-                        {FOREMEN_DIRECTORY.map((f) => (
-                          <option key={f.id} value={f.name}>{f.name}</option>
-                        ))}
-                      </select>
-                    </div>
+                    {/* Show the assigned foreman (from table dropdown) */}
+                    {dispatchModal.job && (
+                      <div className="p-2 bg-blue-50 rounded-lg">
+                        <p className="text-sm">
+                          <strong>Assigned Foreman:</strong>{' '}
+                          {selectedForemenMap.get(dispatchModal.job.id) || 'Not selected - use table dropdown first'}
+                        </p>
+                      </div>
+                    )}
 
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -679,7 +675,7 @@ export default function SchedulePage() {
                     </button>
                     <button
                       onClick={handleDispatch}
-                      disabled={!dispatchModal.selectedForeman || !dispatchModal.selectedCrew}
+                      disabled={!dispatchModal.selectedCrew}
                       className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       Dispatch
