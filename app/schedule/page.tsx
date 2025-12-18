@@ -500,18 +500,18 @@ export default function SchedulePage() {
             </p>
           ) : (
             <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
+              <table className="min-w-full divide-y divide-gray-200 dark:divide-slate-700">
+                <thead className="bg-gray-50 dark:bg-slate-800">
                   <tr>
-                    <th className="px-4 py-2 text-left text-xs font-semibold text-gray-500 uppercase">Assign Foreman</th>
-                    <th className="px-4 py-2 text-left text-xs font-semibold text-gray-500 uppercase">Builder</th>
-                    <th className="px-4 py-2 text-left text-xs font-semibold text-gray-500 uppercase">Community</th>
-                    <th className="px-4 py-2 text-left text-xs font-semibold text-gray-500 uppercase">Services</th>
-                    <th className="px-4 py-2 text-left text-xs font-semibold text-gray-500 uppercase">Notes</th>
-                    <th className="px-4 py-2 text-left text-xs font-semibold text-gray-500 uppercase">Actions</th>
+                    <th className="px-4 py-2 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">Assign Foreman</th>
+                    <th className="px-4 py-2 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">Builder</th>
+                    <th className="px-4 py-2 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">Community</th>
+                    <th className="px-4 py-2 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">Services</th>
+                    <th className="px-4 py-2 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">Notes</th>
+                    <th className="px-4 py-2 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">Actions</th>
                   </tr>
                 </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
+                <tbody className="bg-white dark:bg-slate-900 divide-y divide-gray-200 dark:divide-slate-700">
                   {visibleJobs.map((job) => {
                     const foreman = job.foremanName || 'Unassigned Foreman';
                     const builder = job.builderName || '—';
@@ -545,9 +545,9 @@ export default function SchedulePage() {
                         <td className="px-4 py-2 text-sm">
                           {!isContractor ? (
                             <select
-                              value={selectedForemenMap.get(job.id) || ''}
-                              onChange={(e) => handleForemanSelect(job.id, e.target.value)}
-                              className={`w-full px-2 py-1 border rounded text-sm ${selectedForemenMap.get(job.id) ? 'border-green-500 bg-green-50' : 'border-gray-300'}`}
+                              value={selectedForemenMap.get(job.jobRequestServiceId || job.id) || ''}
+                              onChange={(e) => handleForemanSelect(job.jobRequestServiceId || job.id, e.target.value)}
+                              className={`w-full px-2 py-1 border rounded text-sm bg-white dark:bg-slate-700 text-gray-900 dark:text-white ${selectedForemenMap.get(job.jobRequestServiceId || job.id) ? 'border-green-500 bg-green-50 dark:bg-green-900/30' : 'border-gray-300 dark:border-slate-600'}`}
                             >
                               <option value="">Select Foreman...</option>
                               {FOREMEN_DIRECTORY.map((f) => (
@@ -555,27 +555,27 @@ export default function SchedulePage() {
                               ))}
                             </select>
                           ) : (
-                            <span className="font-medium text-gray-900">
-                              {selectedForemenMap.get(job.id) || 'Not assigned'}
+                            <span className="font-medium text-gray-900 dark:text-white">
+                              {selectedForemenMap.get(job.jobRequestServiceId || job.id) || 'Not assigned'}
                             </span>
                           )}
                         </td>
-                        <td className="px-4 py-2 text-sm text-gray-900">{builder}</td>
-                        <td className="px-4 py-2 text-sm text-gray-900">{getFriendlyName(community)}</td>
-                        <td className="px-4 py-2 text-sm text-gray-900">
+                        <td className="px-4 py-2 text-sm text-gray-900 dark:text-white">{builder}</td>
+                        <td className="px-4 py-2 text-sm text-gray-900 dark:text-white">{getFriendlyName(community)}</td>
+                        <td className="px-4 py-2 text-sm text-gray-900 dark:text-white">
                           <span className="inline-flex items-center rounded-md px-3 py-1 text-sm font-medium">
                             {serviceLabel}
                           </span>
                         </td>
-                        <td className="px-4 py-2 text-sm text-gray-900">
+                        <td className="px-4 py-2 text-sm text-gray-900 dark:text-gray-300">
                           {startDateStamp && (
-                            <span className="mr-2 inline-flex items-center rounded-md bg-gray-100 px-2 py-0.5 text-xs text-gray-600">
+                            <span className="mr-2 inline-flex items-center rounded-md bg-gray-100 dark:bg-slate-700 px-2 py-0.5 text-xs text-gray-600 dark:text-gray-300">
                               {startDateStamp}
                             </span>
                           )}
                           {notes}
                         </td>
-                        <td className="px-4 py-2 text-sm text-gray-900">
+                        <td className="px-4 py-2 text-sm text-gray-900 dark:text-white">
                           <div className="flex gap-2">
                             {!isContractor ? (
                               /* Admin view: Dispatch to button */

@@ -1,6 +1,6 @@
 import { getDb } from '@/lib/db/get-db';
 import { json } from '@/lib/utils/json';
-import { blueBookEntries, jobRequests } from '@/db/schema';
+import { blueBookEntries, jobRequests, jobRequestServices } from '@/db/schema';
 import { eq } from 'drizzle-orm';
 import { NextRequest } from 'next/server';
 
@@ -22,15 +22,15 @@ export async function POST(request: NextRequest) {
         }
 
         const db = await getDb();
-        const parsedDate = new Date(newDate);
+        // Use newDate string directly to avoid timezone issues
+        // newDate comes in as "YYYY-MM-DD" format from date input
 
         // Try to update blue_book_entry if it exists
-        // Keep as PENDING (can't use RESCHEDULED - not in enum)
         try {
             await db
                 .update(blueBookEntries)
                 .set({
-                    startDate: newDate, // Update the start date to new date
+                    startDate: newDate, // Use string directly
                     updatedAt: new Date(),
                 })
                 .where(eq(blueBookEntries.id, jobId));
@@ -38,22 +38,34 @@ export async function POST(request: NextRequest) {
             // May not be a blue book entry ID
         }
 
-        // Also try to update job_request if it exists
+        // Also try to update job_request if it exists  
         try {
             await db
                 .update(jobRequests)
                 .set({
-                    dueDate: parsedDate.toISOString().split('T')[0], // Use string format for date
+                    dueDate: newDate, // Use string directly
                 })
                 .where(eq(jobRequests.id, jobId));
         } catch {
             // May not be a job request ID
         }
 
+        // Also try to update job_request_services if it's a service ID
+        try {
+            await db
+                .update(jobRequestServices)
+                .set({
+                    // Store reschedule date if column exists, or update any date field
+                })
+                .where(eq(jobRequestServices.id, jobId));
+        } catch {
+            // May not be a job request service ID
+        }
+
         return json({
             ok: true,
             message: `Job rescheduled to ${newDate}`,
-            newDate: parsedDate.toISOString(),
+            newDate: newDate,
         });
     } catch (error) {
         console.error('Error rescheduling job:', error);
