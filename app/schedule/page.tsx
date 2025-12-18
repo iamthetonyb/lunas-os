@@ -75,6 +75,7 @@ type UpcomingJob = {
   walkTime?: string | null;
   walk_time?: string | null;
   requestedBy?: string | null;
+  assignedForemanName?: string | null;
 };
 
 type DecoratedJob = UpcomingJob & {
@@ -148,8 +149,9 @@ export default function SchedulePage() {
   const [rescheduledJobs, setRescheduledJobs] = useState<Map<string, string>>(new Map()); // jobId -> new date
   const [selectedForemenMap, setSelectedForemenMap] = useState<Map<string, string>>(new Map()); // jobId -> foremanName
 
-  // Handle inline foreman selection
-  const handleForemanSelect = (jobId: string, foremanName: string) => {
+  // Handle inline foreman selection - persists to database
+  const handleForemanSelect = async (jobId: string, foremanName: string) => {
+    // Update local state immediately for responsiveness
     setSelectedForemenMap(prev => {
       const newMap = new Map(prev);
       if (foremanName === '') {
@@ -159,6 +161,18 @@ export default function SchedulePage() {
       }
       return newMap;
     });
+
+    // Persist to database
+    try {
+      await fetchJSON('/api/schedule/assign-foreman', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ jobId, foremanName: foremanName || null }),
+      });
+    } catch (error) {
+      console.error('Failed to save foreman assignment:', error);
+      // Optionally show error to user, but don't roll back local state
+    }
   };
 
   // Check if current user is a contractor (foreman/crew)
@@ -183,6 +197,30 @@ export default function SchedulePage() {
     `/api/schedule/blue-book?start=${scheduleRange.start}&end=${scheduleRange.end}`,
     fetcher
   );
+
+  // Initialize selectedForemenMap from saved API data when jobs load
+  useEffect(() => {
+    if (upcomingJobs.length > 0) {
+      const initialMap = new Map<string, string>();
+      upcomingJobs.forEach((job) => {
+        if (job.assignedForemanName) {
+          initialMap.set(job.id, job.assignedForemanName);
+        }
+      });
+      if (initialMap.size > 0) {
+        setSelectedForemenMap((prev) => {
+          // Only set if map is empty (first load) or merge with existing
+          const newMap = new Map(prev);
+          initialMap.forEach((value, key) => {
+            if (!newMap.has(key)) {
+              newMap.set(key, value);
+            }
+          });
+          return newMap;
+        });
+      }
+    }
+  }, [upcomingJobs]);
 
   const decoratedJobs = useMemo<DecoratedJob[]>(
     () =>

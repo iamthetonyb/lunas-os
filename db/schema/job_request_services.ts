@@ -8,4 +8,5 @@ export const jobRequestServices = pgTable('job_request_services', {
   serviceId: uuid('service_id').references(() => services.id),
   requestedData: json('requested_data'),
   walkTime: text('walk_time'),
+  assignedForemanName: text('assigned_foreman_name'),
 });

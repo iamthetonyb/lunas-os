@@ -55,9 +55,11 @@ export const GET = safe(async (req: Request) => {
       builderName: builders.name,
       communityName: communities.name,
       modelPlanName: modelPlans.name,
+      jobRequestServiceId: jobRequestServices.id,
       serviceId: jobRequestServices.serviceId,
       serviceName: services.name,
       walkTime: jobRequestServices.walkTime,
+      assignedForemanName: jobRequestServices.assignedForemanName,
     })
     .from(jobRequests)
     .leftJoin(builders, eq(jobRequests.builderId, builders.id))
@@ -100,7 +102,6 @@ export const GET = safe(async (req: Request) => {
     };
   });
 
-  // Group job requests by id and aggregate services to handle multiple services per request
   const jobRequestMap = new Map<string, {
     id: string;
     dueDate: string | null;
@@ -110,7 +111,7 @@ export const GET = safe(async (req: Request) => {
     builderName: string | null;
     communityName: string | null;
     modelPlanName: string | null;
-    services: Array<{ id: string | null; name: string | null; walkTime: string | null }>;
+    services: Array<{ id: string | null; jobRequestServiceId: string | null; name: string | null; walkTime: string | null; assignedForemanName: string | null }>;
   }>();
 
   jobRequestData.forEach((row) => {
@@ -131,8 +132,10 @@ export const GET = safe(async (req: Request) => {
     if (row.serviceId && row.serviceName) {
       entry.services.push({
         id: row.serviceId,
+        jobRequestServiceId: row.jobRequestServiceId,
         name: row.serviceName,
         walkTime: row.walkTime,
+        assignedForemanName: row.assignedForemanName,
       });
     }
   });
@@ -162,12 +165,13 @@ export const GET = safe(async (req: Request) => {
         status: 'Pending',
         walkTime: null,
         requestedBy: req.requestedBy,
+        assignedForemanName: null,
       }];
     }
 
     // Create one schedule item per service so each service appears as a separate job
     return req.services.map((service) => ({
-      id: `${req.id}-${service.id}`, // Unique ID per job-service combination
+      id: service.jobRequestServiceId || `${req.id}-${service.id}`, // Use actual job_request_service ID
       startDate: req.dueDate,
       builderName: req.builderName,
       communityName: req.communityName,
@@ -181,6 +185,7 @@ export const GET = safe(async (req: Request) => {
       status: 'Pending',
       walkTime: service.walkTime,
       requestedBy: req.requestedBy,
+      assignedForemanName: service.assignedForemanName,
     }));
   });
 
