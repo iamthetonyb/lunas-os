@@ -58,9 +58,9 @@ export default function DispatchPage() {
         title="Dispatch"
         description={isContractor ? "Your assigned jobs" : "Manage crew dispatch and job batches"}
         action={!isContractor ? (
-          <button className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
-            + New Batch
-          </button>
+          <Link href="/intake" className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+            + New Job
+          </Link>
         ) : undefined}
       />
       <main className="px-6 py-6">

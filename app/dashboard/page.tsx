@@ -246,7 +246,7 @@ export default function DashboardPage() {
                           : '—';
 
                         return (
-                          <tr key={entry.id} className={entry.status === 'COMPLETE' ? 'bg-green-50 dark:bg-green-900/10' : ''}>
+                          <tr key={entry.id} className={entry.status === 'COMPLETE' ? 'bg-green-50 dark:bg-green-900/20' : 'bg-white dark:bg-slate-800'}>
                             <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">
                               {entry.builderName || entry.builderId || '—'}
                             </td>
@@ -268,8 +268,8 @@ export default function DashboardPage() {
                             <td className="px-6 py-4 whitespace-nowrap text-sm">
                               <span
                                 className={`px-2 py-1 rounded-full text-xs font-semibold ${entry.status === 'COMPLETE'
-                                    ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
-                                    : 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200'
+                                  ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
+                                  : 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200'
                                   }`}
                               >
                                 {entry.status}
