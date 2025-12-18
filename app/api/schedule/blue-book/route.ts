@@ -37,18 +37,37 @@ export const GET = safe(async (req: Request) => {
       gte(blueBookEntries.startDate, startIso),
       lte(blueBookEntries.startDate, endIso)
     ),
-    with: {
-      builder: true,
-      community: true,
-      service: true,
+    columns: {
+      id: true,
+      startDate: true,
+      originalStartDate: true,
+      lot: true,
+      accountCategoryCode: true,
+      accountCategoryName: true,
+      poNumber: true,
+      amount: true,
+      status: true,
+      assignedForemanName: true,
     },
-    orderBy: (entries, { asc }) => asc(blueBookEntries.startDate),
+    with: {
+      builder: {
+        columns: { name: true },
+      },
+      community: {
+        columns: { name: true },
+      },
+      service: {
+        columns: { name: true },
+      },
+    },
+    orderBy: (entries, { asc }) => asc(entries.startDate),
   });
 
   const jobRequestData = await db
     .select({
       id: jobRequests.id,
       dueDate: jobRequests.dueDate,
+      originalDueDate: jobRequests.originalDueDate,
       lot: jobRequests.lot,
       poNumber: jobRequests.poNumber,
       requestedBy: jobRequests.requestedBy,
@@ -89,6 +108,7 @@ export const GET = safe(async (req: Request) => {
     return {
       id: entry.id,
       startDate: entry.startDate,
+      originalStartDate: entry.originalStartDate,
       builderName,
       communityName,
       lot: entry.lot,
@@ -99,12 +119,14 @@ export const GET = safe(async (req: Request) => {
       invoiceNumber: entry.poNumber,
       amount: entry.amount,
       status: entry.status,
+      assignedForemanName: entry.assignedForemanName,
     };
   });
 
   const jobRequestMap = new Map<string, {
     id: string;
     dueDate: string | null;
+    originalDueDate: string | null;
     lot: string | null;
     poNumber: string | null;
     requestedBy: string | null;
@@ -119,6 +141,7 @@ export const GET = safe(async (req: Request) => {
       jobRequestMap.set(row.id, {
         id: row.id,
         dueDate: row.dueDate,
+        originalDueDate: row.originalDueDate,
         lot: row.lot,
         poNumber: row.poNumber,
         requestedBy: row.requestedBy,
@@ -153,6 +176,7 @@ export const GET = safe(async (req: Request) => {
       return [{
         id: req.id,
         startDate: req.dueDate,
+        originalStartDate: req.originalDueDate,
         builderName: req.builderName,
         communityName: req.communityName,
         lot: req.lot,
@@ -173,6 +197,7 @@ export const GET = safe(async (req: Request) => {
     return req.services.map((service) => ({
       id: service.jobRequestServiceId || `${req.id}-${service.id}`, // Use actual job_request_service ID
       startDate: req.dueDate,
+      originalStartDate: req.originalDueDate,
       builderName: req.builderName,
       communityName: req.communityName,
       lot: req.lot,

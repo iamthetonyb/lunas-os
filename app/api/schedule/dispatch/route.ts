@@ -1,8 +1,10 @@
 import { getDb } from '@/lib/db/get-db';
 import { json } from '@/lib/utils/json';
 import { assignments, crews, dispatchBatches, blueBookEntries, jobRequestServices } from '@/db/schema';
-import { eq } from 'drizzle-orm';
+import { eq, and } from 'drizzle-orm';
 import { NextRequest } from 'next/server';
+import { requireMembership } from '@/lib/auth/guards';
+import { publishOrgEvent } from '@/lib/ably';
 
 export const runtime = 'nodejs';
 export const preferredRegion = 'auto';
@@ -14,6 +16,7 @@ export const preferredRegion = 'auto';
  */
 export async function POST(request: NextRequest) {
     try {
+        const membership = await requireMembership(['admin', 'backoffice', 'contractor']);
         const body = await request.json();
         const { jobId, foremanName, crewName } = body;
 
@@ -36,34 +39,71 @@ export async function POST(request: NextRequest) {
             crew = newCrew;
         }
 
-        // Always create a new dispatch batch for this job with the correct crew/foreman
-        const [newBatch] = await db
-            .insert(dispatchBatches)
-            .values({
-                serviceDate: today,
-                status: 'SENT',
-                crewName: crewName,
-                foremanName: foremanName,
-            })
-            .returning();
-
-        // Create assignment linking job to batch
-        await db.insert(assignments).values({
-            dispatchBatchId: newBatch.id,
-            crewId: crew.id,
-            status: 'SENT',
+        // Check if a batch already exists for this crew/foreman today
+        const existingBatch = await db.query.dispatchBatches.findFirst({
+            where: and(
+                eq(dispatchBatches.serviceDate, today),
+                eq(dispatchBatches.crewName, crewName),
+                eq(dispatchBatches.foremanName, foremanName),
+                eq(dispatchBatches.status, 'SENT')
+            )
         });
 
-        // Update job_request_services if it's a job request service ID
-        try {
+        let batchId: string;
+        if (existingBatch) {
+            batchId = existingBatch.id;
+        } else {
+            const [newBatch] = await db
+                .insert(dispatchBatches)
+                .values({
+                    serviceDate: today,
+                    status: 'SENT',
+                    crewName: crewName,
+                    foremanName: foremanName,
+                    createdById: membership.userId,
+                })
+                .returning();
+            batchId = newBatch.id;
+        }
+
+        // Create assignment linking job to batch
+        // We need to determine if jobId belongs to jobRequestServices or blueBookEntries
+        const [jrs, bbe] = await Promise.all([
+            db.query.jobRequestServices.findFirst({ where: eq(jobRequestServices.id, jobId) }),
+            db.query.blueBookEntries.findFirst({ where: eq(blueBookEntries.id, jobId) })
+        ]);
+
+        if (!jrs && !bbe) {
+            return json({ ok: false, error: 'Job not found in either system' }, 404);
+        }
+
+        const [assignment] = await db.insert(assignments).values({
+            jobRequestServiceId: jrs ? jobId : null,
+            blueBookEntryId: bbe ? jobId : null,
+            dispatchBatchId: batchId,
+            crewId: crew.id,
+            status: 'SENT',
+        }).returning();
+
+        // Update status and foreman name in the source table
+        if (jrs) {
             await db
                 .update(jobRequestServices)
                 .set({
                     assignedForemanName: foremanName,
+                    updatedAt: new Date(),
                 })
                 .where(eq(jobRequestServices.id, jobId));
-        } catch {
-            // May not be a job request service ID, try blue book
+        } else if (bbe) {
+            await db
+                .update(blueBookEntries)
+                .set({
+                    assignedForemanName: foremanName,
+                    status: 'PENDING',
+                    assignmentId: assignment.id,
+                    updatedAt: new Date(),
+                })
+                .where(eq(blueBookEntries.id, jobId));
         }
 
         // Update blue book entry status if applicable
@@ -79,11 +119,14 @@ export async function POST(request: NextRequest) {
             // May not be a blue book entry
         }
 
+        // Publish realtime event
+        await publishOrgEvent(membership.orgId, 'dispatch.updated', { batchId });
+
         return json({
             ok: true,
             message: `Job dispatched to ${foremanName} / ${crewName}`,
             crewId: crew.id,
-            batchId: newBatch.id,
+            batchId,
         });
     } catch (error) {
         console.error('Error dispatching job:', error);

@@ -13,20 +13,21 @@ const createUserSchema = z.object({
   email: z.string().email('Invalid email'),
   phone: z.string().optional().nullable(),
   password: z.string().min(6, 'Password must be at least 6 characters'),
+  preferredContactMethod: z.enum(['email', 'call', 'text']).default('email'),
 });
 
 export const POST = safe(async (req: Request) => {
   await requireMembership(['admin']);
   const db = await getDb();
-  
+
   const body = await req.json();
   const parsed = createUserSchema.safeParse(body);
-  
+
   if (!parsed.success) {
     return err('Invalid user data', 400, parsed.error.flatten());
   }
 
-  const { name, email, phone, password } = parsed.data;
+  const { name, email, phone, password, preferredContactMethod } = parsed.data;
 
   // Check if user already exists
   const existingUser = await db.query.users.findFirst({
@@ -48,6 +49,7 @@ export const POST = safe(async (req: Request) => {
       email,
       phone: phone || null,
       passwordHash,
+      preferredContactMethod,
       role: 'CUSTOMER', // default role
     })
     .returning();

@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { signOut, useSession } from 'next-auth/react';
-import { useTheme } from '@/lib/theme-provider';
+import { useTheme } from 'next-themes';
 import Image from 'next/image';
 import { useEffect, useState } from 'react';
 
@@ -23,7 +23,9 @@ const baseNavigation = [
 
 export function Navigation() {
   const pathname = usePathname();
-  const { theme, toggleTheme } = useTheme();
+  const { theme, setTheme, resolvedTheme } = useTheme();
+  const currentTheme = theme === 'system' ? resolvedTheme : theme;
+  const toggleTheme = () => setTheme(currentTheme === 'dark' ? 'light' : 'dark');
   const [mounted, setMounted] = useState(false);
   const { data: session } = useSession();
   // Use orgRole from org_members (admin/backoffice/contractor) instead of user role
@@ -36,7 +38,7 @@ export function Navigation() {
 
   // Include Dashboard as user specified - contractor is the org role for foremen/contractors
   // Extra Work is NOT allowed for contractors (only admin/backoffice)
-  const contractorAllowed = new Set(['Dashboard', 'Intake', 'Schedule']);
+  const contractorAllowed = new Set(['Dashboard', 'Intake', 'Schedule', 'Settings']);
   const navigation =
     orgRole === 'contractor'
       ? baseNavigation.filter((item) => contractorAllowed.has(item.name))
@@ -102,11 +104,8 @@ export function Navigation() {
               className="w-full flex items-center justify-between px-4 py-2 bg-gray-100 dark:bg-gray-700 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors text-sm font-medium text-gray-700 dark:text-gray-200"
             >
               <span className="flex items-center gap-2">
-                <span>{theme === 'dark' ? '🌙' : '☀️'}</span>
-                <span>{theme === 'dark' ? 'Dark Mode' : 'Light Mode'}</span>
-              </span>
-              <span className="text-xs text-gray-500 dark:text-gray-400">
-                {theme === 'dark' ? 'On' : 'Off'}
+                <span>{currentTheme === 'dark' ? '🌙' : '☀️'}</span>
+                <span>{currentTheme === 'dark' ? 'Dark Mode On' : 'Light Mode On'}</span>
               </span>
             </button>
           </div>

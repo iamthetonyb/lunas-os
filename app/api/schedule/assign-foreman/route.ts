@@ -1,6 +1,6 @@
 import { getDb } from '@/lib/db/get-db';
 import { json } from '@/lib/utils/json';
-import { jobRequestServices } from '@/db/schema/job_request_services';
+import { jobRequestServices, blueBookEntries } from '@/db/schema';
 import { eq } from 'drizzle-orm';
 
 export const runtime = 'nodejs';
@@ -16,10 +16,16 @@ export async function POST(request: Request) {
             return json({ error: 'Job ID is required' }, 400);
         }
 
-        // Update the job_request_service with the assigned foreman
-        await db.update(jobRequestServices)
+        // 1. Try to update job_request_service
+        const serviceUpdate = await db.update(jobRequestServices)
             .set({ assignedForemanName: foremanName || null })
             .where(eq(jobRequestServices.id, jobId));
+
+        // 2. Try to update blue_book_entry
+        // (If it wasn't a job_request_service, it might be a blue_book_entry)
+        await db.update(blueBookEntries)
+            .set({ assignedForemanName: foremanName || null })
+            .where(eq(blueBookEntries.id, jobId));
 
         return json({ ok: true, message: 'Foreman assigned successfully' });
     } catch (error) {

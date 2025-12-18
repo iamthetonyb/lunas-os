@@ -2,7 +2,7 @@
 
 import { PageHeader } from '@/components/page-header';
 import useSWR, { mutate } from 'swr';
-import { useMemo, useState, Fragment } from 'react';
+import { useState, Fragment, useEffect, useMemo } from 'react';
 import { fetchJSON } from '@/lib/utils/fetch-json';
 import { Dialog, Transition } from '@headlessui/react';
 
@@ -12,6 +12,7 @@ type AdminUser = {
   email: string;
   phone: string | null;
   systemRole: string | null;
+  preferredContactMethod: string | null;
   memberships: { orgId: string; orgName: string; role: string }[];
 };
 
@@ -34,6 +35,7 @@ type UserFormData = {
   phone: string;
   password: string;
   confirmPassword: string;
+  preferredContactMethod: 'email' | 'call' | 'text';
 };
 
 function UserModal({
@@ -49,12 +51,37 @@ function UserModal({
 }) {
   const isEdit = !!user;
   const [formData, setFormData] = useState<UserFormData>({
-    name: user?.name || '',
-    email: user?.email || '',
-    phone: user?.phone || '',
+    name: '',
+    email: '',
+    phone: '',
     password: '',
     confirmPassword: '',
+    preferredContactMethod: 'email',
   });
+
+  // Reset form when user changes
+  useEffect(() => {
+    if (user) {
+      setFormData({
+        name: user.name || '',
+        email: user.email || '',
+        phone: user.phone || '',
+        password: '',
+        confirmPassword: '',
+        preferredContactMethod: (user.preferredContactMethod as any) || 'email',
+      });
+    } else {
+      setFormData({
+        name: '',
+        email: '',
+        phone: '',
+        password: '',
+        confirmPassword: '',
+        preferredContactMethod: 'email',
+      });
+    }
+  }, [user, open]);
+
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
 
@@ -95,6 +122,7 @@ function UserModal({
         name: formData.name,
         email: formData.email,
         phone: formData.phone || null,
+        preferredContactMethod: formData.preferredContactMethod,
       };
 
       if (formData.password) {
@@ -185,9 +213,8 @@ function UserModal({
                       type="email"
                       value={formData.email}
                       onChange={(e) => handleChange('email', e.target.value)}
-                      className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      className="w-full px-4 py-2.5 border border-gray-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-700 text-gray-900 dark:text-white"
                       placeholder="john@example.com"
-                      disabled={isEdit}
                     />
                   </div>
 
@@ -199,9 +226,29 @@ function UserModal({
                       type="tel"
                       value={formData.phone}
                       onChange={(e) => handleChange('phone', e.target.value)}
-                      className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      className="w-full px-4 py-2.5 border border-gray-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-700 text-gray-900 dark:text-white"
                       placeholder="555-1234"
                     />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      Preferred Contact Method
+                    </label>
+                    <div className="flex gap-4">
+                      {['email', 'call', 'text'].map((method) => (
+                        <label key={method} className="flex items-center gap-2 cursor-pointer">
+                          <input
+                            type="radio"
+                            name="preferredContactMethod"
+                            checked={formData.preferredContactMethod === method}
+                            onChange={() => handleChange('preferredContactMethod', method)}
+                            className="text-blue-600 focus:ring-blue-500"
+                          />
+                          <span className="text-sm text-gray-700 dark:text-gray-300 capitalize">{method}</span>
+                        </label>
+                      ))}
+                    </div>
                   </div>
 
                   <div>
@@ -272,6 +319,9 @@ export default function UsersPage() {
   const [busy, setBusy] = useState(false);
   const [userModalOpen, setUserModalOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<AdminUser | null>(null);
+  const [orgModalOpen, setOrgModalOpen] = useState(false);
+  const [editingOrg, setEditingOrg] = useState<Org | null>(null);
+  const [isDeletingOrg, setIsDeletingOrg] = useState(false);
 
   const sortedUsers = useMemo(() => {
     if (!data?.users) return [];
@@ -281,9 +331,9 @@ export default function UsersPage() {
   const handleMembershipSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!membership.userId || !membership.orgId) return;
-    
+
     console.log('Submitting membership data:', membership); // Log payload to browser console
-    
+
     setBusy(true);
     try {
       await fetchJSON('/api/admin/users', {
@@ -299,7 +349,7 @@ export default function UsersPage() {
       if (!err.data || Object.keys(err.data).length === 0) {
         err.data = { error: 'Unknown server error' };
       }
-      const errorMsg = err.data?.details 
+      const errorMsg = err.data?.details
         ? 'Validation failed: ' + JSON.stringify(err.data.details)
         : err.data?.error || err.message || 'Failed to update membership.';
       alert(errorMsg);
@@ -313,17 +363,50 @@ export default function UsersPage() {
     if (!orgForm.name.trim()) return;
     setBusy(true);
     try {
-      await fetchJSON('/api/admin/orgs', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: orgForm.name }),
-      });
+      if (editingOrg) {
+        await fetchJSON(`/api/admin/orgs/${editingOrg.id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name: orgForm.name }),
+        });
+        alert('Organization updated.');
+      } else {
+        await fetchJSON('/api/admin/orgs', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name: orgForm.name }),
+        });
+        alert('Organization created.');
+      }
       setOrgForm({ name: '' });
+      setEditingOrg(null);
+      setOrgModalOpen(false);
       await mutate('/api/admin/users');
-      alert('Organization created.');
     } catch (err) {
       console.error(err);
-      alert('Failed to create org.');
+      alert('Failed to save organization.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleEditOrg = (org: Org) => {
+    setEditingOrg(org);
+    setOrgForm({ name: org.name });
+    setOrgModalOpen(true);
+  };
+
+  const handleDeleteOrg = async (orgId: string) => {
+    if (!confirm('Are you sure you want to delete this organization? This will NOT delete associated users, but will remove their access to this org.')) return;
+
+    setBusy(true);
+    try {
+      await fetchJSON(`/api/admin/orgs/${orgId}`, { method: 'DELETE' });
+      await mutate('/api/admin/users');
+      alert('Organization deleted.');
+    } catch (err) {
+      console.error(err);
+      alert('Failed to delete organization.');
     } finally {
       setBusy(false);
     }
@@ -471,24 +554,78 @@ export default function UsersPage() {
         </section>
 
         <section className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Create Organization</h3>
+          <h3 className="text-lg font-semibold text-gray-900 mb-4">Organizations</h3>
+          <div className="overflow-x-auto mb-6">
+            <table className="min-w-full divide-y divide-gray-200 text-sm">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-4 py-2 text-left font-semibold text-gray-500">Name</th>
+                  <th className="px-4 py-2 text-left font-semibold text-gray-500">Slug</th>
+                  <th className="px-4 py-2 text-right font-semibold text-gray-500">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100">
+                {data?.orgs.map((org) => (
+                  <tr key={org.id}>
+                    <td className="px-4 py-3 text-gray-900 font-medium">{org.name}</td>
+                    <td className="px-4 py-3 text-gray-600 font-mono">{org.slug}</td>
+                    <td className="px-4 py-3 text-right">
+                      <div className="flex justify-end gap-3">
+                        <button
+                          onClick={() => handleEditOrg(org)}
+                          className="text-blue-600 hover:text-blue-800 font-medium"
+                        >
+                          Edit
+                        </button>
+                        <button
+                          onClick={() => handleDeleteOrg(org.id)}
+                          className="text-red-600 hover:text-red-800 font-medium"
+                        >
+                          Delete
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          <h4 className="text-md font-semibold text-gray-900 mb-4">
+            {editingOrg ? 'Edit Organization' : 'Create New Organization'}
+          </h4>
           <form onSubmit={handleOrgSubmit} className="flex flex-col gap-3 md:flex-row md:items-end">
             <div className="flex-1">
               <label className="text-sm font-medium text-gray-700">Org Name</label>
               <input
-                className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2"
+                className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 bg-white text-gray-900"
                 placeholder="e.g., Pulte Phoenix"
                 value={orgForm.name}
                 onChange={(e) => setOrgForm({ name: e.target.value })}
               />
             </div>
-            <button
-              type="submit"
-              disabled={busy}
-              className="rounded-lg bg-green-600 px-4 py-2 text-sm font-semibold text-white hover:bg-green-700 disabled:opacity-50"
-            >
-              Create Org
-            </button>
+            <div className="flex gap-2">
+              <button
+                type="submit"
+                disabled={busy}
+                className={`rounded-lg px-4 py-2 text-sm font-semibold text-white disabled:opacity-50 ${editingOrg ? 'bg-blue-600 hover:bg-blue-700' : 'bg-green-600 hover:bg-green-700'
+                  }`}
+              >
+                {editingOrg ? 'Update Org' : 'Create Org'}
+              </button>
+              {editingOrg && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setEditingOrg(null);
+                    setOrgForm({ name: '' });
+                  }}
+                  className="rounded-lg bg-gray-200 px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-300"
+                >
+                  Cancel
+                </button>
+              )}
+            </div>
           </form>
         </section>
       </main>

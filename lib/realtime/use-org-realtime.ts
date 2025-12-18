@@ -11,7 +11,7 @@ export function useOrgRealtime(orgId?: string | null) {
   useEffect(() => {
     if (typeof window === 'undefined') return;
     if (!orgId) return;
-    
+
     const key = process.env.NEXT_PUBLIC_ABLY_KEY;
     if (!key) {
       console.info('[realtime] disabled: missing NEXT_PUBLIC_ABLY_KEY');
@@ -24,10 +24,10 @@ export function useOrgRealtime(orgId?: string | null) {
       try {
         const Ably = await getAbly();
         if (disposed) return;
-        
+
         const client = new Ably.Realtime({ key, clientId: orgId || 'anon' });
         const channel = client.channels.get(`org:${orgId}`);
-        
+
         clientRef.current = client;
         channelRef.current = channel;
 
@@ -35,6 +35,30 @@ export function useOrgRealtime(orgId?: string | null) {
           if (message?.name === 'serviceLogs.updated') {
             mutate(
               (key: string) => typeof key === 'string' && key.startsWith('/api/service-logs'),
+              undefined,
+              { revalidate: true }
+            );
+          }
+          if (message?.name === 'dispatch.updated') {
+            mutate(
+              (key: string) => typeof key === 'string' && key.startsWith('/api/dispatch-batches'),
+              undefined,
+              { revalidate: true }
+            );
+            mutate(
+              (key: string) => typeof key === 'string' && key.startsWith('/api/schedule/assignments'),
+              undefined,
+              { revalidate: true }
+            );
+          }
+          if (message?.name === 'intake.updated') {
+            mutate(
+              (key: string) => typeof key === 'string' && (key.startsWith('/api/intake') || key.startsWith('/api/job-requests')),
+              undefined,
+              { revalidate: true }
+            );
+            mutate(
+              (key: string) => typeof key === 'string' && key.startsWith('/api/schedule/assignments'),
               undefined,
               { revalidate: true }
             );

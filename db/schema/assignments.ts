@@ -8,6 +8,7 @@ export const assignmentStatusEnum = pgEnum('assignment_status', ['DRAFT', 'SENT'
 export const assignments = pgTable('assignments', {
   id: uuid('id').primaryKey().defaultRandom(),
   jobRequestServiceId: uuid('job_request_service_id').references(() => jobRequestServices.id),
+  blueBookEntryId: uuid('blue_book_entry_id').references(() => (require('./blue_book_entries').blueBookEntries.id)),
   crewId: uuid('crew_id').references(() => crews.id),
   dispatchBatchId: uuid('dispatch_batch_id').references(() => dispatchBatches.id),
   scheduledStart: timestamp('scheduled_start'),

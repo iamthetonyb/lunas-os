@@ -7,6 +7,8 @@ import { fetchJSON } from '@/lib/utils/fetch-json';
 import { useState, Fragment } from 'react';
 import { Dialog, Transition } from '@headlessui/react';
 import { EditIntakeModal } from '@/components/edit-intake-modal';
+import { useSession } from 'next-auth/react';
+import { useOrgRealtime } from '@/lib/realtime/use-org-realtime';
 
 export type RecentIntake = {
   id: string;
@@ -263,6 +265,10 @@ function RecentIntakes({ onIntakeSelect, onDelete, onEdit }: { onIntakeSelect: (
 }
 
 export default function IntakePage() {
+  const { data: session } = useSession();
+  const orgId = (session?.user as any)?.orgId;
+  useOrgRealtime(orgId);
+
   const [selectedIntake, setSelectedIntake] = useState<RecentIntake | null>(null);
   const [isDetailModalOpen, setDetailModalOpen] = useState(false);
   const [isEditModalOpen, setEditModalOpen] = useState(false);

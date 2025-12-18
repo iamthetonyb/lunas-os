@@ -12,6 +12,7 @@ import {
 } from 'react';
 import dayjs from 'dayjs';
 import { fetchJSON } from '@/lib/utils/fetch-json';
+import { useSession } from 'next-auth/react';
 import { SearchableSelect, SearchableMultiSelect } from './searchable-select';
 import { getFriendlyName } from '@/lib/utils/community-display';
 
@@ -129,6 +130,9 @@ export function IntakeForm() {
   const { data: modelPlans } = useSWR<ModelPlanDTO[]>('/api/model-plans', fetcher);
   const { data: services } = useSWR<ServiceDTO[]>('/api/services', fetcher);
 
+  const { data: session } = useSession();
+  const isContractor = session?.user?.role === 'FOREMAN' || session?.user?.role === 'CREW';
+
   const {
     register,
     handleSubmit,
@@ -155,24 +159,34 @@ export function IntakeForm() {
     }
   });
 
-  // Watch communityId to fetch lots (after useForm so control is defined)
-  const watchedCommunityId = useWatch({ control, name: 'communityId' });
-  const { data: communityLots } = useSWR<CommunityLotDTO[]>(
-    watchedCommunityId ? `/api/community-lots?communityId=${watchedCommunityId}` : null,
-    fetcher
-  );
-
-  // Watch requestedBy to fetch foreman contact
+  // Move watches up to fix lint
   const watchedRequestedBy = useWatch({ control, name: 'requestedBy' });
+  const watchedCommunityId = useWatch({ control, name: 'communityId' });
+  const builderId = useWatch({ control, name: 'builderId' });
+  const communityId = useWatch({ control, name: 'communityId' });
+  const modelPlanId = useWatch({ control, name: 'modelPlanId' });
+  const selectedServiceIds = useWatch({ control, name: 'serviceIds' }) ?? [];
+
   const { data: foremanContactData } = useSWR<{ contact?: string; preferredMethod?: string }>(
     watchedRequestedBy ? `/api/users/foreman-contact?name=${encodeURIComponent(watchedRequestedBy)}` : null,
     fetcher
   );
 
-  const builderId = useWatch({ control, name: 'builderId' });
-  const communityId = useWatch({ control, name: 'communityId' });
-  const modelPlanId = useWatch({ control, name: 'modelPlanId' });
-  const selectedServiceIds = useWatch({ control, name: 'serviceIds' }) ?? [];
+  const { data: communityLots } = useSWR<CommunityLotDTO[]>(
+    watchedCommunityId ? `/api/community-lots?communityId=${watchedCommunityId}` : null,
+    fetcher
+  );
+
+  // Set default requestedBy for contractors
+  useEffect(() => {
+    if (isContractor && session?.user?.name && !watchedRequestedBy) {
+      // Find name in REQUESTED_BY_LIST if possible, otherwise just use it
+      const myName = REQUESTED_BY_LIST.find(n => n.toLowerCase() === session.user.name!.toLowerCase());
+      if (myName) {
+        setValue('requestedBy', myName, { shouldValidate: true });
+      }
+    }
+  }, [isContractor, session?.user?.name, setValue, watchedRequestedBy]);
 
   // Lot options from scraped data
   const lotOptions = useMemo<SelectOption[]>(() => {
@@ -314,6 +328,8 @@ export function IntakeForm() {
   // Auto-populate contact info based on foreman/requestedBy selection
   useEffect(() => {
     if (foremanContactData?.contact) {
+      // If we have a preferred method, we can use that to format/pick the contact
+      // The API already returns 'contact' based on preferred method, but let's be explicit
       setValue('contact', foremanContactData.contact, { shouldValidate: true });
     }
   }, [foremanContactData, setValue]);
@@ -558,7 +574,7 @@ export function IntakeForm() {
                   onChange={field.onChange}
                   options={requestedByOptions}
                   placeholder="Select requester"
-                  disabled={requestedByOptions.length === 0}
+                  disabled={isContractor || requestedByOptions.length === 0}
                   emptyStateLabel="No matches"
                 />
               )}

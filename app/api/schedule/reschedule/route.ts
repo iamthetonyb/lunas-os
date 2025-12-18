@@ -23,43 +23,66 @@ export async function POST(request: NextRequest) {
 
         const db = await getDb();
         // Use newDate string directly to avoid timezone issues
-        // newDate comes in as "YYYY-MM-DD" format from date input
 
-        // Try to update blue_book_entry if it exists
+        // 1. Handle Blue Book Entry
         try {
-            await db
-                .update(blueBookEntries)
-                .set({
-                    startDate: newDate, // Use string directly
-                    updatedAt: new Date(),
-                })
-                .where(eq(blueBookEntries.id, jobId));
-        } catch {
-            // May not be a blue book entry ID
+            const entry = await db.query.blueBookEntries.findFirst({
+                where: eq(blueBookEntries.id, jobId)
+            });
+
+            if (entry) {
+                await db
+                    .update(blueBookEntries)
+                    .set({
+                        startDate: newDate,
+                        // Set original date if it's the first time rescheduling
+                        originalStartDate: entry.originalStartDate || entry.startDate || null,
+                        updatedAt: new Date(),
+                    })
+                    .where(eq(blueBookEntries.id, jobId));
+            }
+        } catch (err) {
+            console.error('Error updating blue book entry in reschedule:', err);
         }
 
-        // Also try to update job_request if it exists  
+        // 2. Handle Job Request
         try {
-            await db
-                .update(jobRequests)
-                .set({
-                    dueDate: newDate, // Use string directly
-                })
-                .where(eq(jobRequests.id, jobId));
-        } catch {
-            // May not be a job request ID
-        }
+            const request = await db.query.jobRequests.findFirst({
+                where: eq(jobRequests.id, jobId)
+            });
 
-        // Also try to update job_request_services if it's a service ID
-        try {
-            await db
-                .update(jobRequestServices)
-                .set({
-                    // Store reschedule date if column exists, or update any date field
-                })
-                .where(eq(jobRequestServices.id, jobId));
-        } catch {
-            // May not be a job request service ID
+            if (request) {
+                await db
+                    .update(jobRequests)
+                    .set({
+                        dueDate: newDate,
+                        originalDueDate: request.originalDueDate || request.dueDate || null,
+                    })
+                    .where(eq(jobRequests.id, jobId));
+            } else {
+                // If ID is a jobRequestServiceId, find the parent jobRequest
+                const service = await db.query.jobRequestServices.findFirst({
+                    where: eq(jobRequestServices.id, jobId)
+                });
+
+                if (service?.jobRequestId) {
+                    const parentRequest = await db.query.jobRequests.findFirst({
+                        where: eq(jobRequests.id, service.jobRequestId)
+                    });
+
+                    if (parentRequest) {
+                        await db
+                            .update(jobRequests)
+                            .set({
+                                dueDate: newDate,
+                                originalDueDate: parentRequest.originalDueDate || parentRequest.dueDate || null,
+                            })
+                            .where(eq(jobRequests.id, service.jobRequestId));
+                    }
+                }
+            }
+        } catch (err) {
+            console.error('Error updating job request in reschedule:', err);
         }
 
         return json({

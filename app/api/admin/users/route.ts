@@ -26,6 +26,7 @@ export const GET = safe(async () => {
       email: users.email,
       phone: users.phone,
       systemRole: users.role,
+      preferredContactMethod: users.preferredContactMethod,
       orgMemberId: orgMembers.id,
       memberRole: orgMembers.role,
       orgId: orgMembers.orgId,
@@ -82,11 +83,11 @@ export const GET = safe(async () => {
 export const POST = safe(async (req: Request) => {
   await requireMembership(['admin']);
   const db = await getDb();
-  
+
   const body = await req.json();
   console.log('[POST /api/admin/users] Incoming membership update body:', body);
   console.log('[POST /api/admin/users] Body type:', typeof body, 'Keys:', Object.keys(body || {}));
-  
+
   const parsed = membershipSchema.safeParse(body);
   if (!parsed.success) {
     console.error('[POST /api/admin/users] Membership validation failed:', parsed.error.flatten());
@@ -104,7 +105,7 @@ export const POST = safe(async (req: Request) => {
     const userExists = await db.query.users.findFirst({
       where: eq(users.id, payload.userId),
     });
-    
+
     if (!userExists) {
       console.error('[POST /api/admin/users] User not found:', payload.userId);
       return NextResponse.json(
@@ -112,11 +113,11 @@ export const POST = safe(async (req: Request) => {
         { status: 404 }
       );
     }
-    
+
     const orgExists = await db.query.orgs.findFirst({
       where: eq(orgs.id, payload.orgId),
     });
-    
+
     if (!orgExists) {
       console.error('[POST /api/admin/users] Org not found:', payload.orgId);
       return NextResponse.json(
@@ -138,7 +139,7 @@ export const POST = safe(async (req: Request) => {
         set: { role: payload.role },
       })
       .returning();
-    
+
     console.log('[POST /api/admin/users] Membership saved successfully:', membership);
     return ok(membership, { status: 201 });
   } catch (dbErr: any) {

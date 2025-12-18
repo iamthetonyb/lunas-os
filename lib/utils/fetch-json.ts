@@ -7,7 +7,7 @@ export async function fetchJSON<T>(
   input: RequestInfo | URL,
   init: FetchJSONOptions<T> = {}
 ): Promise<T> {
-  const { timeoutMs = 10000, headers, signal, emptyValue, ...rest } = init;
+  const { timeoutMs = 30000, headers, signal, emptyValue, ...rest } = init;
   const controller = signal ? null : new AbortController();
   const timeoutId =
     timeoutMs && !signal && controller

@@ -18,6 +18,7 @@ const updateUserSchema = z.object({
   email: z.string().email('Invalid email'),
   phone: z.string().optional().nullable(),
   password: z.string().min(6, 'Password must be at least 6 characters').optional(),
+  preferredContactMethod: z.enum(['email', 'call', 'text']).optional(),
 });
 
 export const PUT = safe(async (req: Request, { params: paramsPromise }: { params: Promise<{ id: string }> }) => {
@@ -39,7 +40,7 @@ export const PUT = safe(async (req: Request, { params: paramsPromise }: { params
     return err('Invalid user data', 400, parsed.error.flatten());
   }
 
-  const { name, email, phone, password } = parsed.data;
+  const { name, email, phone, password, preferredContactMethod } = parsed.data;
 
   // Check if user exists
   const existingUser = await db.query.users.findFirst({
@@ -53,7 +54,9 @@ export const PUT = safe(async (req: Request, { params: paramsPromise }: { params
   // Prepare update data
   const updateData: any = {
     name,
+    email, // Allow email update as per user request
     phone: phone || null,
+    preferredContactMethod: preferredContactMethod || 'email',
     updatedAt: new Date(),
   };
 

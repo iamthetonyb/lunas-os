@@ -9,6 +9,8 @@ import { ScheduleKanban } from '@/components/schedule-kanban';
 import { fetchJSON } from '@/lib/utils/fetch-json';
 import { getFriendlyName } from '@/lib/utils/community-display';
 import { Dialog, Transition } from '@headlessui/react';
+import { ConfirmationModal } from '@/components/ui/confirmation-modal';
+import { useOrgRealtime } from '@/lib/realtime/use-org-realtime';
 
 const fetcher = <T,>(url: string) => fetchJSON<T>(url);
 
@@ -50,13 +52,14 @@ function getNextBusinessDay(fromDate: Date): Date {
 }
 
 // Helper: Get service-based row color
-function getServiceRowColor(serviceName: string, isDispatched: boolean, isRescheduled: boolean): string {
-  if (isRescheduled) return 'bg-purple-100';
+function getServiceRowColor(serviceName: string, isDispatched: boolean, isRescheduled: boolean, isComplete: boolean): string {
+  if (isComplete) return 'bg-yellow-100 dark:bg-yellow-900/40 border-l-4 border-yellow-500'; // Highlight completed jobs
+  if (isRescheduled) return 'bg-purple-100 dark:bg-purple-900/20';
   const lower = serviceName.toLowerCase();
-  if (lower.includes('tub') || lower.includes('window')) return 'bg-green-100';
-  if (lower.includes('sweep')) return isDispatched ? 'bg-yellow-200' : 'bg-yellow-100';
-  if (lower.includes('power wash') || lower.includes('wash')) return 'bg-blue-100';
-  return 'bg-white';
+  if (lower.includes('tub') || lower.includes('window')) return 'bg-green-100 dark:bg-green-900/20';
+  if (lower.includes('sweep')) return isDispatched ? 'bg-orange-100 dark:bg-orange-900/40' : 'bg-orange-50 dark:bg-orange-900/20';
+  if (lower.includes('power wash') || lower.includes('wash')) return 'bg-blue-100 dark:bg-blue-900/20';
+  return 'bg-white dark:bg-slate-800';
 }
 
 type UpcomingJob = {
@@ -77,6 +80,7 @@ type UpcomingJob = {
   requestedBy?: string | null;
   assignedForemanName?: string | null;
   jobRequestServiceId?: string | null;
+  originalStartDate?: string | null;
 };
 
 type DecoratedJob = UpcomingJob & {
@@ -135,6 +139,9 @@ function resolveForemanForJob(job: UpcomingJob): ForemanConfig | typeof UNASSIGN
 
 export default function SchedulePage() {
   const { data: session } = useSession();
+  const orgId = (session?.user as any)?.orgId;
+  useOrgRealtime(orgId);
+
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
   const [dispatchModal, setDispatchModal] = useState<DispatchModalState>({
     isOpen: false,
@@ -149,6 +156,19 @@ export default function SchedulePage() {
   });
   const [rescheduledJobs, setRescheduledJobs] = useState<Map<string, string>>(new Map()); // jobId -> new date
   const [selectedForemenMap, setSelectedForemenMap] = useState<Map<string, string>>(new Map()); // jobId -> foremanName
+  const [confirmModal, setConfirmModal] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    onConfirm: () => void;
+    variant: 'primary' | 'danger';
+  }>({
+    isOpen: false,
+    title: '',
+    message: '',
+    onConfirm: () => { },
+    variant: 'primary',
+  });
 
   // Handle inline foreman selection - persist to database
   const handleForemanSelect = async (jobId: string, foremanName: string) => {
@@ -205,7 +225,7 @@ export default function SchedulePage() {
     if (upcomingJobs && upcomingJobs.length > 0) {
       const initialMap = new Map<string, string>();
       upcomingJobs.forEach((job) => {
-        const jobId = job.jobRequestServiceId || job.id;
+        const jobId = job.id; // Use the same ID consistently
         if (job.assignedForemanName) {
           initialMap.set(jobId, job.assignedForemanName);
         }
@@ -237,6 +257,20 @@ export default function SchedulePage() {
   );
 
   const foremanTabs = useMemo(() => {
+    // If contractor, only show their own tab
+    if (isContractor && session?.user?.name) {
+      const userName = session.user.name;
+      const myConfig = FOREMEN_DIRECTORY.find(f => f.name.toLowerCase() === userName.toLowerCase()) || { id: 'me', name: userName };
+
+      // Find count for this contractor
+      const count = decoratedJobs.filter(job => {
+        const assigned = selectedForemenMap.get(job.id);
+        return assigned?.toLowerCase() === userName.toLowerCase();
+      }).length;
+
+      return [{ id: myConfig.id, name: myConfig.name, count }];
+    }
+
     // Count jobs that have been manually assigned vs unassigned
     const counts: Record<string, number> = {};
     decoratedJobs.forEach((job) => {
@@ -259,17 +293,30 @@ export default function SchedulePage() {
       count: counts[foreman.id] ?? 0,
     }));
 
-    // Always show Unassigned tab
-    orderedTabs.push({
-      id: UNASSIGNED_FOREMAN.id,
-      name: UNASSIGNED_FOREMAN.name,
-      count: counts[UNASSIGNED_FOREMAN.id] ?? decoratedJobs.length, // Default all jobs to unassigned
-    });
+    // Always show Unassigned tab (for non-contractors)
+    if (!isContractor) {
+      orderedTabs.push({
+        id: UNASSIGNED_FOREMAN.id,
+        name: UNASSIGNED_FOREMAN.name,
+        count: counts[UNASSIGNED_FOREMAN.id] ?? decoratedJobs.length,
+      });
+    }
 
     return orderedTabs;
-  }, [decoratedJobs, selectedForemenMap]);
+  }, [decoratedJobs, selectedForemenMap, isContractor, session?.user?.name]);
 
   const [activeForemanId, setActiveForemanId] = useState<string>('all');
+
+  // Handle default tab for contractors
+  useEffect(() => {
+    if (isContractor && session?.user?.name && activeForemanId === 'all') {
+      const userName = session.user.name;
+      const myConfig = FOREMEN_DIRECTORY.find(f => f.name.toLowerCase() === userName.toLowerCase());
+      if (myConfig) {
+        setActiveForemanId(myConfig.id);
+      }
+    }
+  }, [isContractor, session?.user?.name, activeForemanId]);
 
   useEffect(() => {
     if (activeForemanId === 'all') return;
@@ -379,6 +426,7 @@ export default function SchedulePage() {
       });
       setRescheduledJobs((prev) => new Map(prev).set(rescheduleModal.job!.id, rescheduleModal.selectedDate));
       mutateAssignments();
+      mutate(`/api/schedule/blue-book?start=${scheduleRange.start}&end=${scheduleRange.end}`);
       closeRescheduleModal();
     } catch (error) {
       console.error('Failed to reschedule job', error);
@@ -386,30 +434,50 @@ export default function SchedulePage() {
     }
   };
 
-  const handleMarkComplete = async (jobId: string) => {
-    try {
-      await fetchJSON('/api/schedule/complete', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ jobId }),
-      });
-      mutateAssignments();
-    } catch (error) {
-      console.error('Failed to mark job complete', error);
-      alert('Failed to mark job complete. Please try again.');
-    }
+  const handleMarkComplete = async (jobId: string, currentStatus?: string) => {
+    // Determine action based on current status (if available from UI) or assume COMPLETE
+    const isComplete = currentStatus === 'COMPLETE';
+    const action = isComplete ? 'mark as incomplete' : 'mark as complete';
+
+    setConfirmModal({
+      isOpen: true,
+      title: isComplete ? 'Undo Completion' : 'Mark Job Complete',
+      message: `Are you sure you want to ${action}?`,
+      variant: isComplete ? 'primary' : 'primary', // Can use danger/warning if needed
+      onConfirm: async () => {
+        try {
+          await fetchJSON('/api/schedule/complete', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ jobId }),
+          });
+          mutateAssignments();
+          mutate(`/api/schedule/blue-book?start=${scheduleRange.start}&end=${scheduleRange.end}`);
+        } catch (error) {
+          console.error('Failed to toggle job completion', error);
+          alert('Failed to update job status.');
+        }
+      },
+    });
   };
 
   const handleAutoDraft = async () => {
-    try {
-      await fetchJSON(`/api/schedule/auto-draft?date=${date}`, {
-        method: 'POST',
-      });
-      mutateAssignments();
-    } catch (error) {
-      console.error('Failed to auto-draft schedule', error);
-      alert('Auto-draft failed. Please try again.');
-    }
+    setConfirmModal({
+      isOpen: true,
+      title: 'Auto-Draft Schedule',
+      message: 'This will automatically assign available crews to unassigned jobs for the next 14 days. Proceed?',
+      variant: 'primary',
+      onConfirm: async () => {
+        try {
+          await fetchJSON(`/api/schedule/auto-draft?date=${date}`, {
+            method: 'POST',
+          });
+          mutateAssignments();
+        } catch (error) {
+          console.error('Failed to auto-draft schedule', error);
+        }
+      },
+    });
   };
 
   const handleApproveAndSend = async () => {
@@ -440,51 +508,57 @@ export default function SchedulePage() {
               type="date"
               value={date}
               onChange={(e) => setDate(e.target.value)}
-              className="px-3 py-2 border border-gray-300 rounded-lg"
+              className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-slate-700 text-gray-900 dark:text-white"
             />
-            <button
-              onClick={handleAutoDraft}
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-            >
-              Auto-Draft
-            </button>
+            {!isContractor && (
+              <button
+                onClick={handleAutoDraft}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+              >
+                Auto-Draft
+              </button>
+            )}
           </div>
         }
       />
       <main className="px-6 py-6">
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
+        <div className="bg-white dark:bg-slate-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6 mb-6">
           <div className="flex items-center justify-between mb-4">
             <div>
-              <h2 className="text-lg font-semibold text-gray-900">Upcoming Services</h2>
-              <p className="text-sm text-gray-500">
+              <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Upcoming Services</h2>
+              <p className="text-sm text-gray-500 dark:text-gray-400">
                 Showing start dates from {scheduleRange.start} to {scheduleRange.end}
               </p>
             </div>
-            <Link
-              href="/blue-book"
-              className="text-sm text-blue-600 hover:text-blue-700 font-medium"
-            >
-              Manage Blue Book →
-            </Link>
+            {!isContractor && (
+              <Link
+                href="/blue-book"
+                className="text-sm text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 font-medium"
+              >
+                Manage Blue Book →
+              </Link>
+            )}
           </div>
           <div className="mb-4 flex flex-wrap items-center gap-2">
-            <button
-              type="button"
-              className={`rounded-full border px-4 py-2 text-sm transition ${activeForemanId === 'all'
-                ? 'border-blue-500 bg-blue-500 text-white'
-                : 'border-gray-300 bg-white text-gray-700 hover:border-blue-400'
-                }`}
-              onClick={() => setActiveForemanId('all')}
-            >
-              All Foremen ({decoratedJobs.length})
-            </button>
+            {!isContractor && (
+              <button
+                type="button"
+                className={`rounded-full border px-4 py-2 text-sm transition ${activeForemanId === 'all'
+                  ? 'border-blue-500 bg-blue-500 text-white'
+                  : 'border-gray-300 dark:border-gray-600 bg-white dark:bg-slate-700 text-gray-700 dark:text-gray-300 hover:border-blue-400 dark:hover:border-blue-500'
+                  }`}
+                onClick={() => setActiveForemanId('all')}
+              >
+                All Foremen ({decoratedJobs.length})
+              </button>
+            )}
             {foremanTabs.map((foreman) => (
               <button
                 key={foreman.id}
                 type="button"
                 className={`rounded-full border px-4 py-2 text-sm transition ${activeForemanId === foreman.id
                   ? 'border-blue-500 bg-blue-500 text-white'
-                  : 'border-gray-300 bg-white text-gray-700 hover:border-blue-400'
+                  : 'border-gray-300 dark:border-gray-600 bg-white dark:bg-slate-700 text-gray-700 dark:text-gray-300 hover:border-blue-400 dark:hover:border-blue-500'
                   }`}
                 onClick={() => setActiveForemanId(foreman.id)}
               >
@@ -493,9 +567,9 @@ export default function SchedulePage() {
             ))}
           </div>
           {decoratedJobs.length === 0 ? (
-            <p className="text-gray-600">No services scheduled in this window.</p>
+            <p className="text-gray-600 dark:text-gray-400">No services scheduled in this window.</p>
           ) : visibleJobs.length === 0 ? (
-            <p className="text-gray-600">
+            <p className="text-gray-600 dark:text-gray-400">
               No services scheduled for the selected foreman in this window.
             </p>
           ) : (
@@ -503,7 +577,9 @@ export default function SchedulePage() {
               <table className="min-w-full divide-y divide-gray-200 dark:divide-slate-700">
                 <thead className="bg-gray-50 dark:bg-slate-800">
                   <tr>
-                    <th className="px-4 py-2 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">Assign Foreman</th>
+                    {!isContractor && (
+                      <th className="px-4 py-2 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">Assign Foreman</th>
+                    )}
                     <th className="px-4 py-2 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">Builder</th>
                     <th className="px-4 py-2 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">Community</th>
                     <th className="px-4 py-2 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">Services</th>
@@ -525,41 +601,57 @@ export default function SchedulePage() {
 
                     const walkTime = (job as { walkTime?: string | null; walk_time?: string | null })
                       .walkTime ?? (job as { walk_time?: string | null }).walk_time ?? null;
+                    // Date display fix: Use manual slice to avoid timezone shift
+                    const formatDisplayDate = (dateStr: string | null) => {
+                      if (!dateStr) return null;
+                      // dateStr is likely "YYYY-MM-DD"
+                      const [year, month, day] = dateStr.split('-');
+                      if (!year || !month || !day) return dateStr;
+                      return `${month}/${day}/${year}`;
+                    };
+
                     const rescheduledDate = rescheduledJobs.get(job.id);
+                    const originalDate = job.originalStartDate;
+
                     const notesParts = [
                       job.lot ? `Lot ${job.lot}` : null,
                       walkTime ? `Walk ${walkTime}` : null,
-                      rescheduledDate ? `Rescheduled to ${new Date(rescheduledDate).toLocaleDateString()}` : null,
+                      originalDate && originalDate !== job.startDate ? `Original Date: ${formatDisplayDate(originalDate)}` : null,
+                      rescheduledDate ? `Rescheduled to ${formatDisplayDate(rescheduledDate)}` : null,
                     ].filter(Boolean);
                     const notes = notesParts.join(' • ') || '—';
 
                     const startDateStamp = job.startDate
-                      ? new Date(job.startDate).toLocaleDateString()
+                      ? formatDisplayDate(job.startDate)
                       : null;
 
+
                     const isRescheduled = rescheduledJobs.has(job.id);
-                    const rowColor = getServiceRowColor(serviceLabel, false, isRescheduled);
+                    const isComplete = job.status === 'COMPLETE';
+                    const rowColor = getServiceRowColor(serviceLabel, false, isRescheduled, isComplete);
 
                     return (
                       <tr key={job.id} className={rowColor}>
-                        <td className="px-4 py-2 text-sm">
-                          {!isContractor ? (
-                            <select
-                              value={selectedForemenMap.get(job.jobRequestServiceId || job.id) || ''}
-                              onChange={(e) => handleForemanSelect(job.jobRequestServiceId || job.id, e.target.value)}
-                              className={`w-full px-2 py-1 border rounded text-sm bg-white dark:bg-slate-700 text-gray-900 dark:text-white ${selectedForemenMap.get(job.jobRequestServiceId || job.id) ? 'border-green-500 bg-green-50 dark:bg-green-900/30' : 'border-gray-300 dark:border-slate-600'}`}
-                            >
-                              <option value="">Select Foreman...</option>
-                              {FOREMEN_DIRECTORY.map((f) => (
-                                <option key={f.id} value={f.name}>{f.name}</option>
-                              ))}
-                            </select>
-                          ) : (
-                            <span className="font-medium text-gray-900 dark:text-white">
-                              {selectedForemenMap.get(job.jobRequestServiceId || job.id) || 'Not assigned'}
-                            </span>
-                          )}
-                        </td>
+                        {!isContractor && (
+                          <td className="px-4 py-2 text-sm text-gray-900 dark:text-gray-300">
+                            {!isContractor && !job.id.includes('-') ? (
+                              <select
+                                className="block w-full rounded-md border-0 py-1.5 pl-3 pr-10 text-gray-900 ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-blue-600 sm:text-sm sm:leading-6 dark:bg-slate-700 dark:text-white dark:ring-slate-600"
+                                value={selectedForemenMap.get(job.id) || ''}
+                                onChange={(e) => handleForemanChange(job.id, e.target.value)}
+                              >
+                                <option value="">Select Foreman...</option>
+                                {FOREMEN_DIRECTORY.map((f) => (
+                                  <option key={f.id} value={f.name}>{f.name}</option>
+                                ))}
+                              </select>
+                            ) : (
+                              <span className="font-medium text-gray-900 dark:text-white">
+                                {selectedForemenMap.get(job.jobRequestServiceId || job.id) || 'Not assigned'}
+                              </span>
+                            )}
+                          </td>
+                        )}
                         <td className="px-4 py-2 text-sm text-gray-900 dark:text-white">{builder}</td>
                         <td className="px-4 py-2 text-sm text-gray-900 dark:text-white">{getFriendlyName(community)}</td>
                         <td className="px-4 py-2 text-sm text-gray-900 dark:text-white">
@@ -568,12 +660,27 @@ export default function SchedulePage() {
                           </span>
                         </td>
                         <td className="px-4 py-2 text-sm text-gray-900 dark:text-gray-300">
-                          {startDateStamp && (
-                            <span className="mr-2 inline-flex items-center rounded-md bg-gray-100 dark:bg-slate-700 px-2 py-0.5 text-xs text-gray-600 dark:text-gray-300">
-                              {startDateStamp}
-                            </span>
-                          )}
-                          {notes}
+                          <div className="flex flex-col gap-1">
+                            {startDateStamp && (
+                              <span className="inline-flex items-center self-start rounded-md bg-gray-100 dark:bg-slate-700 px-2 py-0.5 text-xs text-gray-600 dark:text-gray-300">
+                                {startDateStamp}
+                              </span>
+                            )}
+                            <div className="space-y-0.5">
+                              <p>{job.lot ? `Lot ${job.lot}` : null}</p>
+                              {walkTime && <p className="text-xs opacity-75">Walk: {walkTime}</p>}
+                              {originalDate && originalDate !== job.startDate && (
+                                <p className="text-xs text-blue-600 dark:text-blue-400 font-medium">
+                                  Original: {formatDisplayDate(originalDate)}
+                                </p>
+                              )}
+                              {rescheduledDate && (
+                                <p className="text-xs text-purple-600 dark:text-purple-400 font-medium">
+                                  Resched: {formatDisplayDate(rescheduledDate)}
+                                </p>
+                              )}
+                            </div>
+                          </div>
                         </td>
                         <td className="px-4 py-2 text-sm text-gray-900 dark:text-white">
                           <div className="flex gap-2">
@@ -588,17 +695,18 @@ export default function SchedulePage() {
                             ) : (
                               /* Contractor view: Green checkmark for job done */
                               <button
-                                onClick={() => handleMarkComplete(job.id)}
-                                className="px-2 py-1 bg-green-500 text-white text-xs rounded hover:bg-green-600"
-                                title="Mark job complete"
+                                onClick={() => handleMarkComplete(job.id, job.status || 'PENDING')}
+                                className={`px-2 py-1 text-xs rounded hover:opacity-90 ${isComplete ? 'bg-yellow-500 text-black' : 'bg-green-500 text-white'}`}
+                                title={isComplete ? "Mark as incomplete" : "Mark job complete"}
                               >
-                                ✓
+                                {isComplete ? '↩' : '✓'}
                               </button>
                             )}
+
+                            {/* Reschedule button - visible to everyone */}
                             <button
                               onClick={() => openRescheduleModal(job)}
                               className="px-3 py-1 bg-purple-500 text-white text-xs rounded hover:bg-purple-600"
-                              disabled={isRescheduled}
                             >
                               Reschedule
                             </button>
@@ -778,6 +886,15 @@ export default function SchedulePage() {
           </div>
         </Dialog>
       </Transition>
+
+      <ConfirmationModal
+        isOpen={confirmModal.isOpen}
+        onClose={() => setConfirmModal(prev => ({ ...prev, isOpen: false }))}
+        onConfirm={confirmModal.onConfirm}
+        title={confirmModal.title}
+        message={confirmModal.message}
+        variant={confirmModal.variant}
+      />
     </>
   );
 }

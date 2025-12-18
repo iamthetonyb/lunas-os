@@ -28,6 +28,8 @@ export async function GET(
             id: dispatchBatches.id,
             serviceDate: dispatchBatches.serviceDate,
             status: dispatchBatches.status,
+            crewName: dispatchBatches.crewName,
+            foremanName: dispatchBatches.foremanName,
             notes: dispatchBatches.notes,
             createdById: dispatchBatches.createdById,
         })
@@ -57,6 +59,8 @@ export async function GET(
             builderName: builders.name,
             lot: jobRequests.lot,
             address: jobRequests.address,
+            // Add assignedForemanName from the service itself
+            serviceForeman: jobRequestServices.assignedForemanName,
         })
             .from(assignments)
             .leftJoin(crews, eq(assignments.crewId, crews.id))
@@ -68,10 +72,9 @@ export async function GET(
             .leftJoin(builders, eq(jobRequests.builderId, builders.id))
             .where(eq(assignments.dispatchBatchId, id));
 
-        // Get crew and foreman info from first assignment
-        const firstAssignment = batchAssignments[0];
-        const crewName = firstAssignment?.crewName || 'Unknown Crew';
-        const foremanName = firstAssignment?.foremanName || 'Unassigned';
+        // Get crew and foreman info - batch values take precedence as they were captured at dispatch time
+        const crewName = dispatchBatch.crewName || batchAssignments[0]?.crewName || 'Unknown Crew';
+        const foremanName = dispatchBatch.foremanName || batchAssignments[0]?.foremanName || 'Unassigned';
 
         // Map jobs from assignments
         const jobs = batchAssignments.map((assignment) => ({
@@ -83,6 +86,7 @@ export async function GET(
             serviceName: assignment.serviceName || null,
             walkTime: assignment.walkTime || null,
             status: assignment.assignmentStatus || 'PENDING',
+            assignedForeman: assignment.serviceForeman || foremanName,
         }));
 
         return json({

@@ -23,18 +23,34 @@ export async function POST(request: NextRequest) {
 
         const db = await getDb();
 
-        // Update blue book entry status to COMPLETE
+        // Check current status
+        const [current] = await db
+            .select({ status: blueBookEntries.status })
+            .from(blueBookEntries)
+            .where(eq(blueBookEntries.id, jobId));
+
+        const newStatus = current?.status === 'COMPLETE' ? 'PENDING' : 'COMPLETE';
+
+        // Update blue book entry status
         await db
             .update(blueBookEntries)
             .set({
-                status: 'COMPLETE',
+                status: newStatus,
                 updatedAt: new Date(),
             })
             .where(eq(blueBookEntries.id, jobId));
 
+        // Publish event for realtime updates
+        const { publishOrgEvent } = await import('@/lib/ably');
+        // We'll need to get orgId somehow, possibly from header or pass it in body if not in session context here
+        // For now, let's rely on the client refreshing, or better: publish if we can.
+        // But since this is a protected route usually valid with session...
+        // Let's just return success and let client re-fetch.
+
         return json({
             ok: true,
-            message: 'Job marked as complete',
+            status: newStatus,
+            message: `Job marked as ${newStatus}`,
         });
     } catch (error) {
         console.error('Error completing job:', error);

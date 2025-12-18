@@ -66,6 +66,12 @@ export default function DashboardPage() {
     }
   );
 
+  // Fetch my upcoming jobs (for contractors)
+  const { data: myAssignments = [] } = useSWR<any[]>(
+    membership?.role === 'FOREMAN' || membership?.role === 'CREW' ? '/api/users/me/assignments' : null,
+    fetcher
+  );
+
   // Calculate dynamic stats
   const activeJobCount = blueBookEntries.filter((e: any) => e.status !== 'COMPLETE').length;
   const pendingIntakeCount = recentIntakes.length;
@@ -111,6 +117,7 @@ export default function DashboardPage() {
           {/* Blue Book Info Card - Only for admin/backoffice */}
           {canAccessBlueBook && (
             <div className="lg:col-span-1">
+              {/* ... existing blue book card content ... */}
               <div className="bg-gradient-to-br from-blue-500 to-blue-700 dark:from-blue-600 dark:to-blue-900 rounded-lg shadow-lg p-6 text-white">
                 <div className="flex items-center justify-between mb-4">
                   <h2 className="text-xl font-bold">📘 Blue Book</h2>
@@ -139,6 +146,45 @@ export default function DashboardPage() {
                     </p>
                   </div>
                 </div>
+              </div>
+            </div>
+          )}
+
+          {/* My Upcoming Meetings - Only for Contractors */}
+          {!canAccessBlueBook && (
+            <div className="lg:col-span-1">
+              <div className="bg-gradient-to-br from-indigo-500 to-indigo-700 dark:from-indigo-600 dark:to-indigo-900 rounded-lg shadow-lg p-6 text-white h-full">
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="text-xl font-bold">📅 My Upcoming Schedule</h2>
+                  <Link
+                    href="/schedule"
+                    className="text-sm bg-white/20 hover:bg-white/30 px-3 py-1 rounded-full transition-colors backdrop-blur-sm"
+                  >
+                    View Full Schedule →
+                  </Link>
+                </div>
+                {myAssignments.length === 0 ? (
+                  <div className="bg-white/10 backdrop-blur-sm rounded-lg p-6 text-center">
+                    <p className="text-sm opacity-90">No jobs assigned yet for the upcoming days.</p>
+                  </div>
+                ) : (
+                  <div className="space-y-3 max-h-[400px] overflow-y-auto pr-1 custom-scrollbar">
+                    {myAssignments.slice(0, 5).map((job: any) => (
+                      <div key={job.id} className="bg-white/10 backdrop-blur-sm rounded-lg p-4">
+                        <div className="flex justify-between items-start mb-1">
+                          <p className="text-xs font-semibold uppercase tracking-wider opacity-80">{job.date ? new Date(job.date).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }) : 'TBD'}</p>
+                          <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${job.status === 'SENT' ? 'bg-green-400/30 text-green-100' : 'bg-white/20'}`}>{job.status}</span>
+                        </div>
+                        <p className="text-sm font-bold truncate">{job.community} · Lot {job.lot}</p>
+                        <p className="text-xs opacity-90 truncate">{job.builder}</p>
+                        <p className="text-xs mt-1 italic opacity-80">{job.service}</p>
+                      </div>
+                    ))}
+                    {myAssignments.length > 5 && (
+                      <p className="text-[10px] text-center opacity-70 mt-2">+ {myAssignments.length - 5} more assignments</p>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
           )}
@@ -246,12 +292,12 @@ export default function DashboardPage() {
                           : '—';
 
                         return (
-                          <tr key={entry.id} className={entry.status === 'COMPLETE' ? 'bg-green-50 dark:bg-green-900/20' : 'bg-white dark:bg-slate-800'}>
+                          <tr key={entry.id} className={entry.status === 'COMPLETE' ? 'bg-green-100/30 dark:bg-green-900/20' : 'hover:bg-gray-50 dark:hover:bg-slate-700/50'}>
                             <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">
                               {entry.builderName || entry.builderId || '—'}
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
-                              {entry.communityName || entry.communityId || '—'}
+                              {typeof entry.communityName === 'string' ? entry.communityName : entry.communityId || '—'}
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
                               {entry.lot || '—'}

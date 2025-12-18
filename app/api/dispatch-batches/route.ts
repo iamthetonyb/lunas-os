@@ -7,12 +7,14 @@ import { eq, count } from 'drizzle-orm';
 export const runtime = 'nodejs';
 export const preferredRegion = 'auto';
 
-export async function GET() {
+export async function GET(request: Request) {
     try {
+        const { searchParams } = new URL(request.url);
+        const dateParam = searchParams.get('date');
         const db = await getDb();
 
-        // Get all dispatch batches - crewName and foremanName are stored directly on the batch
-        const batches = await db.select({
+        // Get all dispatch batches - filtered by date if provided
+        let query = db.select({
             id: dispatchBatches.id,
             serviceDate: dispatchBatches.serviceDate,
             status: dispatchBatches.status,
@@ -21,6 +23,12 @@ export async function GET() {
             notes: dispatchBatches.notes,
         })
             .from(dispatchBatches);
+
+        if (dateParam) {
+            query = query.where(eq(dispatchBatches.serviceDate, dateParam)) as any;
+        }
+
+        const batches = await query;
 
         // For each batch, get job count
         const batchData = await Promise.all(batches.map(async (batch) => {

@@ -3,10 +3,12 @@
 import { PageHeader } from '@/components/page-header';
 import Link from 'next/link';
 import { use } from 'react';
-import useSWR from 'swr';
+import useSWR, { mutate } from 'swr';
 import { fetchJSON } from '@/lib/utils/fetch-json';
 import { useSession } from 'next-auth/react';
 import { getFriendlyName } from '@/lib/utils/community-display';
+import { ConfirmationModal } from '@/components/ui/confirmation-modal';
+import { useState } from 'react';
 
 const fetcher = <T,>(url: string) => fetchJSON<T>(url);
 
@@ -30,6 +32,7 @@ type DispatchJob = {
     walkTime: string | null;
     dueDate: string | null;
     status: string | null;
+    assignedForeman: string | null;
 };
 
 export default function DispatchDetailPage({ params }: { params: Promise<{ id: string }> }) {
@@ -37,23 +40,31 @@ export default function DispatchDetailPage({ params }: { params: Promise<{ id: s
     const { data: session } = useSession();
     const isContractor = session?.user?.role === 'FOREMAN' || session?.user?.role === 'CREW';
 
+    const [completeModal, setCompleteModal] = useState<{ isOpen: boolean; jobId: string | null }>({
+        isOpen: false,
+        jobId: null,
+    });
+
     const { data: dispatch, error, isLoading } = useSWR<DispatchDetail>(
         `/api/dispatch-batches/${id}`,
         fetcher
     );
 
-    const handleMarkComplete = async (jobId: string) => {
+    const openCompleteModal = (jobId: string) => {
+        setCompleteModal({ isOpen: true, jobId });
+    };
+
+    const handleMarkCompleteConfirm = async () => {
+        if (!completeModal.jobId) return;
         try {
             await fetchJSON('/api/schedule/complete', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ jobId }),
+                body: JSON.stringify({ jobId: completeModal.jobId }),
             });
-            // Refresh data
-            window.location.reload();
+            mutate(`/api/dispatch-batches/${id}`); // Revalidate SWR data
         } catch (error) {
             console.error('Failed to mark job complete', error);
-            alert('Failed to mark job complete. Please try again.');
         }
     };
 
@@ -126,10 +137,10 @@ export default function DispatchDetailPage({ params }: { params: Promise<{ id: s
                         <div>
                             <p className="text-sm text-gray-500">Status</p>
                             <span className={`inline-flex px-3 py-1 rounded-full text-sm font-semibold ${dispatch.status === 'COMPLETE'
-                                    ? 'bg-green-100 text-green-800'
-                                    : dispatch.status === 'SENT' || dispatch.status === 'DISPATCHED'
-                                        ? 'bg-blue-100 text-blue-800'
-                                        : 'bg-yellow-100 text-yellow-800'
+                                ? 'bg-green-100 text-green-800'
+                                : dispatch.status === 'SENT' || dispatch.status === 'DISPATCHED'
+                                    ? 'bg-blue-100 text-blue-800'
+                                    : 'bg-yellow-100 text-yellow-800'
                                 }`}>
                                 {dispatch.status === 'SENT' ? 'DISPATCHED' : dispatch.status || 'PENDING'}
                             </span>
@@ -162,6 +173,7 @@ export default function DispatchDetailPage({ params }: { params: Promise<{ id: s
                                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Builder</th>
                                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Lot</th>
                                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Service</th>
+                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Foreman</th>
                                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Walk Time</th>
                                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
                                         {isContractor && (
@@ -185,12 +197,15 @@ export default function DispatchDetailPage({ params }: { params: Promise<{ id: s
                                                 {job.serviceName || '—'}
                                             </td>
                                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                                {job.assignedForeman || '—'}
+                                            </td>
+                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                                                 {job.walkTime || '—'}
                                             </td>
                                             <td className="px-6 py-4 whitespace-nowrap text-sm">
                                                 <span className={`px-2 py-1 rounded-full text-xs font-semibold ${job.status === 'COMPLETE'
-                                                        ? 'bg-green-100 text-green-800'
-                                                        : 'bg-yellow-100 text-yellow-800'
+                                                    ? 'bg-green-100 text-green-800'
+                                                    : 'bg-yellow-100 text-yellow-800'
                                                     }`}>
                                                     {job.status || 'PENDING'}
                                                 </span>
@@ -199,7 +214,7 @@ export default function DispatchDetailPage({ params }: { params: Promise<{ id: s
                                                 <td className="px-6 py-4 whitespace-nowrap text-sm">
                                                     {job.status !== 'COMPLETE' && (
                                                         <button
-                                                            onClick={() => handleMarkComplete(job.id)}
+                                                            onClick={() => openCompleteModal(job.id)}
                                                             className="px-3 py-1 bg-green-500 text-white text-xs rounded hover:bg-green-600"
                                                         >
                                                             ✓ Complete
@@ -215,6 +230,16 @@ export default function DispatchDetailPage({ params }: { params: Promise<{ id: s
                     )}
                 </div>
             </main>
+
+            <ConfirmationModal
+                isOpen={completeModal.isOpen}
+                onClose={() => setCompleteModal({ isOpen: false, jobId: null })}
+                onConfirm={handleMarkCompleteConfirm}
+                title="Mark Job Complete"
+                message="Are you sure you want to mark this job as complete?"
+                confirmText="Complete"
+                variant="primary"
+            />
         </>
     );
 }
