@@ -51,6 +51,8 @@ export async function POST(request: NextRequest) {
                 .values({
                     serviceDate: today,
                     status: 'SENT', // Mark as sent when dispatching
+                    crewName: crewName,
+                    foremanName: foremanName,
                 })
                 .returning();
             batch = newBatch;
