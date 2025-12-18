@@ -70,6 +70,7 @@
     "ably": "^1.2.50",
     "bcrypt": "^6.0.0",
     "bcryptjs": "^3.0.3",
+    "convex": "^1.31.2",
     "drizzle-orm": "^0.44.6",
     "fast-glob": "^3.3.2",
     "i18next": "^25.6.0",

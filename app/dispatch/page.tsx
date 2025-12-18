@@ -2,21 +2,10 @@
 
 import { PageHeader } from '@/components/page-header';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
-import useSWR, { mutate } from 'swr';
-import { fetchJSON } from '@/lib/utils/fetch-json';
 import { useSession } from 'next-auth/react';
-
-const fetcher = <T,>(url: string) => fetchJSON<T>(url);
-
-type DispatchBatch = {
-  id: string;
-  serviceDate: string | null;
-  status: string | null;
-  crewName: string;
-  foremanName: string;
-  jobCount: number;
-};
+import { useQuery, useMutation } from 'convex/react';
+import { api } from '@/convex/_generated/api';
+import { Id } from '@/convex/_generated/dataModel';
 
 export default function DispatchPage() {
   const { data: session } = useSession();
@@ -24,40 +13,50 @@ export default function DispatchPage() {
   const isAdmin = session?.user?.role === 'ADMIN';
   const currentUserName = session?.user?.name;
 
-  // Fetch dispatch batches from API
-  const { data: batches = [], mutate: mutateBatches } = useSWR<DispatchBatch[]>(
-    '/api/dispatch-batches',
-    fetcher
-  );
+  // Real-time Convex query
+  const batches = useQuery(api.queries.getDispatchBatches);
 
-  // Filter batches for contractors to only show their assigned jobs
-  const displayBatches = isContractor && currentUserName
-    ? batches.filter(batch =>
-      batch.foremanName?.toLowerCase() === currentUserName.toLowerCase() ||
-      batch.crewName?.toLowerCase() === currentUserName.toLowerCase()
-    )
-    : batches;
+  // Convex mutation
+  const deleteBatchMutation = useMutation(api.mutations.deleteDispatchBatch);
 
-  const handleDelete = async (batchId: string) => {
+  // Filter batches for contractors
+  const displayBatches = batches
+    ? isContractor && currentUserName
+      ? batches.filter(batch =>
+        batch.foremanName?.toLowerCase() === currentUserName.toLowerCase() ||
+        batch.crewName?.toLowerCase() === currentUserName.toLowerCase()
+      )
+      : batches
+    : [];
+
+  const handleDelete = async (batchId: Id<"dispatchBatches">) => {
     if (!confirm('Are you sure you want to delete this dispatch batch? This action cannot be undone.')) {
       return;
     }
     try {
-      await fetchJSON(`/api/dispatch-batches/${batchId}`, {
-        method: 'DELETE',
-      });
-      mutateBatches();
+      await deleteBatchMutation({ batchId });
     } catch (error) {
       console.error('Failed to delete batch', error);
       alert('Failed to delete dispatch batch. Please try again.');
     }
   };
 
+  if (!batches) {
+    return (
+      <>
+        <PageHeader title="Dispatch" description="Loading..." />
+        <main className="px-6 py-6">
+          <div className="animate-pulse bg-gray-100 rounded-lg h-64"></div>
+        </main>
+      </>
+    );
+  }
+
   return (
     <>
       <PageHeader
         title="Dispatch"
-        description={isContractor ? "Your assigned jobs" : "Manage crew dispatch and job batches"}
+        description={isContractor ? "Your assigned jobs (Real-time)" : "Manage crew dispatch and job batches (Real-time)"}
         action={!isContractor ? (
           <Link
             href="/intake"
@@ -145,7 +144,7 @@ export default function DispatchPage() {
                             </Link>
                             {isAdmin && (
                               <button
-                                onClick={() => handleDelete(batch.id)}
+                                onClick={() => handleDelete(batch.id as Id<"dispatchBatches">)}
                                 className="text-red-600 hover:text-red-800 font-medium"
                               >
                                 Delete
