@@ -10,6 +10,7 @@ export const users = pgTable('users', {
   name: text('name'),
   role: roleEnum('role').default('CUSTOMER').notNull(),
   preferredLang: langEnum('preferred_lang').default('EN'),
+  preferredContactMethod: text('preferred_contact_method').default('email'), // 'email' or 'phone'
   passwordHash: text('password_hash'),
   resetToken: text('reset_token'),
   resetTokenExpiry: timestamp('reset_token_expiry'),

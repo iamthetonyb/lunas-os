@@ -22,7 +22,7 @@ export async function getDb(): Promise<Db> {
   const host = new URL(url).hostname;
   const pgOpts =
     /^(localhost|127\.0\.0\.1)$/i.test(host) ? {} : { ssl: 'require' as const };
-  
+
   const client = postgres(url, pgOpts);
   cached = drizzle(client, { schema });
   return cached;

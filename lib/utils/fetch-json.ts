@@ -7,7 +7,7 @@ export async function fetchJSON<T>(
   input: RequestInfo | URL,
   init: FetchJSONOptions<T> = {}
 ): Promise<T> {
-  const { timeoutMs = 10000, headers, signal, emptyValue, ...rest } = init;
+  const { timeoutMs = 30000, headers, signal, emptyValue, ...rest } = init;
   const controller = signal ? null : new AbortController();
   const timeoutId =
     timeoutMs && !signal && controller
@@ -26,7 +26,7 @@ export async function fetchJSON<T>(
 
     if (response.status === 401 && typeof window !== 'undefined') {
       const cb = encodeURIComponent(window.location.pathname + window.location.search);
-      window.location.href = `/signin?cb=${cb}`;
+      window.location.href = `/login?callbackUrl=${cb}`;
       throw new Error('Unauthorized');
     }
 
@@ -53,7 +53,7 @@ export async function fetchJSON<T>(
       console.error('Request failed with status', response.status, 'and data:', data);
       let message = 'Request failed';
       let details = null;
-      
+
       if (data && typeof data === 'object' && data !== null) {
         if ('error' in data) {
           if (typeof data.error === 'string' && data.error) {
@@ -68,13 +68,13 @@ export async function fetchJSON<T>(
       } else if (response.statusText) {
         message = response.statusText;
       }
-      
+
       // If we got a 500 with no useful data, make it more descriptive
       if (!data || (typeof data === 'object' && Object.keys(data).length === 0)) {
         message = `Server error (${response.status}): The server encountered an error. Check server logs for details.`;
         details = 'No error details returned from server';
       }
-      
+
       const error = new Error(message);
       (error as Error & { status?: number; data?: unknown }).status = response.status;
       (error as Error & { status?: number; data?: unknown }).data = data || { error: message, details };

@@ -16,6 +16,7 @@ export const jobRequests = pgTable('job_requests', {
   address: text('address'),
   modelPlanId: uuid('model_plan_id').references(() => modelPlans.id),
   dueDate: date('due_date'),
+  originalDueDate: date('original_due_date'),
   notes: text('notes'),
   poNumber: text('po_number'),
   createdById: uuid('created_by_id').references(() => users.id),

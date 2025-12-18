@@ -37,27 +37,48 @@ export const GET = safe(async (req: Request) => {
       gte(blueBookEntries.startDate, startIso),
       lte(blueBookEntries.startDate, endIso)
     ),
-    with: {
-      builder: true,
-      community: true,
-      service: true,
+    columns: {
+      id: true,
+      startDate: true,
+      originalStartDate: true,
+      lot: true,
+      accountCategoryCode: true,
+      accountCategoryName: true,
+      poNumber: true,
+      amount: true,
+      status: true,
+      assignedForemanName: true,
     },
-    orderBy: (entries, { asc }) => asc(blueBookEntries.startDate),
+    with: {
+      builder: {
+        columns: { name: true },
+      },
+      community: {
+        columns: { name: true },
+      },
+      service: {
+        columns: { name: true },
+      },
+    },
+    orderBy: (entries, { asc }) => asc(entries.startDate),
   });
 
   const jobRequestData = await db
     .select({
       id: jobRequests.id,
       dueDate: jobRequests.dueDate,
+      originalDueDate: jobRequests.originalDueDate,
       lot: jobRequests.lot,
       poNumber: jobRequests.poNumber,
       requestedBy: jobRequests.requestedBy,
       builderName: builders.name,
       communityName: communities.name,
       modelPlanName: modelPlans.name,
+      jobRequestServiceId: jobRequestServices.id,
       serviceId: jobRequestServices.serviceId,
       serviceName: services.name,
       walkTime: jobRequestServices.walkTime,
+      assignedForemanName: jobRequestServices.assignedForemanName,
     })
     .from(jobRequests)
     .leftJoin(builders, eq(jobRequests.builderId, builders.id))
@@ -87,6 +108,7 @@ export const GET = safe(async (req: Request) => {
     return {
       id: entry.id,
       startDate: entry.startDate,
+      originalStartDate: entry.originalStartDate,
       builderName,
       communityName,
       lot: entry.lot,
@@ -97,20 +119,21 @@ export const GET = safe(async (req: Request) => {
       invoiceNumber: entry.poNumber,
       amount: entry.amount,
       status: entry.status,
+      assignedForemanName: entry.assignedForemanName,
     };
   });
 
-  // Group job requests by id and aggregate services to handle multiple services per request
   const jobRequestMap = new Map<string, {
     id: string;
     dueDate: string | null;
+    originalDueDate: string | null;
     lot: string | null;
     poNumber: string | null;
     requestedBy: string | null;
     builderName: string | null;
     communityName: string | null;
     modelPlanName: string | null;
-    services: Array<{ id: string | null; name: string | null; walkTime: string | null }>;
+    services: Array<{ id: string | null; jobRequestServiceId: string | null; name: string | null; walkTime: string | null; assignedForemanName: string | null }>;
   }>();
 
   jobRequestData.forEach((row) => {
@@ -118,6 +141,7 @@ export const GET = safe(async (req: Request) => {
       jobRequestMap.set(row.id, {
         id: row.id,
         dueDate: row.dueDate,
+        originalDueDate: row.originalDueDate,
         lot: row.lot,
         poNumber: row.poNumber,
         requestedBy: row.requestedBy,
@@ -131,8 +155,10 @@ export const GET = safe(async (req: Request) => {
     if (row.serviceId && row.serviceName) {
       entry.services.push({
         id: row.serviceId,
+        jobRequestServiceId: row.jobRequestServiceId,
         name: row.serviceName,
         walkTime: row.walkTime,
+        assignedForemanName: row.assignedForemanName,
       });
     }
   });
@@ -150,6 +176,7 @@ export const GET = safe(async (req: Request) => {
       return [{
         id: req.id,
         startDate: req.dueDate,
+        originalStartDate: req.originalDueDate,
         builderName: req.builderName,
         communityName: req.communityName,
         lot: req.lot,
@@ -162,13 +189,15 @@ export const GET = safe(async (req: Request) => {
         status: 'Pending',
         walkTime: null,
         requestedBy: req.requestedBy,
+        assignedForemanName: null,
       }];
     }
 
     // Create one schedule item per service so each service appears as a separate job
     return req.services.map((service) => ({
-      id: `${req.id}-${service.id}`, // Unique ID per job-service combination
+      id: service.jobRequestServiceId || `${req.id}-${service.id}`, // Use actual job_request_service ID
       startDate: req.dueDate,
+      originalStartDate: req.originalDueDate,
       builderName: req.builderName,
       communityName: req.communityName,
       lot: req.lot,
@@ -181,6 +210,7 @@ export const GET = safe(async (req: Request) => {
       status: 'Pending',
       walkTime: service.walkTime,
       requestedBy: req.requestedBy,
+      assignedForemanName: service.assignedForemanName,
     }));
   });
 

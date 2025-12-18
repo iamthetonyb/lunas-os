@@ -1,6 +1,7 @@
 export * from './users';
 export * from './builders';
 export * from './communities';
+export * from './community_lots';
 export * from './model_plans';
 export * from './services';
 export * from './contract_rates';

@@ -3,6 +3,7 @@ import { getDb } from '@/lib/db/get-db';
 import { jobRequests, jobRequestServices } from '@/db/schema';
 import { ok, err, safe } from '@/lib/api/http';
 import { requireMembership } from '@/lib/auth/guards';
+import { publishOrgEvent } from '@/lib/ably';
 
 export const runtime = 'nodejs';
 
@@ -80,6 +81,9 @@ export const POST = safe(async (req, context) => {
 
     return request;
   });
+
+  // Broadcast update
+  await publishOrgEvent(membership.orgId, 'intake.updated', { requestId: result.id });
 
   return ok(result, { status: 201 });
 });

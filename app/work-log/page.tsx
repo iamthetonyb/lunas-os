@@ -57,6 +57,9 @@ export default function WorkLogPage() {
   const [selectedLog, setSelectedLog] = useState<ServiceLog | null>(null);
   const [isEditOpen, setEditOpen] = useState(false);
 
+  // Redirect contractors away from Extra Work page
+  const isContractor = session?.user?.role === 'FOREMAN' || session?.user?.role === 'CREW';
+
   const { data: builderOptions = [] } = useSWR<BuilderDTO[]>('/api/builders', fetcher);
   const { data: communityOptions = [] } = useSWR<CommunityDTO[]>('/api/communities', fetcher);
   const { data: serviceOptions = [] } = useSWR<ServiceDTO[]>('/api/services', fetcher);
@@ -106,148 +109,160 @@ export default function WorkLogPage() {
     }
   }
 
+  // Show access denied for contractors
+  if (isContractor) {
+    return (
+      <main className="px-6 py-6 space-y-6">
+        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-6 text-center">
+          <h2 className="text-lg font-semibold text-yellow-800 mb-2">Access Restricted</h2>
+          <p className="text-yellow-700">The Extra Work page is only accessible to admin and back office staff.</p>
+        </div>
+      </main>
+    );
+  }
+
   return (
     <OrgRealtimeProvider orgId={session?.user?.orgId ?? undefined}>
       <main className="px-6 py-6 space-y-6">
-      <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold text-gray-900">Work Log</h1>
-          <p className="text-gray-500">Track daily services and field activity.</p>
+        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+          <div>
+            <h1 className="text-2xl font-semibold text-gray-900">Extra Work</h1>
+            <p className="text-gray-500">Track extra services and additional field activity.</p>
+          </div>
+          <div className="flex gap-2">
+            <input
+              type="date"
+              className="rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+              value={dateFilter}
+              onChange={(e) => setDateFilter(e.target.value)}
+            />
+            <input
+              type="search"
+              placeholder="Search services..."
+              className="rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+            <button
+              type="button"
+              onClick={() => setDrawerOpen(true)}
+              className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-blue-700"
+            >
+              + Add Service
+            </button>
+          </div>
         </div>
-        <div className="flex gap-2">
-          <input
-            type="date"
-            className="rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-            value={dateFilter}
-            onChange={(e) => setDateFilter(e.target.value)}
-          />
-          <input
-            type="search"
-            placeholder="Search services..."
-            className="rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-          />
-          <button
-            type="button"
-            onClick={() => setDrawerOpen(true)}
-            className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-blue-700"
-          >
-            + Add Service
-          </button>
+
+        <div className="rounded-xl border border-gray-200 bg-white shadow-sm">
+          <table className="min-w-full divide-y divide-gray-200 text-sm">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="px-4 py-2 text-left font-semibold text-gray-500">Date</th>
+                <th className="px-4 py-2 text-left font-semibold text-gray-500">Address / Lot</th>
+                <th className="px-4 py-2 text-left font-semibold text-gray-500">Service</th>
+                <th className="px-4 py-2 text-left font-semibold text-gray-500">Hours</th>
+                <th className="px-4 py-2 text-left font-semibold text-gray-500">Amount</th>
+                <th className="px-4 py-2 text-left font-semibold text-gray-500">Status</th>
+                <th className="px-4 py-2 text-left font-semibold text-gray-500">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-100">
+              {isLoading && (
+                <tr>
+                  <td colSpan={7} className="px-4 py-6 text-center text-gray-500">
+                    Loading...
+                  </td>
+                </tr>
+              )}
+              {!isLoading && (!logs || logs.length === 0) && (
+                <tr>
+                  <td colSpan={7} className="px-4 py-6 text-center text-gray-500">
+                    No service logs match your filters.
+                  </td>
+                </tr>
+              )}
+              {logs?.map((log) => (
+                <tr
+                  key={log.id}
+                  className="cursor-pointer hover:bg-gray-50"
+                  onClick={() => {
+                    setSelectedLog(log);
+                    setEditOpen(true);
+                  }}
+                >
+                  <td className="px-4 py-3 text-gray-900">
+                    {log.date ? new Date(log.date).toLocaleDateString() : '—'}
+                  </td>
+                  <td className="px-4 py-3 text-gray-900">
+                    {log.address || '—'}
+                    <div className="text-xs text-gray-500">
+                      {log.lot ? `Lot ${log.lot}` : ''}
+                      {log.unitLot ? ` / Unit ${log.unitLot}` : ''}
+                    </div>
+                  </td>
+                  <td className="px-4 py-3 text-gray-900">
+                    <div className="font-medium">{log.serviceType || '—'}</div>
+                    <div className="text-xs text-gray-500">{log.category || '—'}</div>
+                  </td>
+                  <td className="px-4 py-3 text-gray-900">{log.hours ?? '—'}</td>
+                  <td className="px-4 py-3 text-gray-900">
+                    {log.amount ? `$${Number(log.amount).toFixed(2)}` : '—'}
+                  </td>
+                  <td className="px-4 py-3">
+                    <span className="inline-flex rounded-full bg-gray-100 px-2 py-1 text-xs font-semibold text-gray-700">
+                      {log.status || 'Pending'}
+                    </span>
+                  </td>
+                  <td className="px-4 py-3 text-right">
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (log.id) handleDelete(log.id);
+                      }}
+                      disabled={!log.id}
+                      className="text-red-600 hover:underline disabled:text-gray-400 disabled:no-underline"
+                    >
+                      Delete
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
-      </div>
 
-      <div className="rounded-xl border border-gray-200 bg-white shadow-sm">
-        <table className="min-w-full divide-y divide-gray-200 text-sm">
-          <thead className="bg-gray-50">
-            <tr>
-              <th className="px-4 py-2 text-left font-semibold text-gray-500">Date</th>
-              <th className="px-4 py-2 text-left font-semibold text-gray-500">Address / Lot</th>
-              <th className="px-4 py-2 text-left font-semibold text-gray-500">Service</th>
-              <th className="px-4 py-2 text-left font-semibold text-gray-500">Hours</th>
-              <th className="px-4 py-2 text-left font-semibold text-gray-500">Amount</th>
-              <th className="px-4 py-2 text-left font-semibold text-gray-500">Status</th>
-              <th className="px-4 py-2 text-left font-semibold text-gray-500">Actions</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-100">
-            {isLoading && (
-              <tr>
-                <td colSpan={7} className="px-4 py-6 text-center text-gray-500">
-                  Loading...
-                </td>
-              </tr>
-            )}
-            {!isLoading && (!logs || logs.length === 0) && (
-              <tr>
-                <td colSpan={7} className="px-4 py-6 text-center text-gray-500">
-                  No service logs match your filters.
-                </td>
-              </tr>
-            )}
-            {logs?.map((log) => (
-              <tr
-                key={log.id}
-                className="cursor-pointer hover:bg-gray-50"
-                onClick={() => {
-                  setSelectedLog(log);
-                  setEditOpen(true);
-                }}
-              >
-                <td className="px-4 py-3 text-gray-900">
-                  {log.date ? new Date(log.date).toLocaleDateString() : '—'}
-                </td>
-                <td className="px-4 py-3 text-gray-900">
-                  {log.address || '—'}
-                  <div className="text-xs text-gray-500">
-                    {log.lot ? `Lot ${log.lot}` : ''}
-                    {log.unitLot ? ` / Unit ${log.unitLot}` : ''}
-                  </div>
-                </td>
-                <td className="px-4 py-3 text-gray-900">
-                  <div className="font-medium">{log.serviceType || '—'}</div>
-                  <div className="text-xs text-gray-500">{log.category || '—'}</div>
-                </td>
-                <td className="px-4 py-3 text-gray-900">{log.hours ?? '—'}</td>
-                <td className="px-4 py-3 text-gray-900">
-                  {log.amount ? `$${Number(log.amount).toFixed(2)}` : '—'}
-                </td>
-                <td className="px-4 py-3">
-                  <span className="inline-flex rounded-full bg-gray-100 px-2 py-1 text-xs font-semibold text-gray-700">
-                    {log.status || 'Pending'}
-                  </span>
-                </td>
-                <td className="px-4 py-3 text-right">
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      if (log.id) handleDelete(log.id);
-                    }}
-                    disabled={!log.id}
-                    className="text-red-600 hover:underline disabled:text-gray-400 disabled:no-underline"
-                  >
-                    Delete
-                  </button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-
-      <AddServiceDrawer
-        open={isDrawerOpen}
-        onClose={() => setDrawerOpen(false)}
-        onSuccess={async () => {
-          await mutate(swrKey);
-          setDrawerOpen(false);
-        }}
-        builderSuggestions={builderSuggestions}
-        communitySuggestions={communitySuggestions}
-        serviceSuggestions={serviceSuggestions}
-      />
-      <EditServiceLogModal
-        open={isEditOpen}
-        log={selectedLog}
-        onClose={() => setEditOpen(false)}
-        onSuccess={async () => {
-          await mutate(swrKey);
-          setEditOpen(false);
-        }}
-        onDelete={() => {
-          if (selectedLog?.id) {
-            handleDelete(selectedLog.id);
-          } else {
-            console.error('Cannot delete: selectedLog or selectedLog.id is missing');
-            alert('Cannot delete: Log ID is missing.');
-          }
-        }}
-        builderSuggestions={builderSuggestions}
-        communitySuggestions={communitySuggestions}
-        serviceSuggestions={serviceSuggestions}
-      />
-    </main>
+        <AddServiceDrawer
+          open={isDrawerOpen}
+          onClose={() => setDrawerOpen(false)}
+          onSuccess={async () => {
+            await mutate(swrKey);
+            setDrawerOpen(false);
+          }}
+          builderSuggestions={builderSuggestions}
+          communitySuggestions={communitySuggestions}
+          serviceSuggestions={serviceSuggestions}
+        />
+        <EditServiceLogModal
+          open={isEditOpen}
+          log={selectedLog}
+          onClose={() => setEditOpen(false)}
+          onSuccess={async () => {
+            await mutate(swrKey);
+            setEditOpen(false);
+          }}
+          onDelete={() => {
+            if (selectedLog?.id) {
+              handleDelete(selectedLog.id);
+            } else {
+              console.error('Cannot delete: selectedLog or selectedLog.id is missing');
+              alert('Cannot delete: Log ID is missing.');
+            }
+          }}
+          builderSuggestions={builderSuggestions}
+          communitySuggestions={communitySuggestions}
+          serviceSuggestions={serviceSuggestions}
+        />
+      </main>
     </OrgRealtimeProvider>
   );
 }
@@ -864,7 +879,7 @@ function EditServiceLogModal({
                     </div>
                     <UploadButton
                       endpoint="imageUploader"
-                      onUploadProgress={() => {}}
+                      onUploadProgress={() => { }}
                       onClientUploadComplete={(files) => {
                         const urls = files?.map((file) => file.url) ?? [];
                         setValue('photos', urls);
