@@ -580,23 +580,6 @@ export default function SchedulePage() {
             </div>
           )}
         </div>
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
-          <div className="flex justify-between items-center mb-4">
-            <h2 className="text-lg font-semibold text-gray-900">Draft Assignments</h2>
-            <button
-              onClick={handleApproveAndSend}
-              disabled={!assignments || assignments.length === 0}
-              className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              Approve & Send
-            </button>
-          </div>
-          {crews && assignments ? (
-            <ScheduleKanban crews={crews} assignments={assignments} />
-          ) : (
-            <p className="text-gray-600">Loading schedule...</p>
-          )}
-        </div>
       </main>
 
       {/* Dispatch Modal */}

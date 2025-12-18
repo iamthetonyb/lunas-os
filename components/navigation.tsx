@@ -54,7 +54,7 @@ export function Navigation() {
         <div className="flex items-center justify-center mb-2">
           {mounted && (
             <Image
-              src={theme === 'dark' ? '/lunas-dark-logo.png' : '/lunas-light-logo.png'}
+              src={theme === 'dark' ? '/lunas-light-logo.png' : '/lunas-dark-logo.png'}
               alt="Lunas OS"
               width={120}
               height={40}

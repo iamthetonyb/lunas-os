@@ -537,6 +537,76 @@ export default function UsersPage() {
             </button>
           </form>
         </section>
+
+        {/* Organizations List */}
+        <section className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
+          <h3 className="text-lg font-semibold text-gray-900 mb-4">Organizations</h3>
+          {data?.orgs && data.orgs.length > 0 ? (
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-gray-200 text-sm">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-4 py-2 text-left font-semibold text-gray-500">Name</th>
+                    <th className="px-4 py-2 text-left font-semibold text-gray-500">Slug</th>
+                    <th className="px-4 py-2 text-left font-semibold text-gray-500">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100">
+                  {data.orgs.map((org) => (
+                    <tr key={org.id}>
+                      <td className="px-4 py-3 text-gray-900 font-medium">{org.name}</td>
+                      <td className="px-4 py-3 text-gray-600">{org.slug}</td>
+                      <td className="px-4 py-3">
+                        <div className="flex gap-3">
+                          <button
+                            onClick={() => {
+                              const newName = prompt('Enter new organization name:', org.name);
+                              if (newName && newName !== org.name) {
+                                fetchJSON(`/api/admin/orgs/${org.id}`, {
+                                  method: 'PUT',
+                                  headers: { 'Content-Type': 'application/json' },
+                                  body: JSON.stringify({ name: newName }),
+                                }).then(() => {
+                                  mutate('/api/admin/users');
+                                  alert('Organization updated.');
+                                }).catch((err) => {
+                                  console.error(err);
+                                  alert('Failed to update organization.');
+                                });
+                              }
+                            }}
+                            className="text-blue-600 hover:text-blue-800 font-medium text-sm"
+                          >
+                            Edit
+                          </button>
+                          <button
+                            onClick={async () => {
+                              if (confirm(`Delete organization "${org.name}"? This cannot be undone.`)) {
+                                try {
+                                  await fetchJSON(`/api/admin/orgs/${org.id}`, { method: 'DELETE' });
+                                  await mutate('/api/admin/users');
+                                  alert('Organization deleted.');
+                                } catch (err) {
+                                  console.error(err);
+                                  alert('Failed to delete organization.');
+                                }
+                              }
+                            }}
+                            className="text-red-600 hover:text-red-800 font-medium text-sm"
+                          >
+                            Delete
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <p className="text-gray-500">No organizations found.</p>
+          )}
+        </section>
       </main>
 
       <UserModal
