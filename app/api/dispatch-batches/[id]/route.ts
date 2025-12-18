@@ -7,6 +7,7 @@ import { jobRequests } from '@/db/schema/job_requests';
 import { communities } from '@/db/schema/communities';
 import { builders } from '@/db/schema/builders';
 import { services } from '@/db/schema/services';
+import { crews } from '@/db/schema/crews';
 import { users } from '@/db/schema/users';
 import { eq } from 'drizzle-orm';
 
@@ -40,51 +41,49 @@ export async function GET(
 
         const dispatchBatch = batch[0];
 
-        // Get assignments linked to this batch with job details
-        const batchAssignments = await db.query.assignments.findMany({
-            where: eq(assignments.dispatchBatchId, id),
-            with: {
-                crew: {
-                    with: {
-                        foreman: true,
-                    },
-                },
-                jobRequestService: {
-                    with: {
-                        service: true,
-                        jobRequest: {
-                            with: {
-                                community: true,
-                                builder: true,
-                            },
-                        },
-                    },
-                },
-            },
-        });
+        // Get assignments linked to this batch with job details using explicit joins
+        const batchAssignments = await db.select({
+            assignmentId: assignments.id,
+            assignmentStatus: assignments.status,
+            crewId: assignments.crewId,
+            crewName: crews.name,
+            foremanId: crews.foremanId,
+            foremanName: users.name,
+            jobRequestServiceId: assignments.jobRequestServiceId,
+            serviceName: services.name,
+            walkTime: jobRequestServices.walkTime,
+            jobRequestId: jobRequestServices.jobRequestId,
+            communityName: communities.name,
+            builderName: builders.name,
+            lot: jobRequests.lot,
+            address: jobRequests.address,
+        })
+            .from(assignments)
+            .leftJoin(crews, eq(assignments.crewId, crews.id))
+            .leftJoin(users, eq(crews.foremanId, users.id))
+            .leftJoin(jobRequestServices, eq(assignments.jobRequestServiceId, jobRequestServices.id))
+            .leftJoin(services, eq(jobRequestServices.serviceId, services.id))
+            .leftJoin(jobRequests, eq(jobRequestServices.jobRequestId, jobRequests.id))
+            .leftJoin(communities, eq(jobRequests.communityId, communities.id))
+            .leftJoin(builders, eq(jobRequests.builderId, builders.id))
+            .where(eq(assignments.dispatchBatchId, id));
 
         // Get crew and foreman info from first assignment
         const firstAssignment = batchAssignments[0];
-        const crewName = (firstAssignment as any)?.crew?.name || 'Unknown Crew';
-        const foremanName = (firstAssignment as any)?.crew?.foreman?.name || 'Unknown';
+        const crewName = firstAssignment?.crewName || 'Unknown Crew';
+        const foremanName = firstAssignment?.foremanName || 'Unassigned';
 
         // Map jobs from assignments
-        const jobs = batchAssignments.map((assignment: any) => {
-            const jrs = assignment.jobRequestService;
-            const jr = jrs?.jobRequest;
-
-            return {
-                id: jrs?.id || assignment.id,
-                communityName: jr?.community?.name || null,
-                builderName: jr?.builder?.name || null,
-                lot: jr?.lot || null,
-                address: jr?.address || null,
-                serviceName: jrs?.service?.name || null,
-                walkTime: jrs?.walkTime || null,
-                dueDate: jr?.dueDate || null,
-                status: assignment.status || 'PENDING',
-            };
-        });
+        const jobs = batchAssignments.map((assignment) => ({
+            id: assignment.jobRequestServiceId || assignment.assignmentId,
+            communityName: assignment.communityName || null,
+            builderName: assignment.builderName || null,
+            lot: assignment.lot || null,
+            address: assignment.address || null,
+            serviceName: assignment.serviceName || null,
+            walkTime: assignment.walkTime || null,
+            status: assignment.assignmentStatus || 'PENDING',
+        }));
 
         return json({
             id: dispatchBatch.id,

@@ -174,10 +174,7 @@ function LoginForm() {
             </div>
           </div>
 
-          <div className="mt-4 text-center text-sm text-gray-600">
-            <p>Default credentials:</p>
-            <p className="text-xs text-gray-500 mt-1">admin@lunas.local / admin123</p>
-          </div>
+
         </div>
       </div>
     </main>

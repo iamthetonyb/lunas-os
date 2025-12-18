@@ -205,9 +205,20 @@ export default function SchedulePage() {
   );
 
   const foremanTabs = useMemo(() => {
+    // Count jobs that have been manually assigned vs unassigned
     const counts: Record<string, number> = {};
     decoratedJobs.forEach((job) => {
-      counts[job.foremanId] = (counts[job.foremanId] ?? 0) + 1;
+      const assignedForeman = selectedForemenMap.get(job.id);
+      if (assignedForeman) {
+        // Find the foreman id by name
+        const foremanConfig = FOREMEN_DIRECTORY.find(f => f.name === assignedForeman);
+        if (foremanConfig) {
+          counts[foremanConfig.id] = (counts[foremanConfig.id] ?? 0) + 1;
+        }
+      } else {
+        // Job is unassigned
+        counts[UNASSIGNED_FOREMAN.id] = (counts[UNASSIGNED_FOREMAN.id] ?? 0) + 1;
+      }
     });
 
     const orderedTabs = FOREMEN_DIRECTORY.map((foreman) => ({
@@ -216,17 +227,15 @@ export default function SchedulePage() {
       count: counts[foreman.id] ?? 0,
     }));
 
-    const unassignedCount = counts[UNASSIGNED_FOREMAN.id] ?? 0;
-    if (unassignedCount > 0) {
-      orderedTabs.push({
-        id: UNASSIGNED_FOREMAN.id,
-        name: UNASSIGNED_FOREMAN.name,
-        count: unassignedCount,
-      });
-    }
+    // Always show Unassigned tab
+    orderedTabs.push({
+      id: UNASSIGNED_FOREMAN.id,
+      name: UNASSIGNED_FOREMAN.name,
+      count: counts[UNASSIGNED_FOREMAN.id] ?? decoratedJobs.length, // Default all jobs to unassigned
+    });
 
     return orderedTabs;
-  }, [decoratedJobs]);
+  }, [decoratedJobs, selectedForemenMap]);
 
   const [activeForemanId, setActiveForemanId] = useState<string>('all');
 
@@ -238,7 +247,19 @@ export default function SchedulePage() {
   }, [activeForemanId, foremanTabs]);
 
   const visibleJobs = useMemo(() => {
-    let jobs = activeForemanId === 'all' ? decoratedJobs : decoratedJobs.filter((job) => job.foremanId === activeForemanId);
+    let jobs = decoratedJobs;
+
+    // Filter by selected foreman tab
+    if (activeForemanId !== 'all') {
+      if (activeForemanId === UNASSIGNED_FOREMAN.id) {
+        // Show jobs that haven't been manually assigned
+        jobs = jobs.filter(job => !selectedForemenMap.get(job.id));
+      } else {
+        // Show jobs assigned to the selected foreman
+        const selectedForemanName = FOREMEN_DIRECTORY.find(f => f.id === activeForemanId)?.name;
+        jobs = jobs.filter(job => selectedForemenMap.get(job.id) === selectedForemanName);
+      }
+    }
 
     // For contractors, filter to only show jobs assigned to them
     if (isContractor && session?.user?.name) {
@@ -248,6 +269,7 @@ export default function SchedulePage() {
         return assignedForeman?.toLowerCase() === userName;
       });
     }
+
 
     return jobs;
   }, [activeForemanId, decoratedJobs, isContractor, session?.user?.name, selectedForemenMap]);
