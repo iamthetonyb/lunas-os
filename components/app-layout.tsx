@@ -1,7 +1,7 @@
 'use client';
 
 import { Navigation } from './navigation';
-import { ThemeProvider } from '@/lib/theme-provider';
+// import { ThemeProvider } from '@/lib/theme-provider'; // Removed
 
 interface AppLayoutProps {
   children: React.ReactNode;
