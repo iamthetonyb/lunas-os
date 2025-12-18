@@ -48,6 +48,7 @@ export const GET = safe(async (req: Request) => {
       amount: true,
       status: true,
       assignedForemanName: true,
+      communityId: true,
     },
     with: {
       builder: {
