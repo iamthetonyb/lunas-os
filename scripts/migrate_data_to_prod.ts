@@ -43,7 +43,7 @@ async function main() {
         )
         ON CONFLICT (id) DO NOTHING
       `;
-    } catch (err) {
+    } catch (err: any) {
       console.error(`Error migrating entry ${entry.id}:`, err.message);
     }
   }
@@ -65,7 +65,7 @@ async function main() {
         )
         ON CONFLICT (id) DO NOTHING
       `;
-    } catch (err) {
+    } catch (err: any) {
       console.error(`Error migrating plan ${plan.id}:`, err.message);
     }
   }
