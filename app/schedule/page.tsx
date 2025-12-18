@@ -171,7 +171,7 @@ export default function SchedulePage() {
   });
 
   // Handle inline foreman selection - persist to database
-  const handleForemanSelect = async (jobId: string, foremanName: string) => {
+  const handleForemanChange = async (jobId: string, foremanName: string) => {
     // Update local state immediately for responsive UI
     setSelectedForemenMap(prev => {
       const newMap = new Map(prev);
