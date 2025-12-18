@@ -9,7 +9,7 @@ export const assignForeman = mutation({
     },
     handler: async (ctx, args) => {
         await ctx.db.patch(args.jobId, {
-            assignedForemanName: args.foremanName ?? null,
+            assignedForemanName: args.foremanName ?? undefined,
         });
         return { success: true };
     },
@@ -23,7 +23,7 @@ export const assignCrew = mutation({
     },
     handler: async (ctx, args) => {
         await ctx.db.patch(args.jobId, {
-            assignedCrewName: args.crewName ?? null,
+            assignedCrewName: args.crewName ?? undefined,
         });
         return { success: true };
     },
@@ -39,7 +39,7 @@ export const rescheduleJob = mutation({
     handler: async (ctx, args) => {
         await ctx.db.patch(args.jobId, {
             rescheduledDate: args.newDate,
-            rescheduledReason: args.reason ?? null,
+            rescheduledReason: args.reason ?? undefined,
             scheduledDate: args.newDate, // Update the scheduled date as well
         });
         return { success: true };
