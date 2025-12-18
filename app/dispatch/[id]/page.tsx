@@ -2,88 +2,158 @@
 
 import { PageHeader } from '@/components/page-header';
 import Link from 'next/link';
-import { useParams } from 'next/navigation';
-import { useQuery } from 'convex/react';
-import { api } from '@/convex/_generated/api';
-import { Id } from '@/convex/_generated/dataModel';
+import { use } from 'react';
+import useSWR from 'swr';
+import { fetchJSON } from '@/lib/utils/fetch-json';
+import { useSession } from 'next-auth/react';
+import { getFriendlyName } from '@/lib/utils/community-display';
 
-export default function DispatchDetailPage() {
-    const params = useParams();
-    const batchId = params.id as string;
+const fetcher = <T,>(url: string) => fetchJSON<T>(url);
 
-    // Real-time Convex query
-    const batch = useQuery(api.queries.getDispatchBatchById, {
-        batchId: batchId as Id<"dispatchBatches">
-    });
+type DispatchDetail = {
+    id: string;
+    serviceDate: string | null;
+    status: string | null;
+    crewName: string;
+    foremanName: string;
+    notes?: string | null;
+    jobs: DispatchJob[];
+};
 
-    if (!batch) {
+type DispatchJob = {
+    id: string;
+    communityName: string | null;
+    builderName: string | null;
+    lot: string | null;
+    address: string | null;
+    serviceName: string | null;
+    walkTime: string | null;
+    dueDate: string | null;
+    status: string | null;
+};
+
+export default function DispatchDetailPage({ params }: { params: Promise<{ id: string }> }) {
+    const { id } = use(params);
+    const { data: session } = useSession();
+    const isContractor = session?.user?.role === 'FOREMAN' || session?.user?.role === 'CREW';
+
+    const { data: dispatch, error, isLoading } = useSWR<DispatchDetail>(
+        `/api/dispatch-batches/${id}`,
+        fetcher
+    );
+
+    const handleMarkComplete = async (jobId: string) => {
+        try {
+            await fetchJSON('/api/schedule/complete', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ jobId }),
+            });
+            // Refresh data
+            window.location.reload();
+        } catch (error) {
+            console.error('Failed to mark job complete', error);
+            alert('Failed to mark job complete. Please try again.');
+        }
+    };
+
+    if (isLoading) {
         return (
             <>
-                <PageHeader
-                    title="Dispatch Details"
-                    description="Loading..."
-                    action={<Link href="/dispatch" className="text-blue-600 hover:text-blue-800">← Back to Dispatch</Link>}
-                />
+                <PageHeader title="Dispatch Details" description="Loading..." />
                 <main className="px-6 py-6">
-                    <div className="animate-pulse bg-gray-100 rounded-lg h-64"></div>
+                    <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-8 text-center">
+                        <p className="text-gray-500">Loading dispatch details...</p>
+                    </div>
                 </main>
             </>
         );
     }
 
+    if (error || !dispatch) {
+        return (
+            <>
+                <PageHeader
+                    title="Dispatch Details"
+                    description="Error loading dispatch"
+                    action={
+                        <Link href="/dispatch" className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700">
+                            ← Back to Dispatch
+                        </Link>
+                    }
+                />
+                <main className="px-6 py-6">
+                    <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-8 text-center">
+                        <p className="text-red-500">Failed to load dispatch details. This batch may not exist yet.</p>
+                    </div>
+                </main>
+            </>
+        );
+    }
+
+    const dateStr = dispatch.serviceDate
+        ? new Date(dispatch.serviceDate).toLocaleDateString()
+        : 'Not scheduled';
+
     return (
         <>
             <PageHeader
-                title={`Dispatch: ${batch.crewName || 'Details'}`}
-                description={`${batch.foremanName || 'No foreman'} • ${batch.serviceDate || 'No date'} (Real-time)`}
-                action={<Link href="/dispatch" className="text-blue-600 hover:text-blue-800">← Back to Dispatch</Link>}
+                title={`Dispatch: ${dispatch.crewName}`}
+                description={`${dispatch.jobs?.length || 0} jobs assigned`}
+                action={
+                    <Link href="/dispatch" className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700">
+                        ← Back to Dispatch
+                    </Link>
+                }
             />
-            <main className="px-6 py-6 space-y-6">
-                {/* Summary Card */}
-                <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+            <main className="px-6 py-6">
+                {/* Dispatch Summary */}
+                <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
+                    <h2 className="text-lg font-semibold text-gray-900 mb-4">Dispatch Summary</h2>
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                         <div>
                             <p className="text-sm text-gray-500">Crew</p>
-                            <p className="text-lg font-semibold text-gray-900">{batch.crewName || '—'}</p>
+                            <p className="text-lg font-semibold text-blue-600">{dispatch.crewName}</p>
                         </div>
                         <div>
                             <p className="text-sm text-gray-500">Foreman</p>
-                            <p className="text-lg font-semibold text-gray-900">{batch.foremanName || '—'}</p>
+                            <p className="text-lg font-semibold text-gray-900">{dispatch.foremanName || '—'}</p>
                         </div>
                         <div>
                             <p className="text-sm text-gray-500">Service Date</p>
-                            <p className="text-lg font-semibold text-gray-900">
-                                {batch.serviceDate ? new Date(batch.serviceDate).toLocaleDateString() : '—'}
-                            </p>
+                            <p className="text-lg font-semibold text-gray-900">{dateStr}</p>
                         </div>
                         <div>
                             <p className="text-sm text-gray-500">Status</p>
-                            <span className={`inline-block px-3 py-1 rounded-full text-sm font-semibold ${batch.status === 'COMPLETE'
+                            <span className={`inline-flex px-3 py-1 rounded-full text-sm font-semibold ${dispatch.status === 'COMPLETE'
                                     ? 'bg-green-100 text-green-800'
-                                    : batch.status === 'SENT'
+                                    : dispatch.status === 'SENT' || dispatch.status === 'DISPATCHED'
                                         ? 'bg-blue-100 text-blue-800'
                                         : 'bg-yellow-100 text-yellow-800'
                                 }`}>
-                                {batch.status}
+                                {dispatch.status === 'SENT' ? 'DISPATCHED' : dispatch.status || 'PENDING'}
                             </span>
                         </div>
                     </div>
-                    {batch.notes && (
-                        <div className="mt-4 pt-4 border-t">
-                            <p className="text-sm text-gray-500">Notes</p>
-                            <p className="text-gray-900">{batch.notes}</p>
+                    {dispatch.notes && (
+                        <div className="mt-4 p-3 bg-gray-50 rounded-lg">
+                            <p className="text-sm text-gray-500 mb-1">Notes</p>
+                            <p className="text-gray-900">{dispatch.notes}</p>
                         </div>
                     )}
                 </div>
 
-                {/* Jobs Table */}
-                <div className="bg-white rounded-lg shadow-sm border border-gray-200">
+                {/* Jobs List */}
+                <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
                     <div className="px-6 py-4 border-b border-gray-200">
-                        <h2 className="text-lg font-semibold text-gray-900">
-                            Assigned Jobs ({batch.jobs?.length || 0})
-                        </h2>
+                        <h2 className="text-lg font-semibold text-gray-900">Assigned Jobs</h2>
                     </div>
-                    {batch.jobs && batch.jobs.length > 0 ? (
+
+                    {!dispatch.jobs || dispatch.jobs.length === 0 ? (
+                        <div className="p-8 text-center text-gray-500">
+                            No jobs assigned to this dispatch yet.
+                        </div>
+                    ) : (
                         <div className="overflow-x-auto">
                             <table className="min-w-full divide-y divide-gray-200">
                                 <thead className="bg-gray-50">
@@ -94,13 +164,16 @@ export default function DispatchDetailPage() {
                                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Service</th>
                                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Walk Time</th>
                                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+                                        {isContractor && (
+                                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
+                                        )}
                                     </tr>
                                 </thead>
                                 <tbody className="bg-white divide-y divide-gray-200">
-                                    {batch.jobs.map((job: any) => (
+                                    {dispatch.jobs.map((job) => (
                                         <tr key={job.id} className="hover:bg-gray-50">
-                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                                {job.communityName || '—'}
+                                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                                                {getFriendlyName(job.communityName || '—')}
                                             </td>
                                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                                                 {job.builderName || '—'}
@@ -115,23 +188,29 @@ export default function DispatchDetailPage() {
                                                 {job.walkTime || '—'}
                                             </td>
                                             <td className="px-6 py-4 whitespace-nowrap text-sm">
-                                                <span className={`px-2 py-1 rounded-full text-xs font-medium ${job.status === 'COMPLETE'
+                                                <span className={`px-2 py-1 rounded-full text-xs font-semibold ${job.status === 'COMPLETE'
                                                         ? 'bg-green-100 text-green-800'
-                                                        : job.status === 'SENT'
-                                                            ? 'bg-blue-100 text-blue-800'
-                                                            : 'bg-yellow-100 text-yellow-800'
+                                                        : 'bg-yellow-100 text-yellow-800'
                                                     }`}>
-                                                    {job.status}
+                                                    {job.status || 'PENDING'}
                                                 </span>
                                             </td>
+                                            {isContractor && (
+                                                <td className="px-6 py-4 whitespace-nowrap text-sm">
+                                                    {job.status !== 'COMPLETE' && (
+                                                        <button
+                                                            onClick={() => handleMarkComplete(job.id)}
+                                                            className="px-3 py-1 bg-green-500 text-white text-xs rounded hover:bg-green-600"
+                                                        >
+                                                            ✓ Complete
+                                                        </button>
+                                                    )}
+                                                </td>
+                                            )}
                                         </tr>
                                     ))}
                                 </tbody>
                             </table>
-                        </div>
-                    ) : (
-                        <div className="p-8 text-center text-gray-500">
-                            No jobs in this dispatch batch.
                         </div>
                     )}
                 </div>

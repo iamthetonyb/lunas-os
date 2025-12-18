@@ -1,11 +1,32 @@
 'use client';
 
 import { PageHeader } from '@/components/page-header';
-import { useState, Fragment } from 'react';
-import { useQuery, useMutation } from 'convex/react';
-import { api } from '@/convex/_generated/api';
-import { Id } from '@/convex/_generated/dataModel';
+import useSWR, { mutate } from 'swr';
+import { useMemo, useState, Fragment } from 'react';
+import { fetchJSON } from '@/lib/utils/fetch-json';
 import { Dialog, Transition } from '@headlessui/react';
+
+type AdminUser = {
+  id: string;
+  name: string | null;
+  email: string;
+  phone: string | null;
+  systemRole: string | null;
+  memberships: { orgId: string; orgName: string; role: string }[];
+};
+
+type Org = {
+  id: string;
+  name: string;
+  slug: string;
+};
+
+type AdminUsersResponse = {
+  users: AdminUser[];
+  orgs: Org[];
+};
+
+const fetcher = (url: string) => fetchJSON<AdminUsersResponse>(url);
 
 type UserFormData = {
   name: string;
@@ -19,15 +40,14 @@ function UserModal({
   open,
   onClose,
   user,
+  onSuccess,
 }: {
   open: boolean;
   onClose: () => void;
-  user: any | null;
+  user: AdminUser | null;
+  onSuccess: () => void;
 }) {
   const isEdit = !!user;
-  const createUserMutation = useMutation(api.mutations.createUser);
-  const updateUserMutation = useMutation(api.mutations.updateUser);
-
   const [formData, setFormData] = useState<UserFormData>({
     name: user?.name || '',
     email: user?.email || '',
@@ -47,6 +67,7 @@ function UserModal({
     e.preventDefault();
     setError('');
 
+    // Validation
     if (!formData.name.trim()) {
       setError('Name is required');
       return;
@@ -63,23 +84,39 @@ function UserModal({
       setError('Passwords do not match');
       return;
     }
+    if (formData.password && formData.password.length < 6) {
+      setError('Password must be at least 6 characters');
+      return;
+    }
 
     setIsSubmitting(true);
     try {
+      const payload: any = {
+        name: formData.name,
+        email: formData.email,
+        phone: formData.phone || null,
+      };
+
+      if (formData.password) {
+        payload.password = formData.password;
+      }
+
       if (isEdit) {
-        await updateUserMutation({
-          userId: user.id,
-          name: formData.name,
-          phone: formData.phone || undefined,
+        await fetchJSON(`/api/admin/users/${user.id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
         });
       } else {
-        await createUserMutation({
-          email: formData.email,
-          name: formData.name,
-          phone: formData.phone || undefined,
-          role: 'FOREMAN',
+        await fetchJSON('/api/admin/users/create', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
         });
       }
+
+      await mutate('/api/admin/users');
+      onSuccess();
       onClose();
     } catch (err: any) {
       console.error(err);
@@ -128,7 +165,9 @@ function UserModal({
                   )}
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Name *</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Name *
+                    </label>
                     <input
                       type="text"
                       value={formData.name}
@@ -139,7 +178,9 @@ function UserModal({
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Email *</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Email *
+                    </label>
                     <input
                       type="email"
                       value={formData.email}
@@ -151,7 +192,9 @@ function UserModal({
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Phone</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Phone
+                    </label>
                     <input
                       type="tel"
                       value={formData.phone}
@@ -161,30 +204,31 @@ function UserModal({
                     />
                   </div>
 
-                  {!isEdit && (
-                    <>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Password *</label>
-                        <input
-                          type="password"
-                          value={formData.password}
-                          onChange={(e) => handleChange('password', e.target.value)}
-                          className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                          placeholder="••••••••"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Confirm Password</label>
-                        <input
-                          type="password"
-                          value={formData.confirmPassword}
-                          onChange={(e) => handleChange('confirmPassword', e.target.value)}
-                          className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                          placeholder="••••••••"
-                        />
-                      </div>
-                    </>
-                  )}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      {isEdit ? 'New Password (leave blank to keep current)' : 'Password *'}
+                    </label>
+                    <input
+                      type="password"
+                      value={formData.password}
+                      onChange={(e) => handleChange('password', e.target.value)}
+                      className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      placeholder="••••••••"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Confirm Password
+                    </label>
+                    <input
+                      type="password"
+                      value={formData.confirmPassword}
+                      onChange={(e) => handleChange('confirmPassword', e.target.value)}
+                      className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      placeholder="••••••••"
+                    />
+                  </div>
 
                   <div className="flex justify-end gap-3 pt-4">
                     <button
@@ -214,64 +258,69 @@ function UserModal({
 }
 
 export default function UsersPage() {
-  // Real-time Convex queries
-  const users = useQuery(api.queries.getUsers);
-  const orgs = useQuery(api.queries.getOrgs);
-
-  // Mutations
-  const deleteUserMutation = useMutation(api.mutations.deleteUser);
-  const createOrgMutation = useMutation(api.mutations.createOrg);
-  const deleteOrgMutation = useMutation(api.mutations.deleteOrg);
-  const updateOrgMutation = useMutation(api.mutations.updateOrg);
-  const assignMembershipMutation = useMutation(api.mutations.assignOrgMembership);
-
-  // Local state
-  const [userModalOpen, setUserModalOpen] = useState(false);
-  const [editingUser, setEditingUser] = useState<any | null>(null);
+  const { data, isLoading, error } = useSWR<AdminUsersResponse>('/api/admin/users', fetcher);
   const [membership, setMembership] = useState<{
     userId: string;
     orgId: string;
-    role: string;
-  }>({ userId: '', orgId: '', role: 'contractor' });
+    role: 'admin' | 'backoffice' | 'contractor';
+  }>({
+    userId: '',
+    orgId: '',
+    role: 'contractor',
+  });
   const [orgForm, setOrgForm] = useState({ name: '' });
   const [busy, setBusy] = useState(false);
+  const [userModalOpen, setUserModalOpen] = useState(false);
+  const [editingUser, setEditingUser] = useState<AdminUser | null>(null);
 
-  const handleDeleteUser = async (userId: Id<"users">, userName: string | null) => {
-    if (!confirm(`Delete user "${userName || 'Unknown'}"? This cannot be undone.`)) return;
-    try {
-      await deleteUserMutation({ userId });
-    } catch (err) {
-      console.error(err);
-      alert('Failed to delete user.');
-    }
-  };
+  const sortedUsers = useMemo(() => {
+    if (!data?.users) return [];
+    return [...data.users].sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+  }, [data?.users]);
 
-  const handleMembershipSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleMembershipSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
     if (!membership.userId || !membership.orgId) return;
+    
+    console.log('Submitting membership data:', membership); // Log payload to browser console
+    
     setBusy(true);
     try {
-      await assignMembershipMutation({
-        userId: membership.userId as Id<"users">,
-        orgId: membership.orgId as Id<"orgs">,
-        role: membership.role,
+      await fetchJSON('/api/admin/users', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(membership),
       });
+      await mutate('/api/admin/users');
       alert('Membership saved.');
-    } catch (err) {
-      console.error(err);
-      alert('Failed to save membership.');
+    } catch (err: any) {
+      console.error('Membership submit failed with data:', err.data); // Log full server error.data
+      // Handle empty error.data
+      if (!err.data || Object.keys(err.data).length === 0) {
+        err.data = { error: 'Unknown server error' };
+      }
+      const errorMsg = err.data?.details 
+        ? 'Validation failed: ' + JSON.stringify(err.data.details)
+        : err.data?.error || err.message || 'Failed to update membership.';
+      alert(errorMsg);
     } finally {
       setBusy(false);
     }
   };
 
-  const handleOrgSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleOrgSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
     if (!orgForm.name.trim()) return;
     setBusy(true);
     try {
-      await createOrgMutation({ name: orgForm.name });
+      await fetchJSON('/api/admin/orgs', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: orgForm.name }),
+      });
       setOrgForm({ name: '' });
+      await mutate('/api/admin/users');
+      alert('Organization created.');
     } catch (err) {
       console.error(err);
       alert('Failed to create org.');
@@ -280,25 +329,29 @@ export default function UsersPage() {
     }
   };
 
-  if (!users || !orgs) {
-    return (
-      <>
-        <PageHeader title="Users" description="Loading..." />
-        <main className="px-6 py-6">
-          <div className="animate-pulse bg-gray-100 rounded-lg h-64"></div>
-        </main>
-      </>
-    );
-  }
+  const handleCreateUser = () => {
+    setEditingUser(null);
+    setUserModalOpen(true);
+  };
+
+  const handleEditUser = (user: AdminUser) => {
+    setEditingUser(user);
+    setUserModalOpen(true);
+  };
+
+  const handleUserModalClose = () => {
+    setUserModalOpen(false);
+    setEditingUser(null);
+  };
 
   return (
     <>
       <PageHeader
         title="Users"
-        description="Manage system users and permissions (Real-time)"
+        description="Manage system users and permissions"
         action={
           <button
-            onClick={() => { setEditingUser(null); setUserModalOpen(true); }}
+            onClick={handleCreateUser}
             className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700"
           >
             + Create User
@@ -306,70 +359,60 @@ export default function UsersPage() {
         }
       />
       <main className="px-6 py-6 space-y-6">
-        {/* Users Table */}
         <section className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
           <h3 className="text-lg font-semibold text-gray-900 mb-4">Current Users</h3>
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200 text-sm">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-4 py-2 text-left font-semibold text-gray-500">Name</th>
-                  <th className="px-4 py-2 text-left font-semibold text-gray-500">Email</th>
-                  <th className="px-4 py-2 text-left font-semibold text-gray-500">Phone</th>
-                  <th className="px-4 py-2 text-left font-semibold text-gray-500">Role</th>
-                  <th className="px-4 py-2 text-left font-semibold text-gray-500">Memberships</th>
-                  <th className="px-4 py-2 text-left font-semibold text-gray-500">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100">
-                {users.map((user) => (
-                  <tr key={user.id}>
-                    <td className="px-4 py-3 text-gray-900">{user.name || '—'}</td>
-                    <td className="px-4 py-3 text-gray-900">{user.email}</td>
-                    <td className="px-4 py-3 text-gray-900">{user.phone || '—'}</td>
-                    <td className="px-4 py-3 text-gray-900">
-                      <span className="px-2 py-1 rounded-full text-xs bg-gray-100">{user.systemRole}</span>
-                    </td>
-                    <td className="px-4 py-3 text-gray-900">
-                      {user.memberships.length === 0 ? (
-                        <span className="text-xs text-gray-500">No org access</span>
-                      ) : (
-                        <div className="flex flex-wrap gap-2">
-                          {user.memberships.map((m: any) => (
-                            <span
-                              key={`${user.id}-${m.orgId}`}
-                              className="inline-flex items-center rounded-full bg-blue-50 px-3 py-1 text-xs font-medium text-blue-700"
-                            >
-                              {m.orgName} · {m.role}
-                            </span>
-                          ))}
-                        </div>
-                      )}
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="flex gap-3">
+          {isLoading && <p className="text-gray-600">Loading…</p>}
+          {error && <p className="text-red-600">Unable to load users.</p>}
+          {!isLoading && !error && (
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-gray-200 text-sm">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-4 py-2 text-left font-semibold text-gray-500">Name</th>
+                    <th className="px-4 py-2 text-left font-semibold text-gray-500">Email</th>
+                    <th className="px-4 py-2 text-left font-semibold text-gray-500">Phone</th>
+                    <th className="px-4 py-2 text-left font-semibold text-gray-500">Memberships</th>
+                    <th className="px-4 py-2 text-left font-semibold text-gray-500">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100">
+                  {sortedUsers.map((user) => (
+                    <tr key={user.id}>
+                      <td className="px-4 py-3 text-gray-900">{user.name || '—'}</td>
+                      <td className="px-4 py-3 text-gray-900">{user.email}</td>
+                      <td className="px-4 py-3 text-gray-900">{user.phone || '—'}</td>
+                      <td className="px-4 py-3 text-gray-900">
+                        {user.memberships.length === 0 ? (
+                          <span className="text-xs text-gray-500">No org access</span>
+                        ) : (
+                          <div className="flex flex-wrap gap-2">
+                            {user.memberships.map((membership) => (
+                              <span
+                                key={`${user.id}-${membership.orgId}`}
+                                className="inline-flex items-center rounded-full bg-blue-50 px-3 py-1 text-xs font-medium text-blue-700"
+                              >
+                                {membership.orgName} · {membership.role}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+                      </td>
+                      <td className="px-4 py-3">
                         <button
-                          onClick={() => { setEditingUser(user); setUserModalOpen(true); }}
+                          onClick={() => handleEditUser(user)}
                           className="text-blue-600 hover:text-blue-800 font-medium text-sm"
                         >
                           Edit
                         </button>
-                        <button
-                          onClick={() => handleDeleteUser(user.id as Id<"users">, user.name)}
-                          className="text-red-600 hover:text-red-800 font-medium text-sm"
-                        >
-                          Delete
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </section>
 
-        {/* Assign Org Role */}
         <section className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
           <h3 className="text-lg font-semibold text-gray-900 mb-4">Assign Org Role</h3>
           <form onSubmit={handleMembershipSubmit} className="grid grid-cols-1 gap-4 md:grid-cols-4">
@@ -381,8 +424,10 @@ export default function UsersPage() {
                 onChange={(e) => setMembership((prev) => ({ ...prev, userId: e.target.value }))}
               >
                 <option value="">Select user…</option>
-                {users.map((user) => (
-                  <option key={user.id} value={user.id}>{user.name || user.email}</option>
+                {sortedUsers.map((user) => (
+                  <option key={user.id} value={user.id}>
+                    {user.name || user.email}
+                  </option>
                 ))}
               </select>
             </div>
@@ -394,8 +439,10 @@ export default function UsersPage() {
                 onChange={(e) => setMembership((prev) => ({ ...prev, orgId: e.target.value }))}
               >
                 <option value="">Select org…</option>
-                {orgs.map((org) => (
-                  <option key={org._id} value={org._id}>{org.name}</option>
+                {data?.orgs.map((org) => (
+                  <option key={org.id} value={org.id}>
+                    {org.name}
+                  </option>
                 ))}
               </select>
             </div>
@@ -404,7 +451,7 @@ export default function UsersPage() {
               <select
                 className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2"
                 value={membership.role}
-                onChange={(e) => setMembership((prev) => ({ ...prev, role: e.target.value }))}
+                onChange={(e) => setMembership((prev) => ({ ...prev, role: e.target.value as 'admin' | 'backoffice' | 'contractor' }))}
               >
                 <option value="admin">Admin</option>
                 <option value="backoffice">Back Office</option>
@@ -423,7 +470,6 @@ export default function UsersPage() {
           </form>
         </section>
 
-        {/* Create Organization */}
         <section className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
           <h3 className="text-lg font-semibold text-gray-900 mb-4">Create Organization</h3>
           <form onSubmit={handleOrgSubmit} className="flex flex-col gap-3 md:flex-row md:items-end">
@@ -445,65 +491,15 @@ export default function UsersPage() {
             </button>
           </form>
         </section>
-
-        {/* Organizations List */}
-        <section className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Organizations</h3>
-          {orgs.length > 0 ? (
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200 text-sm">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-4 py-2 text-left font-semibold text-gray-500">Name</th>
-                    <th className="px-4 py-2 text-left font-semibold text-gray-500">Slug</th>
-                    <th className="px-4 py-2 text-left font-semibold text-gray-500">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-100">
-                  {orgs.map((org) => (
-                    <tr key={org._id}>
-                      <td className="px-4 py-3 text-gray-900 font-medium">{org.name}</td>
-                      <td className="px-4 py-3 text-gray-600">{org.slug}</td>
-                      <td className="px-4 py-3">
-                        <div className="flex gap-3">
-                          <button
-                            onClick={async () => {
-                              const newName = prompt('Enter new organization name:', org.name);
-                              if (newName && newName !== org.name) {
-                                await updateOrgMutation({ orgId: org._id, name: newName });
-                              }
-                            }}
-                            className="text-blue-600 hover:text-blue-800 font-medium text-sm"
-                          >
-                            Edit
-                          </button>
-                          <button
-                            onClick={async () => {
-                              if (confirm(`Delete organization "${org.name}"?`)) {
-                                await deleteOrgMutation({ orgId: org._id });
-                              }
-                            }}
-                            className="text-red-600 hover:text-red-800 font-medium text-sm"
-                          >
-                            Delete
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          ) : (
-            <p className="text-gray-500">No organizations found.</p>
-          )}
-        </section>
       </main>
 
       <UserModal
         open={userModalOpen}
-        onClose={() => { setUserModalOpen(false); setEditingUser(null); }}
+        onClose={handleUserModalClose}
         user={editingUser}
+        onSuccess={() => {
+          alert(editingUser ? 'User updated successfully!' : 'User created successfully!');
+        }}
       />
     </>
   );

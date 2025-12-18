@@ -7478,3 +7478,1770 @@ Import trace:
 https://nextjs.org/docs/messages/module-not-found
 
 
+ GET /api/auth/session 200 in 1303ms (compile: 673ms, render: 630ms)
+ GET /api/auth/session 200 in 43ms (compile: 19ms, render: 24ms)
+ ⨯ ./app/providers.tsx:5:1
+Module not found: Can't resolve 'next-themes'
+[0m [90m 3 |[39m [36mimport[39m { [33mConvexProvider[39m[33m,[39m [33mConvexReactClient[39m } [36mfrom[39m [32m"convex/react"[39m[33m;[39m
+ [90m 4 |[39m [36mimport[39m { [33mSessionProvider[39m } [36mfrom[39m [32m"next-auth/react"[39m[33m;[39m
+[31m[1m>[22m[39m[90m 5 |[39m [36mimport[39m { [33mThemeProvider[39m } [36mfrom[39m [32m"next-themes"[39m[33m;[39m
+ [90m   |[39m [31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m
+ [90m 6 |[39m [36mimport[39m { [33mReactNode[39m } [36mfrom[39m [32m"react"[39m[33m;[39m
+ [90m 7 |[39m
+ [90m 8 |[39m [36mconst[39m convex [33m=[39m [36mnew[39m [33mConvexReactClient[39m(process[33m.[39menv[33m.[39m[33mNEXT_PUBLIC_CONVEX_URL[39m[33m![39m)[33m;[39m[0m
+
+
+
+Import trace:
+  Server Component:
+    ./app/providers.tsx
+    ./app/layout.tsx
+
+https://nextjs.org/docs/messages/module-not-found
+
+
+ ○ Compiling /_error ...
+ GET / 500 in 7.2s (compile: 6.5s, render: 622ms)
+ ✓ Compiled in 3.1s
+ ⚠ Fast Refresh had to perform a full reload due to a runtime error.
+ ⨯ Error: Element type is invalid: expected a string (for built-in components) or a class/function (for composite components) but got: undefined. You likely forgot to export your component from the file it's defined in, or you might have mixed up default and named imports.
+    at ignore-listed frames {
+  digest: '1896876708'
+}
+ ⨯ Error: Element type is invalid: expected a string (for built-in components) or a class/function (for composite components) but got: undefined. You likely forgot to export your component from the file it's defined in, or you might have mixed up default and named imports.
+    at ignore-listed frames {
+  digest: '1896876708'
+}
+ GET /users 200 in 7.5s (compile: 3.1s, render: 4.4s)
+ GET /users 500 in 3.6s (compile: 117ms, render: 3.5s)
+ GET /users 200 in 346ms (compile: 135ms, render: 211ms)
+ GET / 500 in 4.0s (compile: 2.4s, render: 1694ms)
+ ⨯ ./app/schedule/page.tsx:8:1
+Module not found: Can't resolve '../convex/_generated/api'
+[0m [90m  6 |[39m [36mimport[39m { [33mPageHeader[39m } [36mfrom[39m [32m'@/components/page-header'[39m[33m;[39m
+ [90m  7 |[39m [36mimport[39m { useQuery[33m,[39m useMutation } [36mfrom[39m [32m'convex/react'[39m[33m;[39m
+[31m[1m>[22m[39m[90m  8 |[39m [36mimport[39m { api } [36mfrom[39m [32m'../convex/_generated/api'[39m[33m;[39m
+ [90m    |[39m [31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m
+ [90m  9 |[39m [36mimport[39m { [33mId[39m } [36mfrom[39m [32m'../convex/_generated/dataModel'[39m[33m;[39m
+ [90m 10 |[39m
+ [90m 11 |[39m [90m// Foreman directory for dropdown options[39m[0m
+
+
+
+Import traces:
+  Client Component Browser:
+    ./app/schedule/page.tsx [Client Component Browser]
+    ./app/schedule/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./app/schedule/page.tsx [Client Component SSR]
+    ./app/schedule/page.tsx [Server Component]
+
+https://nextjs.org/docs/messages/module-not-found
+
+
+ ⨯ ./app/schedule/page.tsx:8:1
+Module not found: Can't resolve '../convex/_generated/api'
+[0m [90m  6 |[39m [36mimport[39m { [33mPageHeader[39m } [36mfrom[39m [32m'@/components/page-header'[39m[33m;[39m
+ [90m  7 |[39m [36mimport[39m { useQuery[33m,[39m useMutation } [36mfrom[39m [32m'convex/react'[39m[33m;[39m
+[31m[1m>[22m[39m[90m  8 |[39m [36mimport[39m { api } [36mfrom[39m [32m'../convex/_generated/api'[39m[33m;[39m
+ [90m    |[39m [31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m
+ [90m  9 |[39m [36mimport[39m { [33mId[39m } [36mfrom[39m [32m'../convex/_generated/dataModel'[39m[33m;[39m
+ [90m 10 |[39m
+ [90m 11 |[39m [90m// Foreman directory for dropdown options[39m[0m
+
+
+
+Import traces:
+  Client Component Browser:
+    ./app/schedule/page.tsx [Client Component Browser]
+    ./app/schedule/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./app/schedule/page.tsx [Client Component SSR]
+    ./app/schedule/page.tsx [Server Component]
+
+https://nextjs.org/docs/messages/module-not-found
+
+
+ ⨯ ./app/schedule/page.tsx:8:1
+Module not found: Can't resolve '../convex/_generated/api'
+[0m [90m  6 |[39m [36mimport[39m { [33mPageHeader[39m } [36mfrom[39m [32m'@/components/page-header'[39m[33m;[39m
+ [90m  7 |[39m [36mimport[39m { useQuery[33m,[39m useMutation } [36mfrom[39m [32m'convex/react'[39m[33m;[39m
+[31m[1m>[22m[39m[90m  8 |[39m [36mimport[39m { api } [36mfrom[39m [32m'../convex/_generated/api'[39m[33m;[39m
+ [90m    |[39m [31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m
+ [90m  9 |[39m [36mimport[39m { [33mId[39m } [36mfrom[39m [32m'../convex/_generated/dataModel'[39m[33m;[39m
+ [90m 10 |[39m
+ [90m 11 |[39m [90m// Foreman directory for dropdown options[39m[0m
+
+
+
+Import traces:
+  Client Component Browser:
+    ./app/schedule/page.tsx [Client Component Browser]
+    ./app/schedule/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./app/schedule/page.tsx [Client Component SSR]
+    ./app/schedule/page.tsx [Server Component]
+
+https://nextjs.org/docs/messages/module-not-found
+
+
+ ⨯ ./app/schedule/page.tsx:8:1
+Module not found: Can't resolve '../convex/_generated/api'
+[0m [90m  6 |[39m [36mimport[39m { [33mPageHeader[39m } [36mfrom[39m [32m'@/components/page-header'[39m[33m;[39m
+ [90m  7 |[39m [36mimport[39m { useQuery[33m,[39m useMutation } [36mfrom[39m [32m'convex/react'[39m[33m;[39m
+[31m[1m>[22m[39m[90m  8 |[39m [36mimport[39m { api } [36mfrom[39m [32m'../convex/_generated/api'[39m[33m;[39m
+ [90m    |[39m [31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m
+ [90m  9 |[39m [36mimport[39m { [33mId[39m } [36mfrom[39m [32m'../convex/_generated/dataModel'[39m[33m;[39m
+ [90m 10 |[39m
+ [90m 11 |[39m [90m// Foreman directory for dropdown options[39m[0m
+
+
+
+Import traces:
+  Client Component Browser:
+    ./app/schedule/page.tsx [Client Component Browser]
+    ./app/schedule/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./app/schedule/page.tsx [Client Component SSR]
+    ./app/schedule/page.tsx [Server Component]
+
+https://nextjs.org/docs/messages/module-not-found
+
+
+ ⨯ ./app/dispatch/page.tsx:7:1
+Module not found: Can't resolve '../convex/_generated/api'
+[0m [90m  5 |[39m [36mimport[39m { useSession } [36mfrom[39m [32m'next-auth/react'[39m[33m;[39m
+ [90m  6 |[39m [36mimport[39m { useQuery[33m,[39m useMutation } [36mfrom[39m [32m'convex/react'[39m[33m;[39m
+[31m[1m>[22m[39m[90m  7 |[39m [36mimport[39m { api } [36mfrom[39m [32m'../convex/_generated/api'[39m[33m;[39m
+ [90m    |[39m [31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m
+ [90m  8 |[39m [36mimport[39m { [33mId[39m } [36mfrom[39m [32m'../convex/_generated/dataModel'[39m[33m;[39m
+ [90m  9 |[39m
+ [90m 10 |[39m [36mexport[39m [36mdefault[39m [36mfunction[39m [33mDispatchPage[39m() {[0m
+
+
+
+Import traces:
+  Client Component Browser:
+    ./app/dispatch/page.tsx [Client Component Browser]
+    ./app/dispatch/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./app/dispatch/page.tsx [Client Component SSR]
+    ./app/dispatch/page.tsx [Server Component]
+
+https://nextjs.org/docs/messages/module-not-found
+
+
+ ⨯ ./app/dispatch/page.tsx:7:1
+Module not found: Can't resolve '../convex/_generated/api'
+[0m [90m  5 |[39m [36mimport[39m { useSession } [36mfrom[39m [32m'next-auth/react'[39m[33m;[39m
+ [90m  6 |[39m [36mimport[39m { useQuery[33m,[39m useMutation } [36mfrom[39m [32m'convex/react'[39m[33m;[39m
+[31m[1m>[22m[39m[90m  7 |[39m [36mimport[39m { api } [36mfrom[39m [32m'../convex/_generated/api'[39m[33m;[39m
+ [90m    |[39m [31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m
+ [90m  8 |[39m [36mimport[39m { [33mId[39m } [36mfrom[39m [32m'../convex/_generated/dataModel'[39m[33m;[39m
+ [90m  9 |[39m
+ [90m 10 |[39m [36mexport[39m [36mdefault[39m [36mfunction[39m [33mDispatchPage[39m() {[0m
+
+
+
+Import traces:
+  Client Component Browser:
+    ./app/dispatch/page.tsx [Client Component Browser]
+    ./app/dispatch/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./app/dispatch/page.tsx [Client Component SSR]
+    ./app/dispatch/page.tsx [Server Component]
+
+https://nextjs.org/docs/messages/module-not-found
+
+
+ ⨯ ./app/dispatch/page.tsx:7:1
+Module not found: Can't resolve '../convex/_generated/api'
+[0m [90m  5 |[39m [36mimport[39m { useSession } [36mfrom[39m [32m'next-auth/react'[39m[33m;[39m
+ [90m  6 |[39m [36mimport[39m { useQuery[33m,[39m useMutation } [36mfrom[39m [32m'convex/react'[39m[33m;[39m
+[31m[1m>[22m[39m[90m  7 |[39m [36mimport[39m { api } [36mfrom[39m [32m'../convex/_generated/api'[39m[33m;[39m
+ [90m    |[39m [31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m
+ [90m  8 |[39m [36mimport[39m { [33mId[39m } [36mfrom[39m [32m'../convex/_generated/dataModel'[39m[33m;[39m
+ [90m  9 |[39m
+ [90m 10 |[39m [36mexport[39m [36mdefault[39m [36mfunction[39m [33mDispatchPage[39m() {[0m
+
+
+
+Import traces:
+  Client Component Browser:
+    ./app/dispatch/page.tsx [Client Component Browser]
+    ./app/dispatch/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./app/dispatch/page.tsx [Client Component SSR]
+    ./app/dispatch/page.tsx [Server Component]
+
+https://nextjs.org/docs/messages/module-not-found
+
+
+ ⨯ ./app/dispatch/page.tsx:7:1
+Module not found: Can't resolve '../convex/_generated/api'
+[0m [90m  5 |[39m [36mimport[39m { useSession } [36mfrom[39m [32m'next-auth/react'[39m[33m;[39m
+ [90m  6 |[39m [36mimport[39m { useQuery[33m,[39m useMutation } [36mfrom[39m [32m'convex/react'[39m[33m;[39m
+[31m[1m>[22m[39m[90m  7 |[39m [36mimport[39m { api } [36mfrom[39m [32m'../convex/_generated/api'[39m[33m;[39m
+ [90m    |[39m [31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m
+ [90m  8 |[39m [36mimport[39m { [33mId[39m } [36mfrom[39m [32m'../convex/_generated/dataModel'[39m[33m;[39m
+ [90m  9 |[39m
+ [90m 10 |[39m [36mexport[39m [36mdefault[39m [36mfunction[39m [33mDispatchPage[39m() {[0m
+
+
+
+Import traces:
+  Client Component Browser:
+    ./app/dispatch/page.tsx [Client Component Browser]
+    ./app/dispatch/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./app/dispatch/page.tsx [Client Component SSR]
+    ./app/dispatch/page.tsx [Server Component]
+
+https://nextjs.org/docs/messages/module-not-found
+
+
+ ⨯ ./app/dispatch/page.tsx:7:1
+Module not found: Can't resolve '../convex/_generated/api'
+[0m [90m  5 |[39m [36mimport[39m { useSession } [36mfrom[39m [32m'next-auth/react'[39m[33m;[39m
+ [90m  6 |[39m [36mimport[39m { useQuery[33m,[39m useMutation } [36mfrom[39m [32m'convex/react'[39m[33m;[39m
+[31m[1m>[22m[39m[90m  7 |[39m [36mimport[39m { api } [36mfrom[39m [32m'../convex/_generated/api'[39m[33m;[39m
+ [90m    |[39m [31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m
+ [90m  8 |[39m [36mimport[39m { [33mId[39m } [36mfrom[39m [32m'../convex/_generated/dataModel'[39m[33m;[39m
+ [90m  9 |[39m
+ [90m 10 |[39m [36mexport[39m [36mdefault[39m [36mfunction[39m [33mDispatchPage[39m() {[0m
+
+
+
+Import traces:
+  Client Component Browser:
+    ./app/dispatch/page.tsx [Client Component Browser]
+    ./app/dispatch/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./app/dispatch/page.tsx [Client Component SSR]
+    ./app/dispatch/page.tsx [Server Component]
+
+https://nextjs.org/docs/messages/module-not-found
+
+
+ ⨯ ./app/dispatch/page.tsx:7:1
+Module not found: Can't resolve '../convex/_generated/api'
+[0m [90m  5 |[39m [36mimport[39m { useSession } [36mfrom[39m [32m'next-auth/react'[39m[33m;[39m
+ [90m  6 |[39m [36mimport[39m { useQuery[33m,[39m useMutation } [36mfrom[39m [32m'convex/react'[39m[33m;[39m
+[31m[1m>[22m[39m[90m  7 |[39m [36mimport[39m { api } [36mfrom[39m [32m'../convex/_generated/api'[39m[33m;[39m
+ [90m    |[39m [31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m
+ [90m  8 |[39m [36mimport[39m { [33mId[39m } [36mfrom[39m [32m'../convex/_generated/dataModel'[39m[33m;[39m
+ [90m  9 |[39m
+ [90m 10 |[39m [36mexport[39m [36mdefault[39m [36mfunction[39m [33mDispatchPage[39m() {[0m
+
+
+
+Import traces:
+  Client Component Browser:
+    ./app/dispatch/page.tsx [Client Component Browser]
+    ./app/dispatch/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./app/dispatch/page.tsx [Client Component SSR]
+    ./app/dispatch/page.tsx [Server Component]
+
+https://nextjs.org/docs/messages/module-not-found
+
+
+ ⨯ ./app/dispatch/page.tsx:7:1
+Module not found: Can't resolve '../convex/_generated/api'
+[0m [90m  5 |[39m [36mimport[39m { useSession } [36mfrom[39m [32m'next-auth/react'[39m[33m;[39m
+ [90m  6 |[39m [36mimport[39m { useQuery[33m,[39m useMutation } [36mfrom[39m [32m'convex/react'[39m[33m;[39m
+[31m[1m>[22m[39m[90m  7 |[39m [36mimport[39m { api } [36mfrom[39m [32m'../convex/_generated/api'[39m[33m;[39m
+ [90m    |[39m [31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m
+ [90m  8 |[39m [36mimport[39m { [33mId[39m } [36mfrom[39m [32m'../convex/_generated/dataModel'[39m[33m;[39m
+ [90m  9 |[39m
+ [90m 10 |[39m [36mexport[39m [36mdefault[39m [36mfunction[39m [33mDispatchPage[39m() {[0m
+
+
+
+Import traces:
+  Client Component Browser:
+    ./app/dispatch/page.tsx [Client Component Browser]
+    ./app/dispatch/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./app/dispatch/page.tsx [Client Component SSR]
+    ./app/dispatch/page.tsx [Server Component]
+
+https://nextjs.org/docs/messages/module-not-found
+
+
+ ⨯ ./app/dispatch/page.tsx:7:1
+Module not found: Can't resolve '../convex/_generated/api'
+[0m [90m  5 |[39m [36mimport[39m { useSession } [36mfrom[39m [32m'next-auth/react'[39m[33m;[39m
+ [90m  6 |[39m [36mimport[39m { useQuery[33m,[39m useMutation } [36mfrom[39m [32m'convex/react'[39m[33m;[39m
+[31m[1m>[22m[39m[90m  7 |[39m [36mimport[39m { api } [36mfrom[39m [32m'../convex/_generated/api'[39m[33m;[39m
+ [90m    |[39m [31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m
+ [90m  8 |[39m [36mimport[39m { [33mId[39m } [36mfrom[39m [32m'../convex/_generated/dataModel'[39m[33m;[39m
+ [90m  9 |[39m
+ [90m 10 |[39m [36mexport[39m [36mdefault[39m [36mfunction[39m [33mDispatchPage[39m() {[0m
+
+
+
+Import traces:
+  Client Component Browser:
+    ./app/dispatch/page.tsx [Client Component Browser]
+    ./app/dispatch/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./app/dispatch/page.tsx [Client Component SSR]
+    ./app/dispatch/page.tsx [Server Component]
+
+https://nextjs.org/docs/messages/module-not-found
+
+
+ ⨯ ./app/dispatch/page.tsx:7:1
+Module not found: Can't resolve '../convex/_generated/api'
+[0m [90m  5 |[39m [36mimport[39m { useSession } [36mfrom[39m [32m'next-auth/react'[39m[33m;[39m
+ [90m  6 |[39m [36mimport[39m { useQuery[33m,[39m useMutation } [36mfrom[39m [32m'convex/react'[39m[33m;[39m
+[31m[1m>[22m[39m[90m  7 |[39m [36mimport[39m { api } [36mfrom[39m [32m'../convex/_generated/api'[39m[33m;[39m
+ [90m    |[39m [31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m
+ [90m  8 |[39m [36mimport[39m { [33mId[39m } [36mfrom[39m [32m'../convex/_generated/dataModel'[39m[33m;[39m
+ [90m  9 |[39m
+ [90m 10 |[39m [36mexport[39m [36mdefault[39m [36mfunction[39m [33mDispatchPage[39m() {[0m
+
+
+
+Import traces:
+  Client Component Browser:
+    ./app/dispatch/page.tsx [Client Component Browser]
+    ./app/dispatch/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./app/dispatch/page.tsx [Client Component SSR]
+    ./app/dispatch/page.tsx [Server Component]
+
+https://nextjs.org/docs/messages/module-not-found
+
+
+ ⨯ ./app/dispatch/page.tsx:7:1
+Module not found: Can't resolve '../convex/_generated/api'
+[0m [90m  5 |[39m [36mimport[39m { useSession } [36mfrom[39m [32m'next-auth/react'[39m[33m;[39m
+ [90m  6 |[39m [36mimport[39m { useQuery[33m,[39m useMutation } [36mfrom[39m [32m'convex/react'[39m[33m;[39m
+[31m[1m>[22m[39m[90m  7 |[39m [36mimport[39m { api } [36mfrom[39m [32m'../convex/_generated/api'[39m[33m;[39m
+ [90m    |[39m [31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m
+ [90m  8 |[39m [36mimport[39m { [33mId[39m } [36mfrom[39m [32m'../convex/_generated/dataModel'[39m[33m;[39m
+ [90m  9 |[39m
+ [90m 10 |[39m [36mexport[39m [36mdefault[39m [36mfunction[39m [33mDispatchPage[39m() {[0m
+
+
+
+Import traces:
+  Client Component Browser:
+    ./app/dispatch/page.tsx [Client Component Browser]
+    ./app/dispatch/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./app/dispatch/page.tsx [Client Component SSR]
+    ./app/dispatch/page.tsx [Server Component]
+
+https://nextjs.org/docs/messages/module-not-found
+
+
+ ⨯ ./app/dispatch/page.tsx:7:1
+Module not found: Can't resolve '../convex/_generated/api'
+[0m [90m  5 |[39m [36mimport[39m { useSession } [36mfrom[39m [32m'next-auth/react'[39m[33m;[39m
+ [90m  6 |[39m [36mimport[39m { useQuery[33m,[39m useMutation } [36mfrom[39m [32m'convex/react'[39m[33m;[39m
+[31m[1m>[22m[39m[90m  7 |[39m [36mimport[39m { api } [36mfrom[39m [32m'../convex/_generated/api'[39m[33m;[39m
+ [90m    |[39m [31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m
+ [90m  8 |[39m [36mimport[39m { [33mId[39m } [36mfrom[39m [32m'../convex/_generated/dataModel'[39m[33m;[39m
+ [90m  9 |[39m
+ [90m 10 |[39m [36mexport[39m [36mdefault[39m [36mfunction[39m [33mDispatchPage[39m() {[0m
+
+
+
+Import traces:
+  Client Component Browser:
+    ./app/dispatch/page.tsx [Client Component Browser]
+    ./app/dispatch/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./app/dispatch/page.tsx [Client Component SSR]
+    ./app/dispatch/page.tsx [Server Component]
+
+https://nextjs.org/docs/messages/module-not-found
+
+
+ ⨯ ./app/dispatch/page.tsx:7:1
+Module not found: Can't resolve '../convex/_generated/api'
+[0m [90m  5 |[39m [36mimport[39m { useSession } [36mfrom[39m [32m'next-auth/react'[39m[33m;[39m
+ [90m  6 |[39m [36mimport[39m { useQuery[33m,[39m useMutation } [36mfrom[39m [32m'convex/react'[39m[33m;[39m
+[31m[1m>[22m[39m[90m  7 |[39m [36mimport[39m { api } [36mfrom[39m [32m'../convex/_generated/api'[39m[33m;[39m
+ [90m    |[39m [31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m
+ [90m  8 |[39m [36mimport[39m { [33mId[39m } [36mfrom[39m [32m'../convex/_generated/dataModel'[39m[33m;[39m
+ [90m  9 |[39m
+ [90m 10 |[39m [36mexport[39m [36mdefault[39m [36mfunction[39m [33mDispatchPage[39m() {[0m
+
+
+
+Import traces:
+  Client Component Browser:
+    ./app/dispatch/page.tsx [Client Component Browser]
+    ./app/dispatch/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./app/dispatch/page.tsx [Client Component SSR]
+    ./app/dispatch/page.tsx [Server Component]
+
+https://nextjs.org/docs/messages/module-not-found
+
+
+ ⨯ ./app/dispatch/page.tsx:7:1
+Module not found: Can't resolve '../convex/_generated/api'
+[0m [90m  5 |[39m [36mimport[39m { useSession } [36mfrom[39m [32m'next-auth/react'[39m[33m;[39m
+ [90m  6 |[39m [36mimport[39m { useQuery[33m,[39m useMutation } [36mfrom[39m [32m'convex/react'[39m[33m;[39m
+[31m[1m>[22m[39m[90m  7 |[39m [36mimport[39m { api } [36mfrom[39m [32m'../convex/_generated/api'[39m[33m;[39m
+ [90m    |[39m [31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m
+ [90m  8 |[39m [36mimport[39m { [33mId[39m } [36mfrom[39m [32m'../convex/_generated/dataModel'[39m[33m;[39m
+ [90m  9 |[39m
+ [90m 10 |[39m [36mexport[39m [36mdefault[39m [36mfunction[39m [33mDispatchPage[39m() {[0m
+
+
+
+Import traces:
+  Client Component Browser:
+    ./app/dispatch/page.tsx [Client Component Browser]
+    ./app/dispatch/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./app/dispatch/page.tsx [Client Component SSR]
+    ./app/dispatch/page.tsx [Server Component]
+
+https://nextjs.org/docs/messages/module-not-found
+
+
+ ⨯ ./app/dispatch/page.tsx:7:1
+Module not found: Can't resolve '../convex/_generated/api'
+[0m [90m  5 |[39m [36mimport[39m { useSession } [36mfrom[39m [32m'next-auth/react'[39m[33m;[39m
+ [90m  6 |[39m [36mimport[39m { useQuery[33m,[39m useMutation } [36mfrom[39m [32m'convex/react'[39m[33m;[39m
+[31m[1m>[22m[39m[90m  7 |[39m [36mimport[39m { api } [36mfrom[39m [32m'../convex/_generated/api'[39m[33m;[39m
+ [90m    |[39m [31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m
+ [90m  8 |[39m [36mimport[39m { [33mId[39m } [36mfrom[39m [32m'../convex/_generated/dataModel'[39m[33m;[39m
+ [90m  9 |[39m
+ [90m 10 |[39m [36mexport[39m [36mdefault[39m [36mfunction[39m [33mDispatchPage[39m() {[0m
+
+
+
+Import traces:
+  Client Component Browser:
+    ./app/dispatch/page.tsx [Client Component Browser]
+    ./app/dispatch/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./app/dispatch/page.tsx [Client Component SSR]
+    ./app/dispatch/page.tsx [Server Component]
+
+https://nextjs.org/docs/messages/module-not-found
+
+
+ ⨯ ./app/dispatch/page.tsx:7:1
+Module not found: Can't resolve '../convex/_generated/api'
+[0m [90m  5 |[39m [36mimport[39m { useSession } [36mfrom[39m [32m'next-auth/react'[39m[33m;[39m
+ [90m  6 |[39m [36mimport[39m { useQuery[33m,[39m useMutation } [36mfrom[39m [32m'convex/react'[39m[33m;[39m
+[31m[1m>[22m[39m[90m  7 |[39m [36mimport[39m { api } [36mfrom[39m [32m'../convex/_generated/api'[39m[33m;[39m
+ [90m    |[39m [31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m
+ [90m  8 |[39m [36mimport[39m { [33mId[39m } [36mfrom[39m [32m'../convex/_generated/dataModel'[39m[33m;[39m
+ [90m  9 |[39m
+ [90m 10 |[39m [36mexport[39m [36mdefault[39m [36mfunction[39m [33mDispatchPage[39m() {[0m
+
+
+
+Import traces:
+  Client Component Browser:
+    ./app/dispatch/page.tsx [Client Component Browser]
+    ./app/dispatch/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./app/dispatch/page.tsx [Client Component SSR]
+    ./app/dispatch/page.tsx [Server Component]
+
+https://nextjs.org/docs/messages/module-not-found
+
+
+ ⨯ ./app/dispatch/page.tsx:7:1
+Module not found: Can't resolve '../convex/_generated/api'
+[0m [90m  5 |[39m [36mimport[39m { useSession } [36mfrom[39m [32m'next-auth/react'[39m[33m;[39m
+ [90m  6 |[39m [36mimport[39m { useQuery[33m,[39m useMutation } [36mfrom[39m [32m'convex/react'[39m[33m;[39m
+[31m[1m>[22m[39m[90m  7 |[39m [36mimport[39m { api } [36mfrom[39m [32m'../convex/_generated/api'[39m[33m;[39m
+ [90m    |[39m [31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m
+ [90m  8 |[39m [36mimport[39m { [33mId[39m } [36mfrom[39m [32m'../convex/_generated/dataModel'[39m[33m;[39m
+ [90m  9 |[39m
+ [90m 10 |[39m [36mexport[39m [36mdefault[39m [36mfunction[39m [33mDispatchPage[39m() {[0m
+
+
+
+Import traces:
+  Client Component Browser:
+    ./app/dispatch/page.tsx [Client Component Browser]
+    ./app/dispatch/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./app/dispatch/page.tsx [Client Component SSR]
+    ./app/dispatch/page.tsx [Server Component]
+
+https://nextjs.org/docs/messages/module-not-found
+
+
+ ⨯ ./app/dispatch/page.tsx:7:1
+Module not found: Can't resolve '../convex/_generated/api'
+[0m [90m  5 |[39m [36mimport[39m { useSession } [36mfrom[39m [32m'next-auth/react'[39m[33m;[39m
+ [90m  6 |[39m [36mimport[39m { useQuery[33m,[39m useMutation } [36mfrom[39m [32m'convex/react'[39m[33m;[39m
+[31m[1m>[22m[39m[90m  7 |[39m [36mimport[39m { api } [36mfrom[39m [32m'../convex/_generated/api'[39m[33m;[39m
+ [90m    |[39m [31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m
+ [90m  8 |[39m [36mimport[39m { [33mId[39m } [36mfrom[39m [32m'../convex/_generated/dataModel'[39m[33m;[39m
+ [90m  9 |[39m
+ [90m 10 |[39m [36mexport[39m [36mdefault[39m [36mfunction[39m [33mDispatchPage[39m() {[0m
+
+
+
+Import traces:
+  Client Component Browser:
+    ./app/dispatch/page.tsx [Client Component Browser]
+    ./app/dispatch/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./app/dispatch/page.tsx [Client Component SSR]
+    ./app/dispatch/page.tsx [Server Component]
+
+https://nextjs.org/docs/messages/module-not-found
+
+
+ ⨯ ./app/dispatch/page.tsx:7:1
+Module not found: Can't resolve '../convex/_generated/api'
+[0m [90m  5 |[39m [36mimport[39m { useSession } [36mfrom[39m [32m'next-auth/react'[39m[33m;[39m
+ [90m  6 |[39m [36mimport[39m { useQuery[33m,[39m useMutation } [36mfrom[39m [32m'convex/react'[39m[33m;[39m
+[31m[1m>[22m[39m[90m  7 |[39m [36mimport[39m { api } [36mfrom[39m [32m'../convex/_generated/api'[39m[33m;[39m
+ [90m    |[39m [31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m
+ [90m  8 |[39m [36mimport[39m { [33mId[39m } [36mfrom[39m [32m'../convex/_generated/dataModel'[39m[33m;[39m
+ [90m  9 |[39m
+ [90m 10 |[39m [36mexport[39m [36mdefault[39m [36mfunction[39m [33mDispatchPage[39m() {[0m
+
+
+
+Import traces:
+  Client Component Browser:
+    ./app/dispatch/page.tsx [Client Component Browser]
+    ./app/dispatch/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./app/dispatch/page.tsx [Client Component SSR]
+    ./app/dispatch/page.tsx [Server Component]
+
+https://nextjs.org/docs/messages/module-not-found
+
+
+ ⨯ ./app/dispatch/page.tsx:7:1
+Module not found: Can't resolve '../convex/_generated/api'
+[0m [90m  5 |[39m [36mimport[39m { useSession } [36mfrom[39m [32m'next-auth/react'[39m[33m;[39m
+ [90m  6 |[39m [36mimport[39m { useQuery[33m,[39m useMutation } [36mfrom[39m [32m'convex/react'[39m[33m;[39m
+[31m[1m>[22m[39m[90m  7 |[39m [36mimport[39m { api } [36mfrom[39m [32m'../convex/_generated/api'[39m[33m;[39m
+ [90m    |[39m [31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m
+ [90m  8 |[39m [36mimport[39m { [33mId[39m } [36mfrom[39m [32m'../convex/_generated/dataModel'[39m[33m;[39m
+ [90m  9 |[39m
+ [90m 10 |[39m [36mexport[39m [36mdefault[39m [36mfunction[39m [33mDispatchPage[39m() {[0m
+
+
+
+Import traces:
+  Client Component Browser:
+    ./app/dispatch/page.tsx [Client Component Browser]
+    ./app/dispatch/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./app/dispatch/page.tsx [Client Component SSR]
+    ./app/dispatch/page.tsx [Server Component]
+
+https://nextjs.org/docs/messages/module-not-found
+
+
+ ⨯ ./app/dispatch/page.tsx:7:1
+Module not found: Can't resolve '../convex/_generated/api'
+[0m [90m  5 |[39m [36mimport[39m { useSession } [36mfrom[39m [32m'next-auth/react'[39m[33m;[39m
+ [90m  6 |[39m [36mimport[39m { useQuery[33m,[39m useMutation } [36mfrom[39m [32m'convex/react'[39m[33m;[39m
+[31m[1m>[22m[39m[90m  7 |[39m [36mimport[39m { api } [36mfrom[39m [32m'../convex/_generated/api'[39m[33m;[39m
+ [90m    |[39m [31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m
+ [90m  8 |[39m [36mimport[39m { [33mId[39m } [36mfrom[39m [32m'../convex/_generated/dataModel'[39m[33m;[39m
+ [90m  9 |[39m
+ [90m 10 |[39m [36mexport[39m [36mdefault[39m [36mfunction[39m [33mDispatchPage[39m() {[0m
+
+
+
+Import traces:
+  Client Component Browser:
+    ./app/dispatch/page.tsx [Client Component Browser]
+    ./app/dispatch/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./app/dispatch/page.tsx [Client Component SSR]
+    ./app/dispatch/page.tsx [Server Component]
+
+https://nextjs.org/docs/messages/module-not-found
+
+
+ ⨯ ./app/dispatch/page.tsx:7:1
+Module not found: Can't resolve '../convex/_generated/api'
+[0m [90m  5 |[39m [36mimport[39m { useSession } [36mfrom[39m [32m'next-auth/react'[39m[33m;[39m
+ [90m  6 |[39m [36mimport[39m { useQuery[33m,[39m useMutation } [36mfrom[39m [32m'convex/react'[39m[33m;[39m
+[31m[1m>[22m[39m[90m  7 |[39m [36mimport[39m { api } [36mfrom[39m [32m'../convex/_generated/api'[39m[33m;[39m
+ [90m    |[39m [31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m
+ [90m  8 |[39m [36mimport[39m { [33mId[39m } [36mfrom[39m [32m'../convex/_generated/dataModel'[39m[33m;[39m
+ [90m  9 |[39m
+ [90m 10 |[39m [36mexport[39m [36mdefault[39m [36mfunction[39m [33mDispatchPage[39m() {[0m
+
+
+
+Import traces:
+  Client Component Browser:
+    ./app/dispatch/page.tsx [Client Component Browser]
+    ./app/dispatch/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./app/dispatch/page.tsx [Client Component SSR]
+    ./app/dispatch/page.tsx [Server Component]
+
+https://nextjs.org/docs/messages/module-not-found
+
+
+ ⨯ ./app/dispatch/page.tsx:7:1
+Module not found: Can't resolve '../convex/_generated/api'
+[0m [90m  5 |[39m [36mimport[39m { useSession } [36mfrom[39m [32m'next-auth/react'[39m[33m;[39m
+ [90m  6 |[39m [36mimport[39m { useQuery[33m,[39m useMutation } [36mfrom[39m [32m'convex/react'[39m[33m;[39m
+[31m[1m>[22m[39m[90m  7 |[39m [36mimport[39m { api } [36mfrom[39m [32m'../convex/_generated/api'[39m[33m;[39m
+ [90m    |[39m [31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m
+ [90m  8 |[39m [36mimport[39m { [33mId[39m } [36mfrom[39m [32m'../convex/_generated/dataModel'[39m[33m;[39m
+ [90m  9 |[39m
+ [90m 10 |[39m [36mexport[39m [36mdefault[39m [36mfunction[39m [33mDispatchPage[39m() {[0m
+
+
+
+Import traces:
+  Client Component Browser:
+    ./app/dispatch/page.tsx [Client Component Browser]
+    ./app/dispatch/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./app/dispatch/page.tsx [Client Component SSR]
+    ./app/dispatch/page.tsx [Server Component]
+
+https://nextjs.org/docs/messages/module-not-found
+
+
+ ⨯ ./app/dispatch/page.tsx:7:1
+Module not found: Can't resolve '../convex/_generated/api'
+[0m [90m  5 |[39m [36mimport[39m { useSession } [36mfrom[39m [32m'next-auth/react'[39m[33m;[39m
+ [90m  6 |[39m [36mimport[39m { useQuery[33m,[39m useMutation } [36mfrom[39m [32m'convex/react'[39m[33m;[39m
+[31m[1m>[22m[39m[90m  7 |[39m [36mimport[39m { api } [36mfrom[39m [32m'../convex/_generated/api'[39m[33m;[39m
+ [90m    |[39m [31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m
+ [90m  8 |[39m [36mimport[39m { [33mId[39m } [36mfrom[39m [32m'../convex/_generated/dataModel'[39m[33m;[39m
+ [90m  9 |[39m
+ [90m 10 |[39m [36mexport[39m [36mdefault[39m [36mfunction[39m [33mDispatchPage[39m() {[0m
+
+
+
+Import traces:
+  Client Component Browser:
+    ./app/dispatch/page.tsx [Client Component Browser]
+    ./app/dispatch/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./app/dispatch/page.tsx [Client Component SSR]
+    ./app/dispatch/page.tsx [Server Component]
+
+https://nextjs.org/docs/messages/module-not-found
+
+
+ ⨯ ./app/dispatch/page.tsx:7:1
+Module not found: Can't resolve '../convex/_generated/api'
+[0m [90m  5 |[39m [36mimport[39m { useSession } [36mfrom[39m [32m'next-auth/react'[39m[33m;[39m
+ [90m  6 |[39m [36mimport[39m { useQuery[33m,[39m useMutation } [36mfrom[39m [32m'convex/react'[39m[33m;[39m
+[31m[1m>[22m[39m[90m  7 |[39m [36mimport[39m { api } [36mfrom[39m [32m'../convex/_generated/api'[39m[33m;[39m
+ [90m    |[39m [31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m
+ [90m  8 |[39m [36mimport[39m { [33mId[39m } [36mfrom[39m [32m'../convex/_generated/dataModel'[39m[33m;[39m
+ [90m  9 |[39m
+ [90m 10 |[39m [36mexport[39m [36mdefault[39m [36mfunction[39m [33mDispatchPage[39m() {[0m
+
+
+
+Import traces:
+  Client Component Browser:
+    ./app/dispatch/page.tsx [Client Component Browser]
+    ./app/dispatch/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./app/dispatch/page.tsx [Client Component SSR]
+    ./app/dispatch/page.tsx [Server Component]
+
+https://nextjs.org/docs/messages/module-not-found
+
+
+ ⨯ ./app/dispatch/page.tsx:7:1
+Module not found: Can't resolve '../convex/_generated/api'
+[0m [90m  5 |[39m [36mimport[39m { useSession } [36mfrom[39m [32m'next-auth/react'[39m[33m;[39m
+ [90m  6 |[39m [36mimport[39m { useQuery[33m,[39m useMutation } [36mfrom[39m [32m'convex/react'[39m[33m;[39m
+[31m[1m>[22m[39m[90m  7 |[39m [36mimport[39m { api } [36mfrom[39m [32m'../convex/_generated/api'[39m[33m;[39m
+ [90m    |[39m [31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m
+ [90m  8 |[39m [36mimport[39m { [33mId[39m } [36mfrom[39m [32m'../convex/_generated/dataModel'[39m[33m;[39m
+ [90m  9 |[39m
+ [90m 10 |[39m [36mexport[39m [36mdefault[39m [36mfunction[39m [33mDispatchPage[39m() {[0m
+
+
+
+Import traces:
+  Client Component Browser:
+    ./app/dispatch/page.tsx [Client Component Browser]
+    ./app/dispatch/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./app/dispatch/page.tsx [Client Component SSR]
+    ./app/dispatch/page.tsx [Server Component]
+
+https://nextjs.org/docs/messages/module-not-found
+
+
+ ⨯ ./app/dispatch/page.tsx:7:1
+Module not found: Can't resolve '../convex/_generated/api'
+[0m [90m  5 |[39m [36mimport[39m { useSession } [36mfrom[39m [32m'next-auth/react'[39m[33m;[39m
+ [90m  6 |[39m [36mimport[39m { useQuery[33m,[39m useMutation } [36mfrom[39m [32m'convex/react'[39m[33m;[39m
+[31m[1m>[22m[39m[90m  7 |[39m [36mimport[39m { api } [36mfrom[39m [32m'../convex/_generated/api'[39m[33m;[39m
+ [90m    |[39m [31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m
+ [90m  8 |[39m [36mimport[39m { [33mId[39m } [36mfrom[39m [32m'../convex/_generated/dataModel'[39m[33m;[39m
+ [90m  9 |[39m
+ [90m 10 |[39m [36mexport[39m [36mdefault[39m [36mfunction[39m [33mDispatchPage[39m() {[0m
+
+
+
+Import traces:
+  Client Component Browser:
+    ./app/dispatch/page.tsx [Client Component Browser]
+    ./app/dispatch/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./app/dispatch/page.tsx [Client Component SSR]
+    ./app/dispatch/page.tsx [Server Component]
+
+https://nextjs.org/docs/messages/module-not-found
+
+
+ ⨯ ./app/dispatch/page.tsx:7:1
+Module not found: Can't resolve '../convex/_generated/api'
+[0m [90m  5 |[39m [36mimport[39m { useSession } [36mfrom[39m [32m'next-auth/react'[39m[33m;[39m
+ [90m  6 |[39m [36mimport[39m { useQuery[33m,[39m useMutation } [36mfrom[39m [32m'convex/react'[39m[33m;[39m
+[31m[1m>[22m[39m[90m  7 |[39m [36mimport[39m { api } [36mfrom[39m [32m'../convex/_generated/api'[39m[33m;[39m
+ [90m    |[39m [31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m
+ [90m  8 |[39m [36mimport[39m { [33mId[39m } [36mfrom[39m [32m'../convex/_generated/dataModel'[39m[33m;[39m
+ [90m  9 |[39m
+ [90m 10 |[39m [36mexport[39m [36mdefault[39m [36mfunction[39m [33mDispatchPage[39m() {[0m
+
+
+
+Import traces:
+  Client Component Browser:
+    ./app/dispatch/page.tsx [Client Component Browser]
+    ./app/dispatch/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./app/dispatch/page.tsx [Client Component SSR]
+    ./app/dispatch/page.tsx [Server Component]
+
+https://nextjs.org/docs/messages/module-not-found
+
+
+ ⨯ ./app/dispatch/page.tsx:7:1
+Module not found: Can't resolve '../convex/_generated/api'
+[0m [90m  5 |[39m [36mimport[39m { useSession } [36mfrom[39m [32m'next-auth/react'[39m[33m;[39m
+ [90m  6 |[39m [36mimport[39m { useQuery[33m,[39m useMutation } [36mfrom[39m [32m'convex/react'[39m[33m;[39m
+[31m[1m>[22m[39m[90m  7 |[39m [36mimport[39m { api } [36mfrom[39m [32m'../convex/_generated/api'[39m[33m;[39m
+ [90m    |[39m [31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m
+ [90m  8 |[39m [36mimport[39m { [33mId[39m } [36mfrom[39m [32m'../convex/_generated/dataModel'[39m[33m;[39m
+ [90m  9 |[39m
+ [90m 10 |[39m [36mexport[39m [36mdefault[39m [36mfunction[39m [33mDispatchPage[39m() {[0m
+
+
+
+Import traces:
+  Client Component Browser:
+    ./app/dispatch/page.tsx [Client Component Browser]
+    ./app/dispatch/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./app/dispatch/page.tsx [Client Component SSR]
+    ./app/dispatch/page.tsx [Server Component]
+
+https://nextjs.org/docs/messages/module-not-found
+
+
+ ⨯ ./app/dispatch/page.tsx:7:1
+Module not found: Can't resolve '../convex/_generated/api'
+[0m [90m  5 |[39m [36mimport[39m { useSession } [36mfrom[39m [32m'next-auth/react'[39m[33m;[39m
+ [90m  6 |[39m [36mimport[39m { useQuery[33m,[39m useMutation } [36mfrom[39m [32m'convex/react'[39m[33m;[39m
+[31m[1m>[22m[39m[90m  7 |[39m [36mimport[39m { api } [36mfrom[39m [32m'../convex/_generated/api'[39m[33m;[39m
+ [90m    |[39m [31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m
+ [90m  8 |[39m [36mimport[39m { [33mId[39m } [36mfrom[39m [32m'../convex/_generated/dataModel'[39m[33m;[39m
+ [90m  9 |[39m
+ [90m 10 |[39m [36mexport[39m [36mdefault[39m [36mfunction[39m [33mDispatchPage[39m() {[0m
+
+
+
+Import traces:
+  Client Component Browser:
+    ./app/dispatch/page.tsx [Client Component Browser]
+    ./app/dispatch/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./app/dispatch/page.tsx [Client Component SSR]
+    ./app/dispatch/page.tsx [Server Component]
+
+https://nextjs.org/docs/messages/module-not-found
+
+
+ ⨯ ./app/dispatch/page.tsx:7:1
+Module not found: Can't resolve '../convex/_generated/api'
+[0m [90m  5 |[39m [36mimport[39m { useSession } [36mfrom[39m [32m'next-auth/react'[39m[33m;[39m
+ [90m  6 |[39m [36mimport[39m { useQuery[33m,[39m useMutation } [36mfrom[39m [32m'convex/react'[39m[33m;[39m
+[31m[1m>[22m[39m[90m  7 |[39m [36mimport[39m { api } [36mfrom[39m [32m'../convex/_generated/api'[39m[33m;[39m
+ [90m    |[39m [31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m
+ [90m  8 |[39m [36mimport[39m { [33mId[39m } [36mfrom[39m [32m'../convex/_generated/dataModel'[39m[33m;[39m
+ [90m  9 |[39m
+ [90m 10 |[39m [36mexport[39m [36mdefault[39m [36mfunction[39m [33mDispatchPage[39m() {[0m
+
+
+
+Import traces:
+  Client Component Browser:
+    ./app/dispatch/page.tsx [Client Component Browser]
+    ./app/dispatch/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./app/dispatch/page.tsx [Client Component SSR]
+    ./app/dispatch/page.tsx [Server Component]
+
+https://nextjs.org/docs/messages/module-not-found
+
+
+ ⨯ ./app/dispatch/page.tsx:7:1
+Module not found: Can't resolve '../convex/_generated/api'
+[0m [90m  5 |[39m [36mimport[39m { useSession } [36mfrom[39m [32m'next-auth/react'[39m[33m;[39m
+ [90m  6 |[39m [36mimport[39m { useQuery[33m,[39m useMutation } [36mfrom[39m [32m'convex/react'[39m[33m;[39m
+[31m[1m>[22m[39m[90m  7 |[39m [36mimport[39m { api } [36mfrom[39m [32m'../convex/_generated/api'[39m[33m;[39m
+ [90m    |[39m [31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m
+ [90m  8 |[39m [36mimport[39m { [33mId[39m } [36mfrom[39m [32m'../convex/_generated/dataModel'[39m[33m;[39m
+ [90m  9 |[39m
+ [90m 10 |[39m [36mexport[39m [36mdefault[39m [36mfunction[39m [33mDispatchPage[39m() {[0m
+
+
+
+Import traces:
+  Client Component Browser:
+    ./app/dispatch/page.tsx [Client Component Browser]
+    ./app/dispatch/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./app/dispatch/page.tsx [Client Component SSR]
+    ./app/dispatch/page.tsx [Server Component]
+
+https://nextjs.org/docs/messages/module-not-found
+
+
+ ⨯ ./app/dispatch/page.tsx:7:1
+Module not found: Can't resolve '../convex/_generated/api'
+[0m [90m  5 |[39m [36mimport[39m { useSession } [36mfrom[39m [32m'next-auth/react'[39m[33m;[39m
+ [90m  6 |[39m [36mimport[39m { useQuery[33m,[39m useMutation } [36mfrom[39m [32m'convex/react'[39m[33m;[39m
+[31m[1m>[22m[39m[90m  7 |[39m [36mimport[39m { api } [36mfrom[39m [32m'../convex/_generated/api'[39m[33m;[39m
+ [90m    |[39m [31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m
+ [90m  8 |[39m [36mimport[39m { [33mId[39m } [36mfrom[39m [32m'../convex/_generated/dataModel'[39m[33m;[39m
+ [90m  9 |[39m
+ [90m 10 |[39m [36mexport[39m [36mdefault[39m [36mfunction[39m [33mDispatchPage[39m() {[0m
+
+
+
+Import traces:
+  Client Component Browser:
+    ./app/dispatch/page.tsx [Client Component Browser]
+    ./app/dispatch/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./app/dispatch/page.tsx [Client Component SSR]
+    ./app/dispatch/page.tsx [Server Component]
+
+https://nextjs.org/docs/messages/module-not-found
+
+
+ ⨯ ./app/dispatch/page.tsx:7:1
+Module not found: Can't resolve '../convex/_generated/api'
+[0m [90m  5 |[39m [36mimport[39m { useSession } [36mfrom[39m [32m'next-auth/react'[39m[33m;[39m
+ [90m  6 |[39m [36mimport[39m { useQuery[33m,[39m useMutation } [36mfrom[39m [32m'convex/react'[39m[33m;[39m
+[31m[1m>[22m[39m[90m  7 |[39m [36mimport[39m { api } [36mfrom[39m [32m'../convex/_generated/api'[39m[33m;[39m
+ [90m    |[39m [31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m
+ [90m  8 |[39m [36mimport[39m { [33mId[39m } [36mfrom[39m [32m'../convex/_generated/dataModel'[39m[33m;[39m
+ [90m  9 |[39m
+ [90m 10 |[39m [36mexport[39m [36mdefault[39m [36mfunction[39m [33mDispatchPage[39m() {[0m
+
+
+
+Import traces:
+  Client Component Browser:
+    ./app/dispatch/page.tsx [Client Component Browser]
+    ./app/dispatch/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./app/dispatch/page.tsx [Client Component SSR]
+    ./app/dispatch/page.tsx [Server Component]
+
+https://nextjs.org/docs/messages/module-not-found
+
+
+ ⨯ ./app/dispatch/page.tsx:7:1
+Module not found: Can't resolve '../convex/_generated/api'
+[0m [90m  5 |[39m [36mimport[39m { useSession } [36mfrom[39m [32m'next-auth/react'[39m[33m;[39m
+ [90m  6 |[39m [36mimport[39m { useQuery[33m,[39m useMutation } [36mfrom[39m [32m'convex/react'[39m[33m;[39m
+[31m[1m>[22m[39m[90m  7 |[39m [36mimport[39m { api } [36mfrom[39m [32m'../convex/_generated/api'[39m[33m;[39m
+ [90m    |[39m [31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m
+ [90m  8 |[39m [36mimport[39m { [33mId[39m } [36mfrom[39m [32m'../convex/_generated/dataModel'[39m[33m;[39m
+ [90m  9 |[39m
+ [90m 10 |[39m [36mexport[39m [36mdefault[39m [36mfunction[39m [33mDispatchPage[39m() {[0m
+
+
+
+Import traces:
+  Client Component Browser:
+    ./app/dispatch/page.tsx [Client Component Browser]
+    ./app/dispatch/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./app/dispatch/page.tsx [Client Component SSR]
+    ./app/dispatch/page.tsx [Server Component]
+
+https://nextjs.org/docs/messages/module-not-found
+
+
+ ⨯ ./app/dispatch/page.tsx:7:1
+Module not found: Can't resolve '../convex/_generated/api'
+[0m [90m  5 |[39m [36mimport[39m { useSession } [36mfrom[39m [32m'next-auth/react'[39m[33m;[39m
+ [90m  6 |[39m [36mimport[39m { useQuery[33m,[39m useMutation } [36mfrom[39m [32m'convex/react'[39m[33m;[39m
+[31m[1m>[22m[39m[90m  7 |[39m [36mimport[39m { api } [36mfrom[39m [32m'../convex/_generated/api'[39m[33m;[39m
+ [90m    |[39m [31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m
+ [90m  8 |[39m [36mimport[39m { [33mId[39m } [36mfrom[39m [32m'../convex/_generated/dataModel'[39m[33m;[39m
+ [90m  9 |[39m
+ [90m 10 |[39m [36mexport[39m [36mdefault[39m [36mfunction[39m [33mDispatchPage[39m() {[0m
+
+
+
+Import traces:
+  Client Component Browser:
+    ./app/dispatch/page.tsx [Client Component Browser]
+    ./app/dispatch/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./app/dispatch/page.tsx [Client Component SSR]
+    ./app/dispatch/page.tsx [Server Component]
+
+https://nextjs.org/docs/messages/module-not-found
+
+
+ ⨯ ./app/dispatch/page.tsx:7:1
+Module not found: Can't resolve '../convex/_generated/api'
+[0m [90m  5 |[39m [36mimport[39m { useSession } [36mfrom[39m [32m'next-auth/react'[39m[33m;[39m
+ [90m  6 |[39m [36mimport[39m { useQuery[33m,[39m useMutation } [36mfrom[39m [32m'convex/react'[39m[33m;[39m
+[31m[1m>[22m[39m[90m  7 |[39m [36mimport[39m { api } [36mfrom[39m [32m'../convex/_generated/api'[39m[33m;[39m
+ [90m    |[39m [31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m
+ [90m  8 |[39m [36mimport[39m { [33mId[39m } [36mfrom[39m [32m'../convex/_generated/dataModel'[39m[33m;[39m
+ [90m  9 |[39m
+ [90m 10 |[39m [36mexport[39m [36mdefault[39m [36mfunction[39m [33mDispatchPage[39m() {[0m
+
+
+
+Import traces:
+  Client Component Browser:
+    ./app/dispatch/page.tsx [Client Component Browser]
+    ./app/dispatch/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./app/dispatch/page.tsx [Client Component SSR]
+    ./app/dispatch/page.tsx [Server Component]
+
+https://nextjs.org/docs/messages/module-not-found
+
+
+ ⨯ ./app/dispatch/page.tsx:7:1
+Module not found: Can't resolve '../convex/_generated/api'
+[0m [90m  5 |[39m [36mimport[39m { useSession } [36mfrom[39m [32m'next-auth/react'[39m[33m;[39m
+ [90m  6 |[39m [36mimport[39m { useQuery[33m,[39m useMutation } [36mfrom[39m [32m'convex/react'[39m[33m;[39m
+[31m[1m>[22m[39m[90m  7 |[39m [36mimport[39m { api } [36mfrom[39m [32m'../convex/_generated/api'[39m[33m;[39m
+ [90m    |[39m [31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m
+ [90m  8 |[39m [36mimport[39m { [33mId[39m } [36mfrom[39m [32m'../convex/_generated/dataModel'[39m[33m;[39m
+ [90m  9 |[39m
+ [90m 10 |[39m [36mexport[39m [36mdefault[39m [36mfunction[39m [33mDispatchPage[39m() {[0m
+
+
+
+Import traces:
+  Client Component Browser:
+    ./app/dispatch/page.tsx [Client Component Browser]
+    ./app/dispatch/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./app/dispatch/page.tsx [Client Component SSR]
+    ./app/dispatch/page.tsx [Server Component]
+
+https://nextjs.org/docs/messages/module-not-found
+
+
+ ⨯ ./app/dispatch/page.tsx:7:1
+Module not found: Can't resolve '../convex/_generated/api'
+[0m [90m  5 |[39m [36mimport[39m { useSession } [36mfrom[39m [32m'next-auth/react'[39m[33m;[39m
+ [90m  6 |[39m [36mimport[39m { useQuery[33m,[39m useMutation } [36mfrom[39m [32m'convex/react'[39m[33m;[39m
+[31m[1m>[22m[39m[90m  7 |[39m [36mimport[39m { api } [36mfrom[39m [32m'../convex/_generated/api'[39m[33m;[39m
+ [90m    |[39m [31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m
+ [90m  8 |[39m [36mimport[39m { [33mId[39m } [36mfrom[39m [32m'../convex/_generated/dataModel'[39m[33m;[39m
+ [90m  9 |[39m
+ [90m 10 |[39m [36mexport[39m [36mdefault[39m [36mfunction[39m [33mDispatchPage[39m() {[0m
+
+
+
+Import traces:
+  Client Component Browser:
+    ./app/dispatch/page.tsx [Client Component Browser]
+    ./app/dispatch/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./app/dispatch/page.tsx [Client Component SSR]
+    ./app/dispatch/page.tsx [Server Component]
+
+https://nextjs.org/docs/messages/module-not-found
+
+
+ ⨯ ./app/dispatch/page.tsx:7:1
+Module not found: Can't resolve '../convex/_generated/api'
+[0m [90m  5 |[39m [36mimport[39m { useSession } [36mfrom[39m [32m'next-auth/react'[39m[33m;[39m
+ [90m  6 |[39m [36mimport[39m { useQuery[33m,[39m useMutation } [36mfrom[39m [32m'convex/react'[39m[33m;[39m
+[31m[1m>[22m[39m[90m  7 |[39m [36mimport[39m { api } [36mfrom[39m [32m'../convex/_generated/api'[39m[33m;[39m
+ [90m    |[39m [31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m
+ [90m  8 |[39m [36mimport[39m { [33mId[39m } [36mfrom[39m [32m'../convex/_generated/dataModel'[39m[33m;[39m
+ [90m  9 |[39m
+ [90m 10 |[39m [36mexport[39m [36mdefault[39m [36mfunction[39m [33mDispatchPage[39m() {[0m
+
+
+
+Import traces:
+  Client Component Browser:
+    ./app/dispatch/page.tsx [Client Component Browser]
+    ./app/dispatch/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./app/dispatch/page.tsx [Client Component SSR]
+    ./app/dispatch/page.tsx [Server Component]
+
+https://nextjs.org/docs/messages/module-not-found
+
+
+ ⨯ ./app/dispatch/page.tsx:7:1
+Module not found: Can't resolve '../convex/_generated/api'
+[0m [90m  5 |[39m [36mimport[39m { useSession } [36mfrom[39m [32m'next-auth/react'[39m[33m;[39m
+ [90m  6 |[39m [36mimport[39m { useQuery[33m,[39m useMutation } [36mfrom[39m [32m'convex/react'[39m[33m;[39m
+[31m[1m>[22m[39m[90m  7 |[39m [36mimport[39m { api } [36mfrom[39m [32m'../convex/_generated/api'[39m[33m;[39m
+ [90m    |[39m [31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m
+ [90m  8 |[39m [36mimport[39m { [33mId[39m } [36mfrom[39m [32m'../convex/_generated/dataModel'[39m[33m;[39m
+ [90m  9 |[39m
+ [90m 10 |[39m [36mexport[39m [36mdefault[39m [36mfunction[39m [33mDispatchPage[39m() {[0m
+
+
+
+Import traces:
+  Client Component Browser:
+    ./app/dispatch/page.tsx [Client Component Browser]
+    ./app/dispatch/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./app/dispatch/page.tsx [Client Component SSR]
+    ./app/dispatch/page.tsx [Server Component]
+
+https://nextjs.org/docs/messages/module-not-found
+
+
+ ⨯ ./app/dispatch/page.tsx:7:1
+Module not found: Can't resolve '../convex/_generated/api'
+[0m [90m  5 |[39m [36mimport[39m { useSession } [36mfrom[39m [32m'next-auth/react'[39m[33m;[39m
+ [90m  6 |[39m [36mimport[39m { useQuery[33m,[39m useMutation } [36mfrom[39m [32m'convex/react'[39m[33m;[39m
+[31m[1m>[22m[39m[90m  7 |[39m [36mimport[39m { api } [36mfrom[39m [32m'../convex/_generated/api'[39m[33m;[39m
+ [90m    |[39m [31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m
+ [90m  8 |[39m [36mimport[39m { [33mId[39m } [36mfrom[39m [32m'../convex/_generated/dataModel'[39m[33m;[39m
+ [90m  9 |[39m
+ [90m 10 |[39m [36mexport[39m [36mdefault[39m [36mfunction[39m [33mDispatchPage[39m() {[0m
+
+
+
+Import traces:
+  Client Component Browser:
+    ./app/dispatch/page.tsx [Client Component Browser]
+    ./app/dispatch/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./app/dispatch/page.tsx [Client Component SSR]
+    ./app/dispatch/page.tsx [Server Component]
+
+https://nextjs.org/docs/messages/module-not-found
+
+
+ ⨯ ./app/dispatch/page.tsx:7:1
+Module not found: Can't resolve '../convex/_generated/api'
+[0m [90m  5 |[39m [36mimport[39m { useSession } [36mfrom[39m [32m'next-auth/react'[39m[33m;[39m
+ [90m  6 |[39m [36mimport[39m { useQuery[33m,[39m useMutation } [36mfrom[39m [32m'convex/react'[39m[33m;[39m
+[31m[1m>[22m[39m[90m  7 |[39m [36mimport[39m { api } [36mfrom[39m [32m'../convex/_generated/api'[39m[33m;[39m
+ [90m    |[39m [31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m
+ [90m  8 |[39m [36mimport[39m { [33mId[39m } [36mfrom[39m [32m'../convex/_generated/dataModel'[39m[33m;[39m
+ [90m  9 |[39m
+ [90m 10 |[39m [36mexport[39m [36mdefault[39m [36mfunction[39m [33mDispatchPage[39m() {[0m
+
+
+
+Import traces:
+  Client Component Browser:
+    ./app/dispatch/page.tsx [Client Component Browser]
+    ./app/dispatch/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./app/dispatch/page.tsx [Client Component SSR]
+    ./app/dispatch/page.tsx [Server Component]
+
+https://nextjs.org/docs/messages/module-not-found
+
+
+ ⨯ ./app/dispatch/page.tsx:7:1
+Module not found: Can't resolve '../convex/_generated/api'
+[0m [90m  5 |[39m [36mimport[39m { useSession } [36mfrom[39m [32m'next-auth/react'[39m[33m;[39m
+ [90m  6 |[39m [36mimport[39m { useQuery[33m,[39m useMutation } [36mfrom[39m [32m'convex/react'[39m[33m;[39m
+[31m[1m>[22m[39m[90m  7 |[39m [36mimport[39m { api } [36mfrom[39m [32m'../convex/_generated/api'[39m[33m;[39m
+ [90m    |[39m [31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m
+ [90m  8 |[39m [36mimport[39m { [33mId[39m } [36mfrom[39m [32m'../convex/_generated/dataModel'[39m[33m;[39m
+ [90m  9 |[39m
+ [90m 10 |[39m [36mexport[39m [36mdefault[39m [36mfunction[39m [33mDispatchPage[39m() {[0m
+
+
+
+Import traces:
+  Client Component Browser:
+    ./app/dispatch/page.tsx [Client Component Browser]
+    ./app/dispatch/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./app/dispatch/page.tsx [Client Component SSR]
+    ./app/dispatch/page.tsx [Server Component]
+
+https://nextjs.org/docs/messages/module-not-found
+
+
+ ⨯ ./app/dispatch/page.tsx:7:1
+Module not found: Can't resolve '../convex/_generated/api'
+[0m [90m  5 |[39m [36mimport[39m { useSession } [36mfrom[39m [32m'next-auth/react'[39m[33m;[39m
+ [90m  6 |[39m [36mimport[39m { useQuery[33m,[39m useMutation } [36mfrom[39m [32m'convex/react'[39m[33m;[39m
+[31m[1m>[22m[39m[90m  7 |[39m [36mimport[39m { api } [36mfrom[39m [32m'../convex/_generated/api'[39m[33m;[39m
+ [90m    |[39m [31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m
+ [90m  8 |[39m [36mimport[39m { [33mId[39m } [36mfrom[39m [32m'../convex/_generated/dataModel'[39m[33m;[39m
+ [90m  9 |[39m
+ [90m 10 |[39m [36mexport[39m [36mdefault[39m [36mfunction[39m [33mDispatchPage[39m() {[0m
+
+
+
+Import traces:
+  Client Component Browser:
+    ./app/dispatch/page.tsx [Client Component Browser]
+    ./app/dispatch/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./app/dispatch/page.tsx [Client Component SSR]
+    ./app/dispatch/page.tsx [Server Component]
+
+https://nextjs.org/docs/messages/module-not-found
+
+
+ ⨯ ./app/dispatch/page.tsx:7:1
+Module not found: Can't resolve '../convex/_generated/api'
+[0m [90m  5 |[39m [36mimport[39m { useSession } [36mfrom[39m [32m'next-auth/react'[39m[33m;[39m
+ [90m  6 |[39m [36mimport[39m { useQuery[33m,[39m useMutation } [36mfrom[39m [32m'convex/react'[39m[33m;[39m
+[31m[1m>[22m[39m[90m  7 |[39m [36mimport[39m { api } [36mfrom[39m [32m'../convex/_generated/api'[39m[33m;[39m
+ [90m    |[39m [31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m
+ [90m  8 |[39m [36mimport[39m { [33mId[39m } [36mfrom[39m [32m'../convex/_generated/dataModel'[39m[33m;[39m
+ [90m  9 |[39m
+ [90m 10 |[39m [36mexport[39m [36mdefault[39m [36mfunction[39m [33mDispatchPage[39m() {[0m
+
+
+
+Import traces:
+  Client Component Browser:
+    ./app/dispatch/page.tsx [Client Component Browser]
+    ./app/dispatch/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./app/dispatch/page.tsx [Client Component SSR]
+    ./app/dispatch/page.tsx [Server Component]
+
+https://nextjs.org/docs/messages/module-not-found
+
+
+ ⨯ ./app/dispatch/page.tsx:7:1
+Module not found: Can't resolve '../convex/_generated/api'
+[0m [90m  5 |[39m [36mimport[39m { useSession } [36mfrom[39m [32m'next-auth/react'[39m[33m;[39m
+ [90m  6 |[39m [36mimport[39m { useQuery[33m,[39m useMutation } [36mfrom[39m [32m'convex/react'[39m[33m;[39m
+[31m[1m>[22m[39m[90m  7 |[39m [36mimport[39m { api } [36mfrom[39m [32m'../convex/_generated/api'[39m[33m;[39m
+ [90m    |[39m [31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m
+ [90m  8 |[39m [36mimport[39m { [33mId[39m } [36mfrom[39m [32m'../convex/_generated/dataModel'[39m[33m;[39m
+ [90m  9 |[39m
+ [90m 10 |[39m [36mexport[39m [36mdefault[39m [36mfunction[39m [33mDispatchPage[39m() {[0m
+
+
+
+Import traces:
+  Client Component Browser:
+    ./app/dispatch/page.tsx [Client Component Browser]
+    ./app/dispatch/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./app/dispatch/page.tsx [Client Component SSR]
+    ./app/dispatch/page.tsx [Server Component]
+
+https://nextjs.org/docs/messages/module-not-found
+
+
+ ⨯ ./app/dispatch/page.tsx:7:1
+Module not found: Can't resolve '../convex/_generated/api'
+[0m [90m  5 |[39m [36mimport[39m { useSession } [36mfrom[39m [32m'next-auth/react'[39m[33m;[39m
+ [90m  6 |[39m [36mimport[39m { useQuery[33m,[39m useMutation } [36mfrom[39m [32m'convex/react'[39m[33m;[39m
+[31m[1m>[22m[39m[90m  7 |[39m [36mimport[39m { api } [36mfrom[39m [32m'../convex/_generated/api'[39m[33m;[39m
+ [90m    |[39m [31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m
+ [90m  8 |[39m [36mimport[39m { [33mId[39m } [36mfrom[39m [32m'../convex/_generated/dataModel'[39m[33m;[39m
+ [90m  9 |[39m
+ [90m 10 |[39m [36mexport[39m [36mdefault[39m [36mfunction[39m [33mDispatchPage[39m() {[0m
+
+
+
+Import traces:
+  Client Component Browser:
+    ./app/dispatch/page.tsx [Client Component Browser]
+    ./app/dispatch/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./app/dispatch/page.tsx [Client Component SSR]
+    ./app/dispatch/page.tsx [Server Component]
+
+https://nextjs.org/docs/messages/module-not-found
+
+
+ ⨯ ./app/dispatch/page.tsx:7:1
+Module not found: Can't resolve '../convex/_generated/api'
+[0m [90m  5 |[39m [36mimport[39m { useSession } [36mfrom[39m [32m'next-auth/react'[39m[33m;[39m
+ [90m  6 |[39m [36mimport[39m { useQuery[33m,[39m useMutation } [36mfrom[39m [32m'convex/react'[39m[33m;[39m
+[31m[1m>[22m[39m[90m  7 |[39m [36mimport[39m { api } [36mfrom[39m [32m'../convex/_generated/api'[39m[33m;[39m
+ [90m    |[39m [31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m
+ [90m  8 |[39m [36mimport[39m { [33mId[39m } [36mfrom[39m [32m'../convex/_generated/dataModel'[39m[33m;[39m
+ [90m  9 |[39m
+ [90m 10 |[39m [36mexport[39m [36mdefault[39m [36mfunction[39m [33mDispatchPage[39m() {[0m
+
+
+
+Import traces:
+  Client Component Browser:
+    ./app/dispatch/page.tsx [Client Component Browser]
+    ./app/dispatch/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./app/dispatch/page.tsx [Client Component SSR]
+    ./app/dispatch/page.tsx [Server Component]
+
+https://nextjs.org/docs/messages/module-not-found
+
+
+ ⨯ ./app/dispatch/page.tsx:7:1
+Module not found: Can't resolve '../convex/_generated/api'
+[0m [90m  5 |[39m [36mimport[39m { useSession } [36mfrom[39m [32m'next-auth/react'[39m[33m;[39m
+ [90m  6 |[39m [36mimport[39m { useQuery[33m,[39m useMutation } [36mfrom[39m [32m'convex/react'[39m[33m;[39m
+[31m[1m>[22m[39m[90m  7 |[39m [36mimport[39m { api } [36mfrom[39m [32m'../convex/_generated/api'[39m[33m;[39m
+ [90m    |[39m [31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m
+ [90m  8 |[39m [36mimport[39m { [33mId[39m } [36mfrom[39m [32m'../convex/_generated/dataModel'[39m[33m;[39m
+ [90m  9 |[39m
+ [90m 10 |[39m [36mexport[39m [36mdefault[39m [36mfunction[39m [33mDispatchPage[39m() {[0m
+
+
+
+Import traces:
+  Client Component Browser:
+    ./app/dispatch/page.tsx [Client Component Browser]
+    ./app/dispatch/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./app/dispatch/page.tsx [Client Component SSR]
+    ./app/dispatch/page.tsx [Server Component]
+
+https://nextjs.org/docs/messages/module-not-found
+
+
+ ⨯ ./app/dispatch/page.tsx:7:1
+Module not found: Can't resolve '../convex/_generated/api'
+[0m [90m  5 |[39m [36mimport[39m { useSession } [36mfrom[39m [32m'next-auth/react'[39m[33m;[39m
+ [90m  6 |[39m [36mimport[39m { useQuery[33m,[39m useMutation } [36mfrom[39m [32m'convex/react'[39m[33m;[39m
+[31m[1m>[22m[39m[90m  7 |[39m [36mimport[39m { api } [36mfrom[39m [32m'../convex/_generated/api'[39m[33m;[39m
+ [90m    |[39m [31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m
+ [90m  8 |[39m [36mimport[39m { [33mId[39m } [36mfrom[39m [32m'../convex/_generated/dataModel'[39m[33m;[39m
+ [90m  9 |[39m
+ [90m 10 |[39m [36mexport[39m [36mdefault[39m [36mfunction[39m [33mDispatchPage[39m() {[0m
+
+
+
+Import traces:
+  Client Component Browser:
+    ./app/dispatch/page.tsx [Client Component Browser]
+    ./app/dispatch/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./app/dispatch/page.tsx [Client Component SSR]
+    ./app/dispatch/page.tsx [Server Component]
+
+https://nextjs.org/docs/messages/module-not-found
+
+
+ ⨯ ./app/dispatch/page.tsx:7:1
+Module not found: Can't resolve '../convex/_generated/api'
+[0m [90m  5 |[39m [36mimport[39m { useSession } [36mfrom[39m [32m'next-auth/react'[39m[33m;[39m
+ [90m  6 |[39m [36mimport[39m { useQuery[33m,[39m useMutation } [36mfrom[39m [32m'convex/react'[39m[33m;[39m
+[31m[1m>[22m[39m[90m  7 |[39m [36mimport[39m { api } [36mfrom[39m [32m'../convex/_generated/api'[39m[33m;[39m
+ [90m    |[39m [31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m
+ [90m  8 |[39m [36mimport[39m { [33mId[39m } [36mfrom[39m [32m'../convex/_generated/dataModel'[39m[33m;[39m
+ [90m  9 |[39m
+ [90m 10 |[39m [36mexport[39m [36mdefault[39m [36mfunction[39m [33mDispatchPage[39m() {[0m
+
+
+
+Import traces:
+  Client Component Browser:
+    ./app/dispatch/page.tsx [Client Component Browser]
+    ./app/dispatch/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./app/dispatch/page.tsx [Client Component SSR]
+    ./app/dispatch/page.tsx [Server Component]
+
+https://nextjs.org/docs/messages/module-not-found
+
+
+ ⨯ ./app/dispatch/page.tsx:7:1
+Module not found: Can't resolve '../convex/_generated/api'
+[0m [90m  5 |[39m [36mimport[39m { useSession } [36mfrom[39m [32m'next-auth/react'[39m[33m;[39m
+ [90m  6 |[39m [36mimport[39m { useQuery[33m,[39m useMutation } [36mfrom[39m [32m'convex/react'[39m[33m;[39m
+[31m[1m>[22m[39m[90m  7 |[39m [36mimport[39m { api } [36mfrom[39m [32m'../convex/_generated/api'[39m[33m;[39m
+ [90m    |[39m [31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m
+ [90m  8 |[39m [36mimport[39m { [33mId[39m } [36mfrom[39m [32m'../convex/_generated/dataModel'[39m[33m;[39m
+ [90m  9 |[39m
+ [90m 10 |[39m [36mexport[39m [36mdefault[39m [36mfunction[39m [33mDispatchPage[39m() {[0m
+
+
+
+Import traces:
+  Client Component Browser:
+    ./app/dispatch/page.tsx [Client Component Browser]
+    ./app/dispatch/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./app/dispatch/page.tsx [Client Component SSR]
+    ./app/dispatch/page.tsx [Server Component]
+
+https://nextjs.org/docs/messages/module-not-found
+
+
+ ⨯ ./app/dispatch/[id]/page.tsx:7:1
+Module not found: Can't resolve '../../convex/_generated/api'
+[0m [90m  5 |[39m [36mimport[39m { useParams } [36mfrom[39m [32m'next/navigation'[39m[33m;[39m
+ [90m  6 |[39m [36mimport[39m { useQuery } [36mfrom[39m [32m'convex/react'[39m[33m;[39m
+[31m[1m>[22m[39m[90m  7 |[39m [36mimport[39m { api } [36mfrom[39m [32m'../../convex/_generated/api'[39m[33m;[39m
+ [90m    |[39m [31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m
+ [90m  8 |[39m [36mimport[39m { [33mId[39m } [36mfrom[39m [32m'../../convex/_generated/dataModel'[39m[33m;[39m
+ [90m  9 |[39m
+ [90m 10 |[39m [36mexport[39m [36mdefault[39m [36mfunction[39m [33mDispatchDetailPage[39m() {[0m
+
+
+
+Import traces:
+  Client Component Browser:
+    ./app/dispatch/[id]/page.tsx [Client Component Browser]
+    ./app/dispatch/[id]/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./app/dispatch/[id]/page.tsx [Client Component SSR]
+    ./app/dispatch/[id]/page.tsx [Server Component]
+
+https://nextjs.org/docs/messages/module-not-found
+
+
+ ⨯ ./app/dispatch/[id]/page.tsx:7:1
+Module not found: Can't resolve '../../convex/_generated/api'
+[0m [90m  5 |[39m [36mimport[39m { useParams } [36mfrom[39m [32m'next/navigation'[39m[33m;[39m
+ [90m  6 |[39m [36mimport[39m { useQuery } [36mfrom[39m [32m'convex/react'[39m[33m;[39m
+[31m[1m>[22m[39m[90m  7 |[39m [36mimport[39m { api } [36mfrom[39m [32m'../../convex/_generated/api'[39m[33m;[39m
+ [90m    |[39m [31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m
+ [90m  8 |[39m [36mimport[39m { [33mId[39m } [36mfrom[39m [32m'../../convex/_generated/dataModel'[39m[33m;[39m
+ [90m  9 |[39m
+ [90m 10 |[39m [36mexport[39m [36mdefault[39m [36mfunction[39m [33mDispatchDetailPage[39m() {[0m
+
+
+
+Import traces:
+  Client Component Browser:
+    ./app/dispatch/[id]/page.tsx [Client Component Browser]
+    ./app/dispatch/[id]/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./app/dispatch/[id]/page.tsx [Client Component SSR]
+    ./app/dispatch/[id]/page.tsx [Server Component]
+
+https://nextjs.org/docs/messages/module-not-found
+
+
+ ⨯ ./app/dispatch/[id]/page.tsx:7:1
+Module not found: Can't resolve '../../convex/_generated/api'
+[0m [90m  5 |[39m [36mimport[39m { useParams } [36mfrom[39m [32m'next/navigation'[39m[33m;[39m
+ [90m  6 |[39m [36mimport[39m { useQuery } [36mfrom[39m [32m'convex/react'[39m[33m;[39m
+[31m[1m>[22m[39m[90m  7 |[39m [36mimport[39m { api } [36mfrom[39m [32m'../../convex/_generated/api'[39m[33m;[39m
+ [90m    |[39m [31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m
+ [90m  8 |[39m [36mimport[39m { [33mId[39m } [36mfrom[39m [32m'../../convex/_generated/dataModel'[39m[33m;[39m
+ [90m  9 |[39m
+ [90m 10 |[39m [36mexport[39m [36mdefault[39m [36mfunction[39m [33mDispatchDetailPage[39m() {[0m
+
+
+
+Import traces:
+  Client Component Browser:
+    ./app/dispatch/[id]/page.tsx [Client Component Browser]
+    ./app/dispatch/[id]/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./app/dispatch/[id]/page.tsx [Client Component SSR]
+    ./app/dispatch/[id]/page.tsx [Server Component]
+
+https://nextjs.org/docs/messages/module-not-found
+
+
+ ⨯ ./app/dispatch/[id]/page.tsx:7:1
+Module not found: Can't resolve '../../convex/_generated/api'
+[0m [90m  5 |[39m [36mimport[39m { useParams } [36mfrom[39m [32m'next/navigation'[39m[33m;[39m
+ [90m  6 |[39m [36mimport[39m { useQuery } [36mfrom[39m [32m'convex/react'[39m[33m;[39m
+[31m[1m>[22m[39m[90m  7 |[39m [36mimport[39m { api } [36mfrom[39m [32m'../../convex/_generated/api'[39m[33m;[39m
+ [90m    |[39m [31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m
+ [90m  8 |[39m [36mimport[39m { [33mId[39m } [36mfrom[39m [32m'../../convex/_generated/dataModel'[39m[33m;[39m
+ [90m  9 |[39m
+ [90m 10 |[39m [36mexport[39m [36mdefault[39m [36mfunction[39m [33mDispatchDetailPage[39m() {[0m
+
+
+
+Import traces:
+  Client Component Browser:
+    ./app/dispatch/[id]/page.tsx [Client Component Browser]
+    ./app/dispatch/[id]/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./app/dispatch/[id]/page.tsx [Client Component SSR]
+    ./app/dispatch/[id]/page.tsx [Server Component]
+
+https://nextjs.org/docs/messages/module-not-found
+
+
+ ⨯ ./app/users/page.tsx:6:1
+Module not found: Can't resolve '../convex/_generated/api'
+[0m [90m 4 |[39m [36mimport[39m { useState[33m,[39m [33mFragment[39m } [36mfrom[39m [32m'react'[39m[33m;[39m
+ [90m 5 |[39m [36mimport[39m { useQuery[33m,[39m useMutation } [36mfrom[39m [32m'convex/react'[39m[33m;[39m
+[31m[1m>[22m[39m[90m 6 |[39m [36mimport[39m { api } [36mfrom[39m [32m'../convex/_generated/api'[39m[33m;[39m
+ [90m   |[39m [31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m
+ [90m 7 |[39m [36mimport[39m { [33mId[39m } [36mfrom[39m [32m'../convex/_generated/dataModel'[39m[33m;[39m
+ [90m 8 |[39m [36mimport[39m { [33mDialog[39m[33m,[39m [33mTransition[39m } [36mfrom[39m [32m'@headlessui/react'[39m[33m;[39m
+ [90m 9 |[39m[0m
+
+
+
+Import traces:
+  Client Component Browser:
+    ./app/users/page.tsx [Client Component Browser]
+    ./app/users/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./app/users/page.tsx [Client Component SSR]
+    ./app/users/page.tsx [Server Component]
+
+https://nextjs.org/docs/messages/module-not-found
+
+
+ ⨯ ./app/users/page.tsx:6:1
+Module not found: Can't resolve '../convex/_generated/api'
+[0m [90m 4 |[39m [36mimport[39m { useState[33m,[39m [33mFragment[39m } [36mfrom[39m [32m'react'[39m[33m;[39m
+ [90m 5 |[39m [36mimport[39m { useQuery[33m,[39m useMutation } [36mfrom[39m [32m'convex/react'[39m[33m;[39m
+[31m[1m>[22m[39m[90m 6 |[39m [36mimport[39m { api } [36mfrom[39m [32m'../convex/_generated/api'[39m[33m;[39m
+ [90m   |[39m [31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m
+ [90m 7 |[39m [36mimport[39m { [33mId[39m } [36mfrom[39m [32m'../convex/_generated/dataModel'[39m[33m;[39m
+ [90m 8 |[39m [36mimport[39m { [33mDialog[39m[33m,[39m [33mTransition[39m } [36mfrom[39m [32m'@headlessui/react'[39m[33m;[39m
+ [90m 9 |[39m[0m
+
+
+
+Import traces:
+  Client Component Browser:
+    ./app/users/page.tsx [Client Component Browser]
+    ./app/users/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./app/users/page.tsx [Client Component SSR]
+    ./app/users/page.tsx [Server Component]
+
+https://nextjs.org/docs/messages/module-not-found
+
+
+ ⨯ ./app/users/page.tsx:6:1
+Module not found: Can't resolve '../convex/_generated/api'
+[0m [90m 4 |[39m [36mimport[39m { useState[33m,[39m [33mFragment[39m } [36mfrom[39m [32m'react'[39m[33m;[39m
+ [90m 5 |[39m [36mimport[39m { useQuery[33m,[39m useMutation } [36mfrom[39m [32m'convex/react'[39m[33m;[39m
+[31m[1m>[22m[39m[90m 6 |[39m [36mimport[39m { api } [36mfrom[39m [32m'../convex/_generated/api'[39m[33m;[39m
+ [90m   |[39m [31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m
+ [90m 7 |[39m [36mimport[39m { [33mId[39m } [36mfrom[39m [32m'../convex/_generated/dataModel'[39m[33m;[39m
+ [90m 8 |[39m [36mimport[39m { [33mDialog[39m[33m,[39m [33mTransition[39m } [36mfrom[39m [32m'@headlessui/react'[39m[33m;[39m
+ [90m 9 |[39m[0m
+
+
+
+Import traces:
+  Client Component Browser:
+    ./app/users/page.tsx [Client Component Browser]
+    ./app/users/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./app/users/page.tsx [Client Component SSR]
+    ./app/users/page.tsx [Server Component]
+
+https://nextjs.org/docs/messages/module-not-found
+
+
+ ⨯ ./app/users/page.tsx:6:1
+Module not found: Can't resolve '../convex/_generated/api'
+[0m [90m 4 |[39m [36mimport[39m { useState[33m,[39m [33mFragment[39m } [36mfrom[39m [32m'react'[39m[33m;[39m
+ [90m 5 |[39m [36mimport[39m { useQuery[33m,[39m useMutation } [36mfrom[39m [32m'convex/react'[39m[33m;[39m
+[31m[1m>[22m[39m[90m 6 |[39m [36mimport[39m { api } [36mfrom[39m [32m'../convex/_generated/api'[39m[33m;[39m
+ [90m   |[39m [31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m
+ [90m 7 |[39m [36mimport[39m { [33mId[39m } [36mfrom[39m [32m'../convex/_generated/dataModel'[39m[33m;[39m
+ [90m 8 |[39m [36mimport[39m { [33mDialog[39m[33m,[39m [33mTransition[39m } [36mfrom[39m [32m'@headlessui/react'[39m[33m;[39m
+ [90m 9 |[39m[0m
+
+
+
+Import traces:
+  Client Component Browser:
+    ./app/users/page.tsx [Client Component Browser]
+    ./app/users/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./app/users/page.tsx [Client Component SSR]
+    ./app/users/page.tsx [Server Component]
+
+https://nextjs.org/docs/messages/module-not-found
+
+
+ ⨯ ./app/users/page.tsx:6:1
+Module not found: Can't resolve '../convex/_generated/api'
+[0m [90m 4 |[39m [36mimport[39m { useState[33m,[39m [33mFragment[39m } [36mfrom[39m [32m'react'[39m[33m;[39m
+ [90m 5 |[39m [36mimport[39m { useQuery[33m,[39m useMutation } [36mfrom[39m [32m'convex/react'[39m[33m;[39m
+[31m[1m>[22m[39m[90m 6 |[39m [36mimport[39m { api } [36mfrom[39m [32m'../convex/_generated/api'[39m[33m;[39m
+ [90m   |[39m [31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m
+ [90m 7 |[39m [36mimport[39m { [33mId[39m } [36mfrom[39m [32m'../convex/_generated/dataModel'[39m[33m;[39m
+ [90m 8 |[39m [36mimport[39m { [33mDialog[39m[33m,[39m [33mTransition[39m } [36mfrom[39m [32m'@headlessui/react'[39m[33m;[39m
+ [90m 9 |[39m[0m
+
+
+
+Import traces:
+  Client Component Browser:
+    ./app/users/page.tsx [Client Component Browser]
+    ./app/users/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./app/users/page.tsx [Client Component SSR]
+    ./app/users/page.tsx [Server Component]
+
+https://nextjs.org/docs/messages/module-not-found
+
+
+ ⨯ ./app/users/page.tsx:6:1
+Module not found: Can't resolve '../convex/_generated/api'
+[0m [90m 4 |[39m [36mimport[39m { useState[33m,[39m [33mFragment[39m } [36mfrom[39m [32m'react'[39m[33m;[39m
+ [90m 5 |[39m [36mimport[39m { useQuery[33m,[39m useMutation } [36mfrom[39m [32m'convex/react'[39m[33m;[39m
+[31m[1m>[22m[39m[90m 6 |[39m [36mimport[39m { api } [36mfrom[39m [32m'../convex/_generated/api'[39m[33m;[39m
+ [90m   |[39m [31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m
+ [90m 7 |[39m [36mimport[39m { [33mId[39m } [36mfrom[39m [32m'../convex/_generated/dataModel'[39m[33m;[39m
+ [90m 8 |[39m [36mimport[39m { [33mDialog[39m[33m,[39m [33mTransition[39m } [36mfrom[39m [32m'@headlessui/react'[39m[33m;[39m
+ [90m 9 |[39m[0m
+
+
+
+Import traces:
+  Client Component Browser:
+    ./app/users/page.tsx [Client Component Browser]
+    ./app/users/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./app/users/page.tsx [Client Component SSR]
+    ./app/users/page.tsx [Server Component]
+
+https://nextjs.org/docs/messages/module-not-found
+
+
+ ⨯ ./app/users/page.tsx:6:1
+Module not found: Can't resolve '../convex/_generated/api'
+[0m [90m 4 |[39m [36mimport[39m { useState[33m,[39m [33mFragment[39m } [36mfrom[39m [32m'react'[39m[33m;[39m
+ [90m 5 |[39m [36mimport[39m { useQuery[33m,[39m useMutation } [36mfrom[39m [32m'convex/react'[39m[33m;[39m
+[31m[1m>[22m[39m[90m 6 |[39m [36mimport[39m { api } [36mfrom[39m [32m'../convex/_generated/api'[39m[33m;[39m
+ [90m   |[39m [31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m
+ [90m 7 |[39m [36mimport[39m { [33mId[39m } [36mfrom[39m [32m'../convex/_generated/dataModel'[39m[33m;[39m
+ [90m 8 |[39m [36mimport[39m { [33mDialog[39m[33m,[39m [33mTransition[39m } [36mfrom[39m [32m'@headlessui/react'[39m[33m;[39m
+ [90m 9 |[39m[0m
+
+
+
+Import traces:
+  Client Component Browser:
+    ./app/users/page.tsx [Client Component Browser]
+    ./app/users/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./app/users/page.tsx [Client Component SSR]
+    ./app/users/page.tsx [Server Component]
+
+https://nextjs.org/docs/messages/module-not-found
+
+
+ ⨯ ./app/users/page.tsx:6:1
+Module not found: Can't resolve '../convex/_generated/api'
+[0m [90m 4 |[39m [36mimport[39m { useState[33m,[39m [33mFragment[39m } [36mfrom[39m [32m'react'[39m[33m;[39m
+ [90m 5 |[39m [36mimport[39m { useQuery[33m,[39m useMutation } [36mfrom[39m [32m'convex/react'[39m[33m;[39m
+[31m[1m>[22m[39m[90m 6 |[39m [36mimport[39m { api } [36mfrom[39m [32m'../convex/_generated/api'[39m[33m;[39m
+ [90m   |[39m [31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m
+ [90m 7 |[39m [36mimport[39m { [33mId[39m } [36mfrom[39m [32m'../convex/_generated/dataModel'[39m[33m;[39m
+ [90m 8 |[39m [36mimport[39m { [33mDialog[39m[33m,[39m [33mTransition[39m } [36mfrom[39m [32m'@headlessui/react'[39m[33m;[39m
+ [90m 9 |[39m[0m
+
+
+
+Import traces:
+  Client Component Browser:
+    ./app/users/page.tsx [Client Component Browser]
+    ./app/users/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./app/users/page.tsx [Client Component SSR]
+    ./app/users/page.tsx [Server Component]
+
+https://nextjs.org/docs/messages/module-not-found
+
+
+ ⨯ ./app/users/page.tsx:6:1
+Module not found: Can't resolve '../convex/_generated/api'
+[0m [90m 4 |[39m [36mimport[39m { useState[33m,[39m [33mFragment[39m } [36mfrom[39m [32m'react'[39m[33m;[39m
+ [90m 5 |[39m [36mimport[39m { useQuery[33m,[39m useMutation } [36mfrom[39m [32m'convex/react'[39m[33m;[39m
+[31m[1m>[22m[39m[90m 6 |[39m [36mimport[39m { api } [36mfrom[39m [32m'../convex/_generated/api'[39m[33m;[39m
+ [90m   |[39m [31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m
+ [90m 7 |[39m [36mimport[39m { [33mId[39m } [36mfrom[39m [32m'../convex/_generated/dataModel'[39m[33m;[39m
+ [90m 8 |[39m [36mimport[39m { [33mDialog[39m[33m,[39m [33mTransition[39m } [36mfrom[39m [32m'@headlessui/react'[39m[33m;[39m
+ [90m 9 |[39m[0m
+
+
+
+Import traces:
+  Client Component Browser:
+    ./app/users/page.tsx [Client Component Browser]
+    ./app/users/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./app/users/page.tsx [Client Component SSR]
+    ./app/users/page.tsx [Server Component]
+
+https://nextjs.org/docs/messages/module-not-found
+
+
+ ⨯ ./app/users/page.tsx:6:1
+Module not found: Can't resolve '../convex/_generated/api'
+[0m [90m 4 |[39m [36mimport[39m { useState[33m,[39m [33mFragment[39m } [36mfrom[39m [32m'react'[39m[33m;[39m
+ [90m 5 |[39m [36mimport[39m { useQuery[33m,[39m useMutation } [36mfrom[39m [32m'convex/react'[39m[33m;[39m
+[31m[1m>[22m[39m[90m 6 |[39m [36mimport[39m { api } [36mfrom[39m [32m'../convex/_generated/api'[39m[33m;[39m
+ [90m   |[39m [31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m
+ [90m 7 |[39m [36mimport[39m { [33mId[39m } [36mfrom[39m [32m'../convex/_generated/dataModel'[39m[33m;[39m
+ [90m 8 |[39m [36mimport[39m { [33mDialog[39m[33m,[39m [33mTransition[39m } [36mfrom[39m [32m'@headlessui/react'[39m[33m;[39m
+ [90m 9 |[39m[0m
+
+
+
+Import traces:
+  Client Component Browser:
+    ./app/users/page.tsx [Client Component Browser]
+    ./app/users/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./app/users/page.tsx [Client Component SSR]
+    ./app/users/page.tsx [Server Component]
+
+https://nextjs.org/docs/messages/module-not-found
+
+
+ ⨯ ./app/users/page.tsx:6:1
+Module not found: Can't resolve '../convex/_generated/api'
+[0m [90m 4 |[39m [36mimport[39m { useState[33m,[39m [33mFragment[39m } [36mfrom[39m [32m'react'[39m[33m;[39m
+ [90m 5 |[39m [36mimport[39m { useQuery[33m,[39m useMutation } [36mfrom[39m [32m'convex/react'[39m[33m;[39m
+[31m[1m>[22m[39m[90m 6 |[39m [36mimport[39m { api } [36mfrom[39m [32m'../convex/_generated/api'[39m[33m;[39m
+ [90m   |[39m [31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m
+ [90m 7 |[39m [36mimport[39m { [33mId[39m } [36mfrom[39m [32m'../convex/_generated/dataModel'[39m[33m;[39m
+ [90m 8 |[39m [36mimport[39m { [33mDialog[39m[33m,[39m [33mTransition[39m } [36mfrom[39m [32m'@headlessui/react'[39m[33m;[39m
+ [90m 9 |[39m[0m
+
+
+
+Import traces:
+  Client Component Browser:
+    ./app/users/page.tsx [Client Component Browser]
+    ./app/users/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./app/users/page.tsx [Client Component SSR]
+    ./app/users/page.tsx [Server Component]
+
+https://nextjs.org/docs/messages/module-not-found
+
+
+ ⨯ ./app/users/page.tsx:6:1
+Module not found: Can't resolve '../convex/_generated/api'
+[0m [90m 4 |[39m [36mimport[39m { useState[33m,[39m [33mFragment[39m } [36mfrom[39m [32m'react'[39m[33m;[39m
+ [90m 5 |[39m [36mimport[39m { useQuery[33m,[39m useMutation } [36mfrom[39m [32m'convex/react'[39m[33m;[39m
+[31m[1m>[22m[39m[90m 6 |[39m [36mimport[39m { api } [36mfrom[39m [32m'../convex/_generated/api'[39m[33m;[39m
+ [90m   |[39m [31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m
+ [90m 7 |[39m [36mimport[39m { [33mId[39m } [36mfrom[39m [32m'../convex/_generated/dataModel'[39m[33m;[39m
+ [90m 8 |[39m [36mimport[39m { [33mDialog[39m[33m,[39m [33mTransition[39m } [36mfrom[39m [32m'@headlessui/react'[39m[33m;[39m
+ [90m 9 |[39m[0m
+
+
+
+Import traces:
+  Client Component Browser:
+    ./app/users/page.tsx [Client Component Browser]
+    ./app/users/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./app/users/page.tsx [Client Component SSR]
+    ./app/users/page.tsx [Server Component]
+
+https://nextjs.org/docs/messages/module-not-found
+
+
+ ✓ Compiled in 53ms

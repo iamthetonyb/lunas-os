@@ -1,64 +1,174 @@
 'use client';
 
-import { Fragment, useMemo, useState, useEffect } from 'react';
-import { useSession } from 'next-auth/react';
-import { Dialog, Transition } from '@headlessui/react';
 import { PageHeader } from '@/components/page-header';
-import { useQuery, useMutation } from 'convex/react';
-import { api } from '@/convex/_generated/api';
-import { Id } from '@/convex/_generated/dataModel';
+import Link from 'next/link';
+import { useEffect, useMemo, useState, Fragment } from 'react';
+import useSWR, { mutate } from 'swr';
+import { useSession } from 'next-auth/react';
+import { ScheduleKanban } from '@/components/schedule-kanban';
+import { fetchJSON } from '@/lib/utils/fetch-json';
+import { getFriendlyName } from '@/lib/utils/community-display';
+import { Dialog, Transition } from '@headlessui/react';
 
-// Foreman directory for dropdown options
-const FOREMEN_DIRECTORY = [
-  { id: 'anahi', name: 'Anahi' },
-  { id: 'blanca', name: 'Blanca' },
-  { id: 'chayo', name: 'Chayo' },
-  { id: 'francisco', name: 'Francisco' },
-  { id: 'raudel', name: 'Raudel' },
-];
+const fetcher = <T,>(url: string) => fetchJSON<T>(url);
 
-const CREW_MEMBERS = ['Crew A', 'Crew B', 'Crew C', 'Crew D', 'Crew E'];
+type ForemanConfig = {
+  id: string;
+  name: string;
+  codes?: string[];
+  keywords?: string[];
+};
 
+const FOREMEN_DIRECTORY: ForemanConfig[] = [
+  { id: 'anahi', name: 'Anahi', codes: ['22702'], keywords: ['sweep'] },
+  { id: 'blanca', name: 'Blanca', keywords: ['power wash', 'wash'] },
+  { id: 'chayo', name: 'Chayo', codes: ['22712'], keywords: ['tubs', 'windows', 'q/a'] },
+  { id: 'francisco', name: 'Francisco', keywords: ['extra', 'service'] },
+  { id: 'raudel', name: 'Raudel', keywords: ['final clean', 'touch'] },
+].sort((a, b) => a.name.localeCompare(b.name));
 const UNASSIGNED_FOREMAN = { id: 'unassigned', name: 'Unassigned' };
 
-// Helper to get friendly community name
-function getFriendlyName(name: string): string {
-  return name || 'Unknown Community';
-}
+// Full crew list for dispatch (sorted alphabetically)
+const CREW_MEMBERS = [
+  'Adriana', 'Alan', 'Alejandro', 'Alfonso', 'Anahi', 'Antonio M',
+  'Arnulfo', 'Bicho', 'Blanca', 'Carmen', 'Chayo', 'Conchita',
+  'Efren', 'Fernando', 'Francisco', 'Guillermo', 'Ignacio', 'Johnny',
+  'Jose V', 'Kimberley', 'Letty', 'Luis D', 'Lupe', 'Lupe P',
+  'Paco L', 'Paco M', 'Pancho', 'Ramon M', 'Raudel', 'Ricardo',
+  'Rogelio', 'Sergio C', 'Sergio E', 'Susana', 'Yadira'
+];
 
-// Get next business day
-function getNextBusinessDay(date: Date): Date {
-  const next = new Date(date);
+// Helper: Get next business day (skip weekends)
+function getNextBusinessDay(fromDate: Date): Date {
+  const next = new Date(fromDate);
   next.setDate(next.getDate() + 1);
-  while (next.getDay() === 0 || next.getDay() === 6) {
-    next.setDate(next.getDate() + 1);
+  // If Friday (5), skip to Monday
+  if (fromDate.getDay() === 5) {
+    next.setDate(next.getDate() + 2);
   }
   return next;
 }
 
+// Helper: Get service-based row color
+function getServiceRowColor(serviceName: string, isDispatched: boolean, isRescheduled: boolean): string {
+  if (isRescheduled) return 'bg-purple-100';
+  const lower = serviceName.toLowerCase();
+  if (lower.includes('tub') || lower.includes('window')) return 'bg-green-100';
+  if (lower.includes('sweep')) return isDispatched ? 'bg-yellow-200' : 'bg-yellow-100';
+  if (lower.includes('power wash') || lower.includes('wash')) return 'bg-blue-100';
+  return 'bg-white';
+}
+
+type UpcomingJob = {
+  id: string;
+  startDate: string | null;
+  builderName?: string | null;
+  communityName?: string | null;
+  lot?: string | null;
+  contractorName?: string | null;
+  serviceName?: string | null;
+  jobNumber?: string | null;
+  accountCategoryCode?: string | null;
+  invoiceNumber?: string | null;
+  amount?: string | null;
+  status?: string | null;
+  walkTime?: string | null;
+  walk_time?: string | null;
+  requestedBy?: string | null;
+};
+
+type DecoratedJob = UpcomingJob & {
+  foremanId: string;
+  foremanName: string;
+  serviceDisplay: string;
+};
+
+type DraftAssignment = {
+  id: string;
+  crewId?: string | null;
+};
+
 type DispatchModalState = {
   isOpen: boolean;
-  job: any | null;
+  job: DecoratedJob | null;
+  selectedForeman: string;
   selectedCrew: string;
 };
 
 type RescheduleModalState = {
   isOpen: boolean;
-  job: any | null;
+  job: DecoratedJob | null;
   selectedDate: string;
-  reason: string;
 };
+
+function resolveForemanForJob(job: UpcomingJob): ForemanConfig | typeof UNASSIGNED_FOREMAN {
+  // First priority: Use the requestedBy field if it matches a foreman name
+  if (job.requestedBy) {
+    const requestedByLower = job.requestedBy.toLowerCase().trim();
+    const byName = FOREMEN_DIRECTORY.find((foreman) =>
+      foreman.name.toLowerCase() === requestedByLower ||
+      foreman.id.toLowerCase() === requestedByLower
+    );
+    if (byName) return byName;
+  }
+
+  // Second priority: Match by service code
+  const code = job.accountCategoryCode?.trim();
+  if (code) {
+    const byCode = FOREMEN_DIRECTORY.find((foreman) => foreman.codes?.includes(code));
+    if (byCode) return byCode;
+  }
+
+  // Third priority: Match by service name keywords
+  const serviceName = (job.serviceName ?? job.contractorName ?? '').toLowerCase();
+  if (serviceName) {
+    const byKeyword = FOREMEN_DIRECTORY.find((foreman) =>
+      foreman.keywords?.some((keyword) => serviceName.includes(keyword))
+    );
+    if (byKeyword) return byKeyword;
+  }
+
+  return UNASSIGNED_FOREMAN;
+}
 
 export default function SchedulePage() {
   const { data: session } = useSession();
+  const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
+  const [dispatchModal, setDispatchModal] = useState<DispatchModalState>({
+    isOpen: false,
+    job: null,
+    selectedForeman: '',
+    selectedCrew: '',
+  });
+  const [rescheduleModal, setRescheduleModal] = useState<RescheduleModalState>({
+    isOpen: false,
+    job: null,
+    selectedDate: '',
+  });
+  const [rescheduledJobs, setRescheduledJobs] = useState<Map<string, string>>(new Map()); // jobId -> new date
+  const [selectedForemenMap, setSelectedForemenMap] = useState<Map<string, string>>(new Map()); // jobId -> foremanName
+
+  // Handle inline foreman selection
+  const handleForemanSelect = (jobId: string, foremanName: string) => {
+    setSelectedForemenMap(prev => {
+      const newMap = new Map(prev);
+      if (foremanName === '') {
+        newMap.delete(jobId);
+      } else {
+        newMap.set(jobId, foremanName);
+      }
+      return newMap;
+    });
+  };
+
+  // Check if current user is a contractor (foreman/crew)
   const isContractor = session?.user?.role === 'FOREMAN' || session?.user?.role === 'CREW';
 
-  // Date range for schedule
-  const [date] = useState(() => {
-    const today = new Date();
-    return today.toISOString().split('T')[0];
-  });
-
+  const { data: assignments, mutate: mutateAssignments } = useSWR<DraftAssignment[]>(
+    '/api/assignments?status=DRAFT',
+    fetcher
+  );
+  const { data: crews } = useSWR<any[]>('/api/crews', fetcher);
   const scheduleRange = useMemo(() => {
     const start = new Date(date);
     const end = new Date(start);
@@ -69,57 +179,44 @@ export default function SchedulePage() {
     };
   }, [date]);
 
-  // Real-time Convex queries
-  const jobs = useQuery(api.queries.getScheduleJobs, {
-    startDate: scheduleRange.start,
-    endDate: scheduleRange.end,
-  });
+  const { data: upcomingJobs = [] } = useSWR<UpcomingJob[]>(
+    `/api/schedule/blue-book?start=${scheduleRange.start}&end=${scheduleRange.end}`,
+    fetcher
+  );
 
-  // Convex mutations
-  const assignForemanMutation = useMutation(api.mutations.assignForeman);
-  const rescheduleJobMutation = useMutation(api.mutations.rescheduleJob);
-  const dispatchJobMutation = useMutation(api.mutations.dispatchJob);
+  const decoratedJobs = useMemo<DecoratedJob[]>(
+    () =>
+      (upcomingJobs ?? []).map((job) => {
+        const foreman = resolveForemanForJob(job);
+        const serviceDisplay = job.serviceName
+          ? job.accountCategoryCode
+            ? `${job.accountCategoryCode} – ${job.serviceName}`
+            : job.serviceName
+          : job.contractorName ?? '—';
 
-  // Local state
-  const [dispatchModal, setDispatchModal] = useState<DispatchModalState>({
-    isOpen: false,
-    job: null,
-    selectedCrew: '',
-  });
+        return {
+          ...job,
+          foremanId: foreman.id,
+          foremanName: foreman.name,
+          serviceDisplay,
+        };
+      }),
+    [upcomingJobs]
+  );
 
-  const [rescheduleModal, setRescheduleModal] = useState<RescheduleModalState>({
-    isOpen: false,
-    job: null,
-    selectedDate: '',
-    reason: '',
-  });
-
-  const [activeForemanId, setActiveForemanId] = useState<string>('all');
-
-  // Handle foreman selection - instant real-time sync
-  const handleForemanSelect = async (jobId: Id<"jobRequestServices">, foremanName: string) => {
-    try {
-      await assignForemanMutation({
-        jobId,
-        foremanName: foremanName || undefined
-      });
-    } catch (error) {
-      console.error('Failed to assign foreman:', error);
-    }
-  };
-
-  // Calculate foreman tabs from live data
   const foremanTabs = useMemo(() => {
-    if (!jobs) return [];
-
+    // Count jobs that have been manually assigned vs unassigned
     const counts: Record<string, number> = {};
-    jobs.forEach((job) => {
-      if (job.assignedForemanName) {
-        const foreman = FOREMEN_DIRECTORY.find(f => f.name === job.assignedForemanName);
-        if (foreman) {
-          counts[foreman.id] = (counts[foreman.id] ?? 0) + 1;
+    decoratedJobs.forEach((job) => {
+      const assignedForeman = selectedForemenMap.get(job.id);
+      if (assignedForeman) {
+        // Find the foreman id by name
+        const foremanConfig = FOREMEN_DIRECTORY.find(f => f.name === assignedForeman);
+        if (foremanConfig) {
+          counts[foremanConfig.id] = (counts[foremanConfig.id] ?? 0) + 1;
         }
       } else {
+        // Job is unassigned
         counts[UNASSIGNED_FOREMAN.id] = (counts[UNASSIGNED_FOREMAN.id] ?? 0) + 1;
       }
     });
@@ -130,58 +227,76 @@ export default function SchedulePage() {
       count: counts[foreman.id] ?? 0,
     }));
 
+    // Always show Unassigned tab
     orderedTabs.push({
       id: UNASSIGNED_FOREMAN.id,
       name: UNASSIGNED_FOREMAN.name,
-      count: counts[UNASSIGNED_FOREMAN.id] ?? (jobs?.length || 0),
+      count: counts[UNASSIGNED_FOREMAN.id] ?? decoratedJobs.length, // Default all jobs to unassigned
     });
 
     return orderedTabs;
-  }, [jobs]);
+  }, [decoratedJobs, selectedForemenMap]);
 
-  // Filter jobs by active foreman tab
+  const [activeForemanId, setActiveForemanId] = useState<string>('all');
+
+  useEffect(() => {
+    if (activeForemanId === 'all') return;
+    if (!foremanTabs.some((foreman) => foreman.id === activeForemanId)) {
+      setActiveForemanId('all');
+    }
+  }, [activeForemanId, foremanTabs]);
+
   const visibleJobs = useMemo(() => {
-    if (!jobs) return [];
-    let filtered = jobs;
+    let jobs = decoratedJobs;
 
+    // Filter by selected foreman tab
     if (activeForemanId !== 'all') {
       if (activeForemanId === UNASSIGNED_FOREMAN.id) {
-        filtered = filtered.filter(job => !job.assignedForemanName);
+        // Show jobs that haven't been manually assigned
+        jobs = jobs.filter(job => !selectedForemenMap.get(job.id));
       } else {
-        const foremanName = FOREMEN_DIRECTORY.find(f => f.id === activeForemanId)?.name;
-        filtered = filtered.filter(job => job.assignedForemanName === foremanName);
+        // Show jobs assigned to the selected foreman
+        const selectedForemanName = FOREMEN_DIRECTORY.find(f => f.id === activeForemanId)?.name;
+        jobs = jobs.filter(job => selectedForemenMap.get(job.id) === selectedForemanName);
       }
     }
 
-    // For contractors, show only their jobs
+    // For contractors, filter to only show jobs assigned to them
     if (isContractor && session?.user?.name) {
       const userName = session.user.name.toLowerCase();
-      filtered = filtered.filter(job =>
-        job.assignedForemanName?.toLowerCase() === userName
-      );
+      jobs = jobs.filter(job => {
+        const assignedForeman = selectedForemenMap.get(job.id);
+        return assignedForeman?.toLowerCase() === userName;
+      });
     }
 
-    return filtered;
-  }, [jobs, activeForemanId, isContractor, session?.user?.name]);
 
-  // Group jobs by community
-  const groupedByCommunity = useMemo(() => {
-    const grouped: Record<string, any[]> = {};
+    return jobs;
+  }, [activeForemanId, decoratedJobs, isContractor, session?.user?.name, selectedForemenMap]);
+
+  // Group jobs by community for display
+  const jobsByCommunity = useMemo(() => {
+    const grouped: Record<string, DecoratedJob[]> = {};
     visibleJobs.forEach((job) => {
       const community = job.communityName || 'Unknown';
       if (!grouped[community]) grouped[community] = [];
       grouped[community].push(job);
     });
+    // Sort communities alphabetically
     return Object.entries(grouped).sort(([a], [b]) => a.localeCompare(b));
   }, [visibleJobs]);
 
-  // Modal handlers
-  const openDispatchModal = (job: any) => {
-    setDispatchModal({ isOpen: true, job, selectedCrew: '' });
+  const openDispatchModal = (job: DecoratedJob) => {
+    setDispatchModal({
+      isOpen: true,
+      job,
+      selectedForeman: '',
+      selectedCrew: '',
+    });
   };
 
   const closeDispatchModal = () => {
-    setDispatchModal({ isOpen: false, job: null, selectedCrew: '' });
+    setDispatchModal({ isOpen: false, job: null, selectedForeman: '', selectedCrew: '' });
   };
 
   const handleDispatch = async () => {
@@ -189,193 +304,297 @@ export default function SchedulePage() {
       alert('Please select a crew member.');
       return;
     }
-
+    // Get foreman from the inline table selector
+    const foremanName = selectedForemenMap.get(dispatchModal.job.id) || 'Unassigned';
     try {
-      await dispatchJobMutation({
-        jobId: dispatchModal.job.id,
-        foremanName: dispatchModal.job.assignedForemanName || 'Unassigned',
-        crewName: dispatchModal.selectedCrew,
-        serviceDate: dispatchModal.job.startDate || new Date().toISOString().split('T')[0],
+      await fetchJSON('/api/schedule/dispatch', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          jobId: dispatchModal.job.id,
+          foremanName: foremanName,
+          crewName: dispatchModal.selectedCrew,
+        }),
       });
+      mutateAssignments();
       closeDispatchModal();
     } catch (error) {
-      console.error('Failed to dispatch job:', error);
+      console.error('Failed to dispatch job', error);
       alert('Failed to dispatch job. Please try again.');
     }
   };
 
-  const openRescheduleModal = (job: any) => {
+  const openRescheduleModal = (job: DecoratedJob) => {
     const nextDay = getNextBusinessDay(new Date());
     setRescheduleModal({
       isOpen: true,
       job,
       selectedDate: nextDay.toISOString().split('T')[0],
-      reason: '',
     });
   };
 
   const closeRescheduleModal = () => {
-    setRescheduleModal({ isOpen: false, job: null, selectedDate: '', reason: '' });
+    setRescheduleModal({ isOpen: false, job: null, selectedDate: '' });
   };
 
-  const handleReschedule = async () => {
-    if (!rescheduleModal.job || !rescheduleModal.selectedDate) {
-      alert('Please select a date.');
-      return;
-    }
-
+  const handleRescheduleConfirm = async () => {
+    if (!rescheduleModal.job || !rescheduleModal.selectedDate) return;
     try {
-      await rescheduleJobMutation({
-        jobId: rescheduleModal.job.id,
-        newDate: rescheduleModal.selectedDate,
-        reason: rescheduleModal.reason || undefined,
+      await fetchJSON('/api/schedule/reschedule', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ jobId: rescheduleModal.job.id, newDate: rescheduleModal.selectedDate }),
       });
+      setRescheduledJobs((prev) => new Map(prev).set(rescheduleModal.job!.id, rescheduleModal.selectedDate));
+      mutateAssignments();
       closeRescheduleModal();
     } catch (error) {
-      console.error('Failed to reschedule job:', error);
-      alert('Failed to reschedule. Please try again.');
+      console.error('Failed to reschedule job', error);
+      alert('Failed to reschedule job. Please try again.');
     }
   };
 
-  if (!jobs) {
-    return (
-      <>
-        <PageHeader title="Schedule" description="Loading..." />
-        <main className="px-6 py-6">
-          <div className="animate-pulse bg-gray-100 rounded-lg h-64"></div>
-        </main>
-      </>
-    );
-  }
+  const handleMarkComplete = async (jobId: string) => {
+    try {
+      await fetchJSON('/api/schedule/complete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ jobId }),
+      });
+      mutateAssignments();
+    } catch (error) {
+      console.error('Failed to mark job complete', error);
+      alert('Failed to mark job complete. Please try again.');
+    }
+  };
+
+  const handleAutoDraft = async () => {
+    try {
+      await fetchJSON(`/api/schedule/auto-draft?date=${date}`, {
+        method: 'POST',
+      });
+      mutateAssignments();
+    } catch (error) {
+      console.error('Failed to auto-draft schedule', error);
+      alert('Auto-draft failed. Please try again.');
+    }
+  };
+
+  const handleApproveAndSend = async () => {
+    const assignmentIds = (assignments ?? []).map((assignment) => assignment.id);
+    try {
+      await fetchJSON('/api/schedule/approve-send', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ assignmentIds }),
+      });
+      mutateAssignments();
+    } catch (error) {
+      console.error('Failed to approve schedule', error);
+      alert('Failed to approve assignments.');
+    }
+  };
 
   return (
     <>
       <PageHeader
         title="Schedule"
-        description={isContractor ? 'Your assigned jobs' : 'Manage job scheduling and dispatch (Real-time)'}
-      />
-      <main className="px-6 py-6 space-y-6">
-        {/* Foreman Tabs */}
-        <div className="flex flex-wrap gap-2 mb-4">
-          <button
-            onClick={() => setActiveForemanId('all')}
-            className={`px-3 py-1.5 rounded-full text-sm font-medium ${activeForemanId === 'all'
-                ? 'bg-blue-600 text-white'
-                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-              }`}
-          >
-            All ({jobs.length})
-          </button>
-          {foremanTabs.map((tab) => (
+        description="Manage job scheduling and crew assignments"
+        action={
+          <div className="flex gap-2">
+            <input
+              type="date"
+              value={date}
+              onChange={(e) => setDate(e.target.value)}
+              className="px-3 py-2 border border-gray-300 rounded-lg"
+            />
             <button
-              key={tab.id}
-              onClick={() => setActiveForemanId(tab.id)}
-              className={`px-3 py-1.5 rounded-full text-sm font-medium ${activeForemanId === tab.id
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                }`}
+              onClick={handleAutoDraft}
+              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
             >
-              {tab.name} ({tab.count})
+              Auto-Draft
             </button>
-          ))}
-        </div>
-
-        {/* Jobs Table */}
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200">
-          {visibleJobs.length === 0 ? (
-            <div className="p-8 text-center text-gray-500">
-              No jobs found for this view.
+          </div>
+        }
+      />
+      <main className="px-6 py-6">
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h2 className="text-lg font-semibold text-gray-900">Upcoming Services</h2>
+              <p className="text-sm text-gray-500">
+                Showing start dates from {scheduleRange.start} to {scheduleRange.end}
+              </p>
             </div>
+            <Link
+              href="/blue-book"
+              className="text-sm text-blue-600 hover:text-blue-700 font-medium"
+            >
+              Manage Blue Book →
+            </Link>
+          </div>
+          <div className="mb-4 flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              className={`rounded-full border px-4 py-2 text-sm transition ${activeForemanId === 'all'
+                ? 'border-blue-500 bg-blue-500 text-white'
+                : 'border-gray-300 bg-white text-gray-700 hover:border-blue-400'
+                }`}
+              onClick={() => setActiveForemanId('all')}
+            >
+              All Foremen ({decoratedJobs.length})
+            </button>
+            {foremanTabs.map((foreman) => (
+              <button
+                key={foreman.id}
+                type="button"
+                className={`rounded-full border px-4 py-2 text-sm transition ${activeForemanId === foreman.id
+                  ? 'border-blue-500 bg-blue-500 text-white'
+                  : 'border-gray-300 bg-white text-gray-700 hover:border-blue-400'
+                  }`}
+                onClick={() => setActiveForemanId(foreman.id)}
+              >
+                {foreman.name} ({foreman.count})
+              </button>
+            ))}
+          </div>
+          {decoratedJobs.length === 0 ? (
+            <p className="text-gray-600">No services scheduled in this window.</p>
+          ) : visibleJobs.length === 0 ? (
+            <p className="text-gray-600">
+              No services scheduled for the selected foreman in this window.
+            </p>
           ) : (
             <div className="overflow-x-auto">
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50">
                   <tr>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Community</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Lot</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Service</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Walk Time</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Foreman</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
+                    <th className="px-4 py-2 text-left text-xs font-semibold text-gray-500 uppercase">Assign Foreman</th>
+                    <th className="px-4 py-2 text-left text-xs font-semibold text-gray-500 uppercase">Builder</th>
+                    <th className="px-4 py-2 text-left text-xs font-semibold text-gray-500 uppercase">Community</th>
+                    <th className="px-4 py-2 text-left text-xs font-semibold text-gray-500 uppercase">Services</th>
+                    <th className="px-4 py-2 text-left text-xs font-semibold text-gray-500 uppercase">Notes</th>
+                    <th className="px-4 py-2 text-left text-xs font-semibold text-gray-500 uppercase">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
-                  {visibleJobs.map((job) => (
-                    <tr key={job.id} className="hover:bg-gray-50">
-                      <td className="px-4 py-3 text-sm text-gray-900">
-                        {getFriendlyName(job.communityName || '')}
-                      </td>
-                      <td className="px-4 py-3 text-sm text-gray-900">{job.lot || '—'}</td>
-                      <td className="px-4 py-3 text-sm text-gray-900">{job.serviceName || '—'}</td>
-                      <td className="px-4 py-3 text-sm text-gray-900">{job.walkTime || '—'}</td>
-                      <td className="px-4 py-3 text-sm text-gray-900">
-                        {job.rescheduledDate ? (
-                          <span className="text-purple-600 font-medium">
-                            {job.rescheduledDate} (rescheduled)
+                  {visibleJobs.map((job) => {
+                    const foreman = job.foremanName || 'Unassigned Foreman';
+                    const builder = job.builderName || '—';
+                    const community = job.communityName || '—';
+                    const serviceLabel = job.serviceDisplay || '—';
+
+                    const serviceLower = serviceLabel.toLowerCase();
+                    const isExtraService = serviceLower.includes('extra');
+                    const isSweepService = serviceLower.includes('sweep');
+                    const isPowerWashService = serviceLower.includes('power wash');
+
+                    const walkTime = (job as { walkTime?: string | null; walk_time?: string | null })
+                      .walkTime ?? (job as { walk_time?: string | null }).walk_time ?? null;
+                    const rescheduledDate = rescheduledJobs.get(job.id);
+                    const notesParts = [
+                      job.lot ? `Lot ${job.lot}` : null,
+                      walkTime ? `Walk ${walkTime}` : null,
+                      rescheduledDate ? `Rescheduled to ${new Date(rescheduledDate).toLocaleDateString()}` : null,
+                    ].filter(Boolean);
+                    const notes = notesParts.join(' • ') || '—';
+
+                    const startDateStamp = job.startDate
+                      ? new Date(job.startDate).toLocaleDateString()
+                      : null;
+
+                    const isRescheduled = rescheduledJobs.has(job.id);
+                    const rowColor = getServiceRowColor(serviceLabel, false, isRescheduled);
+
+                    return (
+                      <tr key={job.id} className={rowColor}>
+                        <td className="px-4 py-2 text-sm">
+                          {!isContractor ? (
+                            <select
+                              value={selectedForemenMap.get(job.id) || ''}
+                              onChange={(e) => handleForemanSelect(job.id, e.target.value)}
+                              className={`w-full px-2 py-1 border rounded text-sm ${selectedForemenMap.get(job.id) ? 'border-green-500 bg-green-50' : 'border-gray-300'}`}
+                            >
+                              <option value="">Select Foreman...</option>
+                              {FOREMEN_DIRECTORY.map((f) => (
+                                <option key={f.id} value={f.name}>{f.name}</option>
+                              ))}
+                            </select>
+                          ) : (
+                            <span className="font-medium text-gray-900">
+                              {selectedForemenMap.get(job.id) || 'Not assigned'}
+                            </span>
+                          )}
+                        </td>
+                        <td className="px-4 py-2 text-sm text-gray-900">{builder}</td>
+                        <td className="px-4 py-2 text-sm text-gray-900">{getFriendlyName(community)}</td>
+                        <td className="px-4 py-2 text-sm text-gray-900">
+                          <span className="inline-flex items-center rounded-md px-3 py-1 text-sm font-medium">
+                            {serviceLabel}
                           </span>
-                        ) : (
-                          job.startDate || '—'
-                        )}
-                      </td>
-                      <td className="px-4 py-3 text-sm">
-                        {!isContractor ? (
-                          <select
-                            value={job.assignedForemanName || ''}
-                            onChange={(e) => handleForemanSelect(job.id, e.target.value)}
-                            className={`w-full px-2 py-1 border rounded text-sm ${job.assignedForemanName
-                                ? 'border-green-500 bg-green-50'
-                                : 'border-gray-300'
-                              }`}
-                          >
-                            <option value="">Select Foreman...</option>
-                            {FOREMEN_DIRECTORY.map((f) => (
-                              <option key={f.id} value={f.name}>
-                                {f.name}
-                              </option>
-                            ))}
-                          </select>
-                        ) : (
-                          <span className="font-medium text-gray-900">
-                            {job.assignedForemanName || 'Not assigned'}
-                          </span>
-                        )}
-                      </td>
-                      <td className="px-4 py-3 text-sm">
-                        <span
-                          className={`px-2 py-1 rounded-full text-xs font-medium ${job.status === 'DISPATCHED'
-                              ? 'bg-blue-100 text-blue-800'
-                              : job.status === 'COMPLETE'
-                                ? 'bg-green-100 text-green-800'
-                                : 'bg-yellow-100 text-yellow-800'
-                            }`}
-                        >
-                          {job.status}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3 text-sm">
-                        <div className="flex gap-2">
-                          <button
-                            onClick={() => openDispatchModal(job)}
-                            className="px-3 py-1 bg-blue-500 text-white text-xs rounded hover:bg-blue-600"
-                            disabled={job.status === 'DISPATCHED'}
-                          >
-                            Dispatch
-                          </button>
-                          <button
-                            onClick={() => openRescheduleModal(job)}
-                            className="px-3 py-1 bg-purple-500 text-white text-xs rounded hover:bg-purple-600"
-                          >
-                            Reschedule
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
+                        </td>
+                        <td className="px-4 py-2 text-sm text-gray-900">
+                          {startDateStamp && (
+                            <span className="mr-2 inline-flex items-center rounded-md bg-gray-100 px-2 py-0.5 text-xs text-gray-600">
+                              {startDateStamp}
+                            </span>
+                          )}
+                          {notes}
+                        </td>
+                        <td className="px-4 py-2 text-sm text-gray-900">
+                          <div className="flex gap-2">
+                            {!isContractor ? (
+                              /* Admin view: Dispatch to button */
+                              <button
+                                onClick={() => openDispatchModal(job)}
+                                className="px-3 py-1 bg-blue-500 text-white text-xs rounded hover:bg-blue-600"
+                              >
+                                Dispatch to
+                              </button>
+                            ) : (
+                              /* Contractor view: Green checkmark for job done */
+                              <button
+                                onClick={() => handleMarkComplete(job.id)}
+                                className="px-2 py-1 bg-green-500 text-white text-xs rounded hover:bg-green-600"
+                                title="Mark job complete"
+                              >
+                                ✓
+                              </button>
+                            )}
+                            <button
+                              onClick={() => openRescheduleModal(job)}
+                              className="px-3 py-1 bg-purple-500 text-white text-xs rounded hover:bg-purple-600"
+                              disabled={isRescheduled}
+                            >
+                              Reschedule
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
+          )}
+        </div>
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-lg font-semibold text-gray-900">Draft Assignments</h2>
+            <button
+              onClick={handleApproveAndSend}
+              disabled={!assignments || assignments.length === 0}
+              className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Approve & Send
+            </button>
+          </div>
+          {crews && assignments ? (
+            <ScheduleKanban crews={crews} assignments={assignments} />
+          ) : (
+            <p className="text-gray-600">Loading schedule...</p>
           )}
         </div>
       </main>
@@ -415,12 +634,21 @@ export default function SchedulePage() {
                     <div className="mb-4 p-3 bg-gray-50 rounded-lg text-sm">
                       <p><strong>Community:</strong> {getFriendlyName(dispatchModal.job.communityName || '')}</p>
                       <p><strong>Lot:</strong> {dispatchModal.job.lot || '—'}</p>
-                      <p><strong>Service:</strong> {dispatchModal.job.serviceName || '—'}</p>
-                      <p><strong>Assigned Foreman:</strong> {dispatchModal.job.assignedForemanName || 'Not selected'}</p>
+                      <p><strong>Service:</strong> {dispatchModal.job.serviceDisplay}</p>
                     </div>
                   )}
 
                   <div className="space-y-4">
+                    {/* Show the assigned foreman (from table dropdown) */}
+                    {dispatchModal.job && (
+                      <div className="p-2 bg-blue-50 rounded-lg">
+                        <p className="text-sm">
+                          <strong>Assigned Foreman:</strong>{' '}
+                          {selectedForemenMap.get(dispatchModal.job.id) || 'Not selected - use table dropdown first'}
+                        </p>
+                      </div>
+                    )}
+
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">
                         Select Crew Member
@@ -495,34 +723,23 @@ export default function SchedulePage() {
                     <div className="mb-4 p-3 bg-gray-50 rounded-lg text-sm">
                       <p><strong>Community:</strong> {getFriendlyName(rescheduleModal.job.communityName || '')}</p>
                       <p><strong>Lot:</strong> {rescheduleModal.job.lot || '—'}</p>
-                      <p><strong>Current Date:</strong> {rescheduleModal.job.startDate || '—'}</p>
+                      <p><strong>Service:</strong> {rescheduleModal.job.serviceDisplay}</p>
                     </div>
                   )}
 
-                  <div className="space-y-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        New Date
-                      </label>
-                      <input
-                        type="date"
-                        value={rescheduleModal.selectedDate}
-                        onChange={(e) => setRescheduleModal((prev) => ({ ...prev, selectedDate: e.target.value }))}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Reason (optional)
-                      </label>
-                      <textarea
-                        value={rescheduleModal.reason}
-                        onChange={(e) => setRescheduleModal((prev) => ({ ...prev, reason: e.target.value }))}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
-                        rows={2}
-                        placeholder="Why is this being rescheduled?"
-                      />
-                    </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Select New Date
+                    </label>
+                    <input
+                      type="date"
+                      value={rescheduleModal.selectedDate}
+                      onChange={(e) => setRescheduleModal((prev) => ({ ...prev, selectedDate: e.target.value }))}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+                    />
+                    <p className="mt-1 text-xs text-gray-500">
+                      Next business day auto-selected. Change if needed.
+                    </p>
                   </div>
 
                   <div className="flex justify-end gap-2 mt-6">
@@ -533,11 +750,11 @@ export default function SchedulePage() {
                       Cancel
                     </button>
                     <button
-                      onClick={handleReschedule}
+                      onClick={handleRescheduleConfirm}
                       disabled={!rescheduleModal.selectedDate}
                       className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                      Reschedule
+                      Confirm Reschedule
                     </button>
                   </div>
                 </Dialog.Panel>

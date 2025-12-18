@@ -5,16 +5,27 @@ import { SessionProvider } from "next-auth/react";
 import { ThemeProvider } from "next-themes";
 import { ReactNode } from "react";
 
-const convex = new ConvexReactClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
+// Only create Convex client if URL is configured
+const convexUrl = process.env.NEXT_PUBLIC_CONVEX_URL;
+const convex = convexUrl ? new ConvexReactClient(convexUrl) : null;
 
-export function Providers({ children }: { children: ReactNode }) {
-  return (
+export default function Providers({ children }: { children: ReactNode }) {
+  const content = (
     <SessionProvider>
-      <ConvexProvider client={convex}>
-        <ThemeProvider attribute="class" defaultTheme="light" enableSystem={false}>
-          {children}
-        </ThemeProvider>
-      </ConvexProvider>
+      <ThemeProvider attribute="class" defaultTheme="light" enableSystem={false}>
+        {children}
+      </ThemeProvider>
     </SessionProvider>
   );
+
+  // Wrap with Convex only if configured
+  if (convex) {
+    return (
+      <ConvexProvider client={convex}>
+        {content}
+      </ConvexProvider>
+    );
+  }
+
+  return content;
 }
