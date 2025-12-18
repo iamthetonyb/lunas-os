@@ -15,7 +15,7 @@ type UserProfile = {
 };
 
 export default function SettingsPage() {
-  const { data: profile, isLoading } = useSWR<UserProfile>('/api/users/profile', (url) => fetchJSON<UserProfile>(url));
+  const { data: profile, isLoading } = useSWR<UserProfile>('/api/users/profile', (url: string) => fetchJSON<UserProfile>(url));
   const [busy, setBusy] = useState(false);
   const [success, setSuccess] = useState('');
   const [error, setError] = useState('');
