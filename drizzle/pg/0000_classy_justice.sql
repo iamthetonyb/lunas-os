@@ -1,13 +1,63 @@
-CREATE TYPE "public"."assignment_status" AS ENUM('DRAFT', 'SENT', 'ACCEPTED', 'IN_PROGRESS', 'COMPLETE', 'NOT_DONE');--> statement-breakpoint
-CREATE TYPE "public"."blue_book_status" AS ENUM('PENDING', 'COMPLETE');--> statement-breakpoint
-CREATE TYPE "public"."dispatch_status" AS ENUM('DRAFT', 'SENT');--> statement-breakpoint
-CREATE TYPE "public"."ticket_status" AS ENUM('DRAFT', 'SUBMITTED', 'APPROVED', 'REJECTED');--> statement-breakpoint
-CREATE TYPE "public"."preferred_lang" AS ENUM('EN', 'ES_MX');--> statement-breakpoint
-CREATE TYPE "public"."role" AS ENUM('ADMIN', 'DISPATCHER', 'FOREMAN', 'CREW', 'OFFICE', 'CUSTOMER');--> statement-breakpoint
-CREATE TYPE "public"."unit_kind" AS ENUM('PER_JOB', 'PER_SQFT', 'PER_UNIT');--> statement-breakpoint
-CREATE TYPE "public"."invoice_status" AS ENUM('DRAFT', 'SENT', 'PAID', 'VOID');--> statement-breakpoint
-CREATE TYPE "public"."log_kind" AS ENUM('sms', 'email');--> statement-breakpoint
-CREATE TYPE "public"."org_role" AS ENUM('admin', 'backoffice', 'contractor');--> statement-breakpoint
+DO $$ BEGIN
+    CREATE TYPE "public"."assignment_status" AS ENUM('DRAFT', 'SENT', 'ACCEPTED', 'IN_PROGRESS', 'COMPLETE', 'NOT_DONE');
+EXCEPTION
+    WHEN duplicate_object THEN null;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+    CREATE TYPE "public"."blue_book_status" AS ENUM('PENDING', 'COMPLETE');
+EXCEPTION
+    WHEN duplicate_object THEN null;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+    CREATE TYPE "public"."dispatch_status" AS ENUM('DRAFT', 'SENT');
+EXCEPTION
+    WHEN duplicate_object THEN null;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+    CREATE TYPE "public"."ticket_status" AS ENUM('DRAFT', 'SUBMITTED', 'APPROVED', 'REJECTED');
+EXCEPTION
+    WHEN duplicate_object THEN null;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+    CREATE TYPE "public"."preferred_lang" AS ENUM('EN', 'ES_MX');
+EXCEPTION
+    WHEN duplicate_object THEN null;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+    CREATE TYPE "public"."role" AS ENUM('ADMIN', 'DISPATCHER', 'FOREMAN', 'CREW', 'OFFICE', 'CUSTOMER');
+EXCEPTION
+    WHEN duplicate_object THEN null;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+    CREATE TYPE "public"."unit_kind" AS ENUM('PER_JOB', 'PER_SQFT', 'PER_UNIT');
+EXCEPTION
+    WHEN duplicate_object THEN null;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+    CREATE TYPE "public"."invoice_status" AS ENUM('DRAFT', 'SENT', 'PAID', 'VOID');
+EXCEPTION
+    WHEN duplicate_object THEN null;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+    CREATE TYPE "public"."log_kind" AS ENUM('sms', 'email');
+EXCEPTION
+    WHEN duplicate_object THEN null;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+    CREATE TYPE "public"."org_role" AS ENUM('admin', 'backoffice', 'contractor');
+EXCEPTION
+    WHEN duplicate_object THEN null;
+END $$;
+--> statement-breakpoint
 CREATE TABLE "assignments" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"job_request_service_id" uuid,
