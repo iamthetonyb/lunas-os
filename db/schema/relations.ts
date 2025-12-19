@@ -1,5 +1,5 @@
 import { relations } from 'drizzle-orm';
-import { blueBookEntries } from './blue_book_entries';
+import { assignments, blueBookEntries } from './assignments';
 import { builders } from './builders';
 import { communities } from './communities';
 import { services } from './services';
