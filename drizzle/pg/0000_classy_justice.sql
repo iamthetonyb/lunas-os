@@ -58,7 +58,7 @@ EXCEPTION
     WHEN duplicate_object THEN null;
 END $$;
 --> statement-breakpoint
-CREATE TABLE "assignments" (
+CREATE TABLE IF NOT EXISTS "assignments" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"job_request_service_id" uuid,
 	"crew_id" uuid,
@@ -69,7 +69,7 @@ CREATE TABLE "assignments" (
 	"notes" text
 );
 --> statement-breakpoint
-CREATE TABLE "blue_book_entries" (
+CREATE TABLE IF NOT EXISTS "blue_book_entries" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"builder_id" uuid,
 	"community_id" uuid,
@@ -93,14 +93,14 @@ CREATE TABLE "blue_book_entries" (
 	"updated_at" timestamp DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "builders" (
+CREATE TABLE IF NOT EXISTS "builders" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"name" text NOT NULL,
 	"active" boolean DEFAULT true,
 	CONSTRAINT "builders_name_unique" UNIQUE("name")
 );
 --> statement-breakpoint
-CREATE TABLE "communities" (
+CREATE TABLE IF NOT EXISTS "communities" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"builder_id" uuid,
 	"name" text NOT NULL,
@@ -112,7 +112,7 @@ CREATE TABLE "communities" (
 	CONSTRAINT "builder_id_name_unique" UNIQUE("builder_id","name")
 );
 --> statement-breakpoint
-CREATE TABLE "contract_rates" (
+CREATE TABLE IF NOT EXISTS "contract_rates" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"builder_id" uuid,
 	"service_id" uuid,
@@ -124,7 +124,7 @@ CREATE TABLE "contract_rates" (
 	"expires_on" date
 );
 --> statement-breakpoint
-CREATE TABLE "crews" (
+CREATE TABLE IF NOT EXISTS "crews" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"name" text NOT NULL,
 	"foreman_id" uuid,
@@ -132,7 +132,7 @@ CREATE TABLE "crews" (
 	"capacity_per_day" integer
 );
 --> statement-breakpoint
-CREATE TABLE "dispatch_batches" (
+CREATE TABLE IF NOT EXISTS "dispatch_batches" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"service_date" date,
 	"status" "dispatch_status" DEFAULT 'DRAFT',
@@ -141,7 +141,7 @@ CREATE TABLE "dispatch_batches" (
 	"created_at" timestamp DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "field_tickets" (
+CREATE TABLE IF NOT EXISTS "field_tickets" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"assignment_id" uuid,
 	"submitted_by_id" uuid,
@@ -155,7 +155,7 @@ CREATE TABLE "field_tickets" (
 	CONSTRAINT "field_tickets_assignment_id_unique" UNIQUE("assignment_id")
 );
 --> statement-breakpoint
-CREATE TABLE "users" (
+CREATE TABLE IF NOT EXISTS "users" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"email" text NOT NULL,
 	"phone" text,
@@ -168,7 +168,7 @@ CREATE TABLE "users" (
 	CONSTRAINT "users_email_unique" UNIQUE("email")
 );
 --> statement-breakpoint
-CREATE TABLE "model_plans" (
+CREATE TABLE IF NOT EXISTS "model_plans" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"builder_id" uuid,
 	"code" text,
@@ -178,7 +178,7 @@ CREATE TABLE "model_plans" (
 	CONSTRAINT "builder_id_code_unique" UNIQUE("builder_id","code")
 );
 --> statement-breakpoint
-CREATE TABLE "services" (
+CREATE TABLE IF NOT EXISTS "services" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"code" text NOT NULL,
 	"name" text NOT NULL,
@@ -187,7 +187,7 @@ CREATE TABLE "services" (
 	CONSTRAINT "services_code_unique" UNIQUE("code")
 );
 --> statement-breakpoint
-CREATE TABLE "job_requests" (
+CREATE TABLE IF NOT EXISTS "job_requests" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"received_via" text,
 	"requested_by" text,
@@ -205,7 +205,7 @@ CREATE TABLE "job_requests" (
 	"created_at" timestamp DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "job_request_services" (
+CREATE TABLE IF NOT EXISTS "job_request_services" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"job_request_id" uuid,
 	"service_id" uuid,
@@ -213,7 +213,7 @@ CREATE TABLE "job_request_services" (
 	"walk_time" text
 );
 --> statement-breakpoint
-CREATE TABLE "invoices" (
+CREATE TABLE IF NOT EXISTS "invoices" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"builder_id" uuid,
 	"po_number" text,
@@ -226,7 +226,7 @@ CREATE TABLE "invoices" (
 	"created_at" timestamp DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "invoice_lines" (
+CREATE TABLE IF NOT EXISTS "invoice_lines" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"invoice_id" uuid,
 	"blue_book_id" uuid,
@@ -237,7 +237,7 @@ CREATE TABLE "invoice_lines" (
 	"amount" numeric
 );
 --> statement-breakpoint
-CREATE TABLE "sms_email_logs" (
+CREATE TABLE IF NOT EXISTS "sms_email_logs" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"kind" "log_kind",
 	"to" text,
@@ -246,7 +246,7 @@ CREATE TABLE "sms_email_logs" (
 	"created_at" timestamp DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "orgs" (
+CREATE TABLE IF NOT EXISTS "orgs" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"name" text NOT NULL,
 	"slug" text NOT NULL,
@@ -255,7 +255,7 @@ CREATE TABLE "orgs" (
 	CONSTRAINT "orgs_slug_unique" UNIQUE("slug")
 );
 --> statement-breakpoint
-CREATE TABLE "org_members" (
+CREATE TABLE IF NOT EXISTS "org_members" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"org_id" uuid NOT NULL,
 	"user_id" uuid NOT NULL,
@@ -263,7 +263,7 @@ CREATE TABLE "org_members" (
 	"created_at" timestamp DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "service_logs" (
+CREATE TABLE IF NOT EXISTS "service_logs" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"org_id" uuid NOT NULL,
 	"date" date NOT NULL,
