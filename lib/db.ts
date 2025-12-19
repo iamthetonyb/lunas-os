@@ -1,7 +1,7 @@
 // lib/db.ts — THIS IS THE FINAL VERSION — DO NOT CHANGE ANYTHING
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
-import * as schema from "@/db/schema";
+import * as schema from "../db/schema";
 
 const connectionString = process.env.DATABASE_URL ?? "";
 
