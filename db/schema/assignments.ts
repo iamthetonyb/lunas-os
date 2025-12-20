@@ -1,4 +1,4 @@
-import { pgTable, uuid, timestamp, pgEnum, text, decimal, date, boolean, type AnyPgTable } from 'drizzle-orm/pg-core';
+import { pgTable, uuid, timestamp, pgEnum, text, decimal, date, boolean } from 'drizzle-orm/pg-core';
 import { builders } from './builders';
 import { communities } from './communities';
 import { modelPlans } from './model_plans';
@@ -15,7 +15,7 @@ import { dispatchBatches } from './dispatch_batches';
 
 export const blueBookStatusEnum = pgEnum('blue_book_status', ['PENDING', 'COMPLETE']);
 
-export const blueBookEntries: AnyPgTable = pgTable('blue_book_entries', {
+export const blueBookEntries = pgTable('blue_book_entries', {
   id: uuid('id').primaryKey().defaultRandom(),
   builderId: uuid('builder_id').references(() => builders.id),
   communityId: uuid('community_id').references(() => communities.id),
@@ -24,7 +24,7 @@ export const blueBookEntries: AnyPgTable = pgTable('blue_book_entries', {
   serviceId: uuid('service_id').references(() => services.id),
   poNumber: text('po_number'),
   status: blueBookStatusEnum('status').default('PENDING'),
-  assignmentId: uuid('assignment_id').references(() => assignments.id),
+  assignmentId: uuid('assignment_id'), // fk ref removed to break circular type inference
   ticketId: uuid('ticket_id').references(() => fieldTickets.id),
   invoiceLineId: uuid('invoice_line_id').references(() => invoiceLines.id),
   amount: decimal('amount'),
@@ -44,7 +44,7 @@ export const blueBookEntries: AnyPgTable = pgTable('blue_book_entries', {
 
 export const assignmentStatusEnum = pgEnum('assignment_status', ['DRAFT', 'SENT', 'ACCEPTED', 'IN_PROGRESS', 'COMPLETE', 'NOT_DONE']);
 
-export const assignments: AnyPgTable = pgTable('assignments', {
+export const assignments = pgTable('assignments', {
   id: uuid('id').primaryKey().defaultRandom(),
   jobRequestServiceId: uuid('job_request_service_id').references(() => jobRequestServices.id),
   blueBookEntryId: uuid('blue_book_entry_id').references(() => blueBookEntries.id),
