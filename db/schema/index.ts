@@ -13,7 +13,7 @@ export * from './assignments';
 export * from './field_tickets';
 export * from './invoices';
 export * from './invoice_lines';
-export * from './blue_book_entries';
+// export * from './blue_book_entries'; // Moved to assignments.ts
 export * from './sms_email_logs';
 export * from './relations';
 export * from './orgs';
