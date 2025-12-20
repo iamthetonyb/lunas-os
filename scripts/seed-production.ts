@@ -7,11 +7,11 @@ import { users, orgs, orgMembers, crews } from '@/db/schema';
 
 // Production Crew Data
 const CREWS = [
-    { name: 'Anahi Crew', foremanEmail: 'anahi@lunas.local', skills: ['cleanup', 'frame'], capacityPerDay: 4 },
-    { name: 'Chayo Crew', foremanEmail: 'chayo@lunas.local', skills: ['tubs', 'windows'], capacityPerDay: 3 },
-    { name: 'Blanca Crew', foremanEmail: 'blanca@lunas.local', skills: ['power wash', 'detail'], capacityPerDay: 3 },
-    { name: 'Raudel Crew', foremanEmail: 'raudel@lunas.local', skills: ['final'], capacityPerDay: 5 },
-    { name: 'Francisco Crew', foremanEmail: 'francisco@lunas.local', skills: ['extras', 'service'], capacityPerDay: 2 },
+    { name: 'Anahi', foremanEmail: 'anahi@lunas.local' },
+    { name: 'Chayo', foremanEmail: 'chayo@lunas.local' },
+    { name: 'Blanca', foremanEmail: 'blanca@lunas.local' },
+    { name: 'Raudel', foremanEmail: 'raudel@lunas.local' },
+    { name: 'Francisco', foremanEmail: 'francisco@lunas.local' },
 ];
 
 async function ensureOrg(db: ReturnType<typeof getPgDrizzle>['db']) {
@@ -38,9 +38,8 @@ async function ensureUser(
 
     if (existing) {
         // Ensure role is correct if upgrading/fixing
-        if (existing.role !== role) {
-            await db.update(users).set({ role }).where(eq(users.id, existing.id));
-        }
+        // Also UPDATE PASSWORD to match current standard
+        await db.update(users).set({ role, passwordHash }).where(eq(users.id, existing.id));
         userId = existing.id;
     } else {
         const [created] = await db
@@ -75,25 +74,16 @@ async function main() {
         const orgId = await ensureOrg(db);
         console.log('[seed] ✅ Org:', orgId);
 
-        const defaultPassword = process.env.DEV_PASSWORD || 'dev';
+        // Update to specific requested password
+        const defaultPassword = 'dev123';
         const hash = await bcrypt.hash(defaultPassword, 10);
 
-        // 2. Ensure Admin
-        await ensureUser(db, 'tony@lunas.local', 'Tony', 'admin', hash, orgId);
-        console.log('[seed] ✅ Admin: tony@lunas.local');
-
-        // 3. Ensure Crews & Foremen
+        // 2. Ensure Crews & Foremen
         for (const crew of CREWS) {
-            const foremanName = crew.name.split(' ')[0];
+            const foremanName = crew.name; // Name matches crew name (e.g. "Anahi")
             const foremanId = await ensureUser(db, crew.foremanEmail, foremanName, 'contractor', hash, orgId);
 
-            // Update User to be FOREMAN role in main user table if needed? 
-            // Schema says 'role' enum includes 'FOREMAN'. Our ensureUser used 'contractor' above.
-            // Let's explicitly set them to FOREMAN role for the dropdowns to work if that's what filters them.
-            // Checking schema... users.role is 'role' enum: 'FOREMAN', 'CREW', etc.
-            // BUT org_members.role is 'admin' | 'contractor'.
-            // The dropdown likely filters by users.role = 'FOREMAN'.
-
+            // Explicitly set to FOREMAN role for dropdowns
             await db.update(users).set({ role: 'FOREMAN' }).where(eq(users.id, foremanId));
 
             const existingCrew = await db.query.crews.findFirst({ where: eq(crews.name, crew.name) });
@@ -101,8 +91,7 @@ async function main() {
                 await db.insert(crews).values({
                     name: crew.name,
                     foremanId,
-                    skills: crew.skills as any, // Cast for string[] array
-                    capacityPerDay: crew.capacityPerDay,
+                    // skills and capacity left null/default as requested
                 });
                 console.log(`[seed] ✅ Crew created: ${crew.name}`);
             } else {
@@ -114,7 +103,7 @@ async function main() {
             }
         }
 
-        console.log('[seed] 🏁 Production seed complete.');
+        console.log('[seed] 🏁 Production seed complete. All contractors set to "dev123".');
     } catch (error) {
         console.error('[seed] ❌ Failed:', error);
         process.exit(1);
