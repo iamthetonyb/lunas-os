@@ -4,6 +4,9 @@ import { jobRequests, jobRequestServices } from '@/db/schema';
 import { ok, err, safe } from '@/lib/api/http';
 import { requireMembership } from '@/lib/auth/guards';
 import { publishOrgEvent } from '@/lib/ably';
+import { assignments, crews } from '@/db/schema';
+import { eq } from 'drizzle-orm';
+
 
 export const runtime = 'nodejs';
 
@@ -70,13 +73,38 @@ export const POST = safe(async (req, context) => {
       .returning();
 
     if (serviceIds.length) {
-      await tx.insert(jobRequestServices).values(
+      // Find foreman/crew if requestedBy matches a known crew lead
+      let crewId: string | null = null;
+      if (requestedBy) {
+        const foremanName = requestedBy.trim();
+        // Check if this matches a known crew (case-insensitive)
+        const allCrews = await tx.select().from(crews);
+        const match = allCrews.find(c => c.name.toLowerCase() === foremanName.toLowerCase());
+        if (match) {
+          crewId = match.id;
+        }
+      }
+
+      const services = await tx.insert(jobRequestServices).values(
         serviceIds.map((serviceId) => ({
           jobRequestId: request.id,
           serviceId,
           walkTime: walkTime ?? null,
+          assignedForemanName: crewId ? requestedBy : null, // Persist name for easy lookup
         }))
-      );
+      ).returning();
+
+      // Create Assignments for each service if we have a crew
+      if (crewId) {
+        for (const svc of services) {
+          await tx.insert(assignments).values({
+            jobRequestServiceId: svc.id,
+            crewId: crewId!,
+            status: 'DRAFT', // Default to draft so it shows on schedule
+            scheduledStart: dueDate ? new Date(dueDateISO) : null, // Tentative start date
+          });
+        }
+      }
     }
 
     return request;

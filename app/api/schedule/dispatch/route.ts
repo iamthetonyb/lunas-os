@@ -1,6 +1,6 @@
 import { getDb } from '@/lib/db/get-db';
 import { json } from '@/lib/utils/json';
-import { assignments, crews, dispatchBatches, blueBookEntries, jobRequestServices } from '@/db/schema';
+import { assignments, crews, dispatchBatches, blueBookEntries, jobRequestServices, jobRequests } from '@/db/schema';
 import { eq, and } from 'drizzle-orm';
 import { NextRequest } from 'next/server';
 import { requireMembership } from '@/lib/auth/guards';
@@ -87,13 +87,49 @@ export async function POST(request: NextRequest) {
 
         // Update status and foreman name in the source table
         if (jrs) {
+            // Update Job Request Service
             await db
                 .update(jobRequestServices)
                 .set({
                     assignedForemanName: foremanName,
-                    // updatedAt: new Date(), // Column does not exist
+                    // updatedAt: new Date(),
                 })
                 .where(eq(jobRequestServices.id, jobId));
+
+            // AUTO-CREATE BLUE BOOK ENTRY if not exists
+            // Verify if one already exists for this service
+            const existingBBE = await db.query.blueBookEntries.findFirst({
+                where: eq(blueBookEntries.assignmentId, assignment.id)
+            });
+
+            if (!existingBBE) {
+                // Fetch full JRS details (we only have the ID from check above)
+                const fullJrs = await db.query.jobRequestServices.findFirst({
+                    where: eq(jobRequestServices.id, jobId),
+                });
+
+                if (fullJrs && fullJrs.jobRequestId) {
+                    const jobReq = await db.query.jobRequests.findFirst({
+                        where: eq(jobRequests.id, fullJrs.jobRequestId)
+                    });
+
+                    if (jobReq) {
+                        await db.insert(blueBookEntries).values({
+                            builderId: jobReq.builderId,
+                            communityId: jobReq.communityId,
+                            lot: jobReq.lot,
+                            modelPlanId: jobReq.modelPlanId,
+                            serviceId: fullJrs.serviceId,
+                            poNumber: jobReq.poNumber,
+                            status: 'PENDING',
+                            assignmentId: assignment.id,
+                            assignedForemanName: foremanName,
+                            source: 'dispatch',
+                        });
+                    }
+                }
+            }
+
         } else if (bbe) {
             await db
                 .update(blueBookEntries)
