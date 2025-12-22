@@ -599,8 +599,20 @@ export default function SchedulePage() {
                     const isSweepService = serviceLower.includes('sweep');
                     const isPowerWashService = serviceLower.includes('power wash');
 
-                    const walkTime = (job as { walkTime?: string | null; walk_time?: string | null })
+                    const formatTime = (timeStr: string | null) => {
+                      if (!timeStr) return null;
+                      // Expecting "HH:mm" or "HH:mm:ss"
+                      // We want "H:mm" (e.g. "9:00", "10:00")
+                      // If it is 24 hour: "14:00" -> "14:00" (User didn't specify AM/PM preference, just "top of hour")
+                      // But usually user wants "9:00" not "09:00"
+                      const [h, m] = timeStr.split(':');
+                      if (!h) return timeStr;
+                      return `${parseInt(h, 10)}:${m || '00'}`;
+                    };
+
+                    const rawWalkTime = (job as { walkTime?: string | null; walk_time?: string | null })
                       .walkTime ?? (job as { walk_time?: string | null }).walk_time ?? null;
+                    const walkTime = formatTime(rawWalkTime);
                     // Date display fix: Use manual slice to avoid timezone shift
                     const formatDisplayDate = (dateStr: string | null) => {
                       if (!dateStr) return null;
