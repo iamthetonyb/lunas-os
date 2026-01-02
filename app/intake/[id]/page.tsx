@@ -27,6 +27,14 @@ type IntakeDetail = {
 
 const fetcher = (url: string) => fetchJSON<IntakeDetail>(url);
 
+// Helper: Parse ISO date string as local date (avoids UTC midnight -> previous day issue)
+const formatDateLocal = (dateStr: string | null | undefined): string => {
+  if (!dateStr) return '';
+  // Append noon time to prevent timezone rollback
+  const d = new Date(dateStr + 'T12:00:00');
+  return d.toLocaleDateString();
+};
+
 function DetailItem({ label, value }: { label: string; value: string | null | undefined }) {
   if (!value) return null;
   return (
@@ -95,7 +103,7 @@ export default function IntakeDetailPage() {
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <DetailItem
                     label="Due Date"
-                    value={new Date(intake.dueDate).toLocaleDateString()}
+                    value={formatDateLocal(intake.dueDate)}
                   />
                   <DetailItem label="PO Number" value={intake.poNumber} />
                   <DetailItem label="Requested By" value={intake.requestedBy} />
