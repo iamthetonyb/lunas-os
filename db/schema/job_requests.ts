@@ -1,4 +1,4 @@
-import { pgTable, text, uuid, date, json, timestamp } from 'drizzle-orm/pg-core';
+import { pgTable, text, uuid, date, json, timestamp, boolean } from 'drizzle-orm/pg-core';
 import { builders } from './builders';
 import { communities } from './communities';
 import { modelPlans } from './model_plans';
@@ -19,6 +19,7 @@ export const jobRequests = pgTable('job_requests', {
   originalDueDate: date('original_due_date'),
   notes: text('notes'),
   poNumber: text('po_number'),
+  isExtraWork: boolean('is_extra_work').default(false),
   createdById: uuid('created_by_id').references(() => users.id),
   createdAt: timestamp('created_at').defaultNow().notNull(),
 });

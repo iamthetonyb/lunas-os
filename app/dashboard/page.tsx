@@ -130,7 +130,7 @@ export default function DashboardPage() {
                 </div>
                 <div className="space-y-3">
                   <div className="bg-white/10 backdrop-blur-sm rounded-lg p-4">
-                    <p className="text-sm opacity-90 mb-1">Total Projects</p>
+                    <p className="text-sm opacity-90 mb-1">Total Jobs</p>
                     <p className="text-3xl font-bold">{blueBookEntries.length}</p>
                   </div>
                   <div className="bg-white/10 backdrop-blur-sm rounded-lg p-4">

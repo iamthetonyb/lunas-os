@@ -59,7 +59,7 @@ type FormData = z.infer<typeof baseSchema>;
 
 function EditIntakeForm({ intake, onSuccess, onClose }: { intake: RecentIntake; onSuccess: () => void; onClose: () => void; }) {
   const { t } = useTranslation();
-  
+
   // CRITICAL: All hooks MUST be called unconditionally at the top level before any returns
   // to comply with React Rules of Hooks. Moving data fetching hooks here.
   const { data: builders } = useSWR<BuilderDTO[]>('/api/builders', fetcher);
@@ -239,7 +239,7 @@ function EditIntakeForm({ intake, onSuccess, onClose }: { intake: RecentIntake; 
       </div>
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-1">Notes</label>
-        <textarea {...register('notes')} placeholder="Notes" className="w-full px-4 py-2.5 border border-gray-300 rounded-lg" />
+        <textarea {...register('notes')} spellCheck="true" placeholder="Notes" className="w-full px-4 py-2.5 border border-gray-300 rounded-lg" />
       </div>
       <div className="flex justify-end gap-4 pt-4">
         <button type="button" onClick={onClose} className="px-6 py-3 border border-gray-300 text-gray-700 rounded-lg">Cancel</button>
