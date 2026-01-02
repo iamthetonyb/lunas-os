@@ -516,8 +516,8 @@ export default function BlueBookPage() {
 
               const baseComplete = definition.serviceNames.length
                 ? definition.serviceNames.every(
-                    (name) => (servicesByName.get(name)?.length ?? 0) > 0
-                  )
+                  (name) => (servicesByName.get(name)?.length ?? 0) > 0
+                )
                 : entriesForCode.length > 0;
 
               const orderedServices: LotPhaseService[] = [];
@@ -619,10 +619,10 @@ export default function BlueBookPage() {
 
             const earliestStart = sortedEntries.length
               ? Math.min(
-                  ...sortedEntries.map((entry) =>
-                    toTimestamp(entry.startDate ?? entry.checkDate)
-                  )
+                ...sortedEntries.map((entry) =>
+                  toTimestamp(entry.startDate ?? entry.checkDate)
                 )
+              )
               : Number.MAX_SAFE_INTEGER;
             const totalAmount = sortedEntries.reduce(
               (sum, entry) => sum + parseAmount(entry.amount),
@@ -654,10 +654,10 @@ export default function BlueBookPage() {
 
         const earliestStart = community.entries.length
           ? Math.min(
-              ...community.entries.map((entry) =>
-                toTimestamp(entry.startDate ?? entry.checkDate)
-              )
+            ...community.entries.map((entry) =>
+              toTimestamp(entry.startDate ?? entry.checkDate)
             )
+          )
           : Number.MAX_SAFE_INTEGER;
 
         const checkNumbers = Array.from(
@@ -1135,7 +1135,7 @@ export default function BlueBookPage() {
   const handleDelete = async () => {
     if (!editingEntry || editingEntry.source !== 'manual') return;
     if (!confirm('Are you sure you want to delete this manual entry?')) return;
-    
+
     setSaving(true);
     setFormError(null);
     try {
@@ -1170,11 +1170,10 @@ export default function BlueBookPage() {
       <main className="px-6 py-6">
         <div className="mb-6 flex flex-wrap items-center gap-3">
           <button
-            className={`rounded-full border px-4 py-2 text-sm transition ${
-              activeBuilderId === 'all'
+            className={`rounded-full border px-4 py-2 text-sm transition ${activeBuilderId === 'all'
                 ? 'border-blue-500 bg-blue-500 text-white'
                 : 'border-gray-300 bg-white text-gray-700 hover:border-blue-400'
-            }`}
+              }`}
             onClick={() => setActiveBuilderId('all')}
           >
             All Builders
@@ -1186,11 +1185,10 @@ export default function BlueBookPage() {
             return (
               <button
                 key={builder.id}
-                className={`rounded-full border px-4 py-2 text-sm transition ${
-                  isActive
+                className={`rounded-full border px-4 py-2 text-sm transition ${isActive
                     ? 'border-blue-500 bg-blue-500 text-white'
                     : 'border-gray-300 bg-white text-gray-700 hover:border-blue-400'
-                }`}
+                  }`}
                 onClick={() => setActiveBuilderId(builder.id)}
               >
                 {builder.name}
@@ -1217,48 +1215,16 @@ export default function BlueBookPage() {
           </select>
         </div>
 
-        {selectableBuilders.length > 0 && (
-          <div className="mb-6 flex flex-col gap-3 rounded-lg border border-dashed border-gray-300 p-4 text-sm dark:border-slate-700 lg:flex-row lg:items-center lg:justify-between">
-            <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:flex-1">
-              <div className="font-semibold text-gray-700 dark:text-gray-200">
-                Add Builder Tab
-              </div>
-              <select
-                value={newTabBuilderId}
-                onChange={(e) => setNewTabBuilderId(e.target.value)}
-                className="rounded-lg border border-gray-300 px-3 py-2 dark:bg-slate-900 dark:text-white"
-              >
-                <option value="">Select builder…</option>
-                {selectableBuilders.map((builder) => (
-                  <option key={builder.id} value={builder.id}>
-                    {builder.name}
-                </option>
-              ))}
-            </select>
-              <button
-                type="button"
-                disabled={!newTabBuilderId}
-                onClick={() => {
-                  if (newTabBuilderId) {
-                    setCustomTabIds((prev) => [...prev, newTabBuilderId]);
-                    setActiveBuilderId(newTabBuilderId);
-                    setNewTabBuilderId('');
-                  }
-                }}
-                className="rounded-lg bg-blue-600 px-4 py-2 font-semibold text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                Add
-              </button>
-            </div>
-            <button
-              type="button"
-              onClick={() => setIsCreatingManual(true)}
-              className="rounded-lg bg-green-600 px-4 py-2 font-semibold text-white hover:bg-green-700 whitespace-nowrap"
-            >
-              + Manual Entry
-            </button>
-          </div>
-        )}
+        {/* Manual Entry Button */}
+        <div className="mb-6 flex justify-end">
+          <button
+            type="button"
+            onClick={() => setIsCreatingManual(true)}
+            className="rounded-lg bg-green-600 px-4 py-2 font-semibold text-white hover:bg-green-700 whitespace-nowrap"
+          >
+            + Manual Entry
+          </button>
+        </div>
 
         {isLoading && (
           <div className="bg-white dark:bg-slate-800 rounded-lg border border-gray-200 dark:border-slate-700 p-6 shadow-sm">
@@ -1287,9 +1253,8 @@ export default function BlueBookPage() {
             );
             const phaseSummary =
               phaseCounts.total > 0
-                ? ` · ${phaseCounts.complete}/${phaseCounts.total} phase${
-                    phaseCounts.total === 1 ? '' : 's'
-                  } logged`
+                ? ` · ${phaseCounts.complete}/${phaseCounts.total} phase${phaseCounts.total === 1 ? '' : 's'
+                } logged`
                 : '';
 
             return (
@@ -1306,9 +1271,8 @@ export default function BlueBookPage() {
                       {group.communityName || 'Unknown Community'}
                     </p>
                     <p className="text-xs text-gray-500 dark:text-gray-400">
-                      {`${group.builderName || 'Unknown Builder'} · ${totalLots} lot${
-                        totalLots === 1 ? '' : 's'
-                      } · ${totalChecks} check${totalChecks === 1 ? '' : 's'}${phaseSummary}`}
+                      {`${group.builderName || 'Unknown Builder'} · ${totalLots} lot${totalLots === 1 ? '' : 's'
+                        } · ${totalChecks} check${totalChecks === 1 ? '' : 's'}${phaseSummary}`}
                     </p>
                   </div>
                   <div className="flex items-center gap-4 text-sm text-gray-600 dark:text-gray-300">
@@ -1342,8 +1306,8 @@ export default function BlueBookPage() {
                       const selectedPlan =
                         effectivePlanId && planOptions.length
                           ? planOptions.find((plan) => plan.id === effectivePlanId) ??
-                            modelPlans.find((plan) => plan.id === effectivePlanId) ??
-                            null
+                          modelPlans.find((plan) => plan.id === effectivePlanId) ??
+                          null
                           : null;
                       const planName = selectedPlan?.name ?? lot.modelPlanName ?? '—';
                       const planCode = selectedPlan?.code ?? lot.modelPlanCode ?? '—';
@@ -1351,9 +1315,8 @@ export default function BlueBookPage() {
                       const isSavingPlan = Boolean(savingPlanSelections[lot.key]);
                       const planError = planErrors[lot.key];
                       const phaseStatusText = lot.phases.length
-                        ? `${lot.phases.filter((phase) => phase.isComplete).length}/${
-                            lot.phases.length
-                          } phase${lot.phases.length === 1 ? '' : 's'} logged`
+                        ? `${lot.phases.filter((phase) => phase.isComplete).length}/${lot.phases.length
+                        } phase${lot.phases.length === 1 ? '' : 's'} logged`
                         : 'No phases mapped yet';
 
                       return (
@@ -1447,9 +1410,8 @@ export default function BlueBookPage() {
                                       lot.phases.map((phase) => {
                                         const helperText =
                                           phase.overrideStatus !== undefined
-                                            ? `Manually marked as ${
-                                                phase.isComplete ? 'logged' : 'pending'
-                                              }`
+                                            ? `Manually marked as ${phase.isComplete ? 'logged' : 'pending'
+                                            }`
                                             : phase.baseComplete
                                               ? 'Logged from ingested data'
                                               : 'Pending';
@@ -1501,9 +1463,8 @@ export default function BlueBookPage() {
                                                       .join(', ');
                                                     const serviceHelperText =
                                                       service.overrideStatus !== undefined
-                                                        ? `Manually marked as ${
-                                                            service.isLogged ? 'logged' : 'pending'
-                                                          }`
+                                                        ? `Manually marked as ${service.isLogged ? 'logged' : 'pending'
+                                                        }`
                                                         : service.baseLogged
                                                           ? 'Logged from ingested data'
                                                           : 'Pending';
@@ -1613,11 +1574,10 @@ export default function BlueBookPage() {
                                           <td className="px-4 py-3">
                                             <div className="flex items-center gap-2">
                                               <span
-                                                className={`inline-flex rounded-full px-2 py-1 text-xs font-semibold ${
-                                                  entry.status === 'COMPLETE'
+                                                className={`inline-flex rounded-full px-2 py-1 text-xs font-semibold ${entry.status === 'COMPLETE'
                                                     ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
                                                     : 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200'
-                                                }`}
+                                                  }`}
                                               >
                                                 {entry.status}
                                               </span>
