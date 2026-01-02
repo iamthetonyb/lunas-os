@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { getDb } from '@/lib/db/get-db';
-import { jobRequests, jobRequestServices } from '@/db/schema';
+import { jobRequests, jobRequestServices, users } from '@/db/schema';
 import { ok, err, safe } from '@/lib/api/http';
 import { requireMembership } from '@/lib/auth/guards';
 import { publishOrgEvent } from '@/lib/ably';
@@ -73,13 +73,27 @@ export const POST = safe(async (req, context) => {
       .returning();
 
     if (serviceIds.length) {
-      // Find foreman/crew if requestedBy matches a known crew lead
+      // Find foreman/crew if requestedBy matches a known crew lead or crew name
       let crewId: string | null = null;
       if (requestedBy) {
-        const foremanName = requestedBy.trim();
-        // Check if this matches a known crew (case-insensitive)
+        const foremanName = requestedBy.trim().toLowerCase();
+        // First try matching by crew name
         const allCrews = await tx.select().from(crews);
-        const match = allCrews.find(c => c.name.toLowerCase() === foremanName.toLowerCase());
+        let match = allCrews.find(c => c.name.toLowerCase() === foremanName);
+
+        // If no direct crew name match, try matching by foreman user name
+        if (!match) {
+          for (const crew of allCrews) {
+            if (crew.foremanId) {
+              const foremanUser = await tx.select().from(users).where(eq(users.id, crew.foremanId));
+              if (foremanUser.length > 0 && foremanUser[0].name?.toLowerCase() === foremanName) {
+                match = crew;
+                break;
+              }
+            }
+          }
+        }
+
         if (match) {
           crewId = match.id;
         }

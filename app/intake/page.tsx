@@ -10,6 +10,14 @@ import { EditIntakeModal } from '@/components/edit-intake-modal';
 import { useSession } from 'next-auth/react';
 import { useOrgRealtime } from '@/lib/realtime/use-org-realtime';
 
+// Helper: Parse ISO date string as local date (avoids UTC midnight -> previous day issue)
+const formatDateLocal = (dateStr: string | null | undefined): string => {
+  if (!dateStr) return '';
+  // Append noon time to prevent timezone rollback
+  const d = new Date(dateStr + 'T12:00:00');
+  return d.toLocaleDateString();
+};
+
 export type RecentIntake = {
   id: string;
   builderId: string | null;
@@ -113,7 +121,7 @@ function IntakeDetailModal({
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-2">
                       <DetailItem
                         label="Due Date"
-                        value={new Date(intake.dueDate).toLocaleDateString()}
+                        value={formatDateLocal(intake.dueDate)}
                       />
                       <DetailItem label="PO Number" value={intake.poNumber} />
                       <DetailItem label="Requested By" value={intake.requestedBy} />
@@ -229,7 +237,7 @@ function RecentIntakes({ onIntakeSelect, onDelete, onEdit }: { onIntakeSelect: (
               <td className="px-4 py-3 text-gray-700">{intake.builderName}</td>
               <td className="px-4 py-3 text-gray-700">{intake.lot}</td>
               <td className="px-4 py-3 text-gray-700">
-                {new Date(intake.dueDate).toLocaleDateString()}
+                {formatDateLocal(intake.dueDate)}
               </td>
               <td className="px-4 py-3 text-gray-600">
                 {intake.services.map((s) => s.name).join(', ')}
