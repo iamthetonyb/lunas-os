@@ -5,7 +5,7 @@ import { ok, err, safe } from '@/lib/api/http';
 import { requireMembership } from '@/lib/auth/guards';
 import { publishOrgEvent } from '@/lib/ably';
 import { assignments, crews } from '@/db/schema';
-import { eq } from 'drizzle-orm';
+import { eq, and } from 'drizzle-orm';
 
 
 export const runtime = 'nodejs';
@@ -54,6 +54,16 @@ export const POST = safe(async (req, context) => {
   const dueDateISO = dueDate.toISOString().split('T')[0];
 
   const result = await db.transaction(async (tx) => {
+    // Check for duplicate: same community + lot
+    const existingJob = await tx.query.jobRequests.findFirst({
+      where: and(
+        eq(jobRequests.communityId, rest.communityId),
+        eq(jobRequests.lot, rest.lot)
+      ),
+    });
+
+    const isExtraWork = !!existingJob;
+
     const [request] = await tx
       .insert(jobRequests)
       .values({
@@ -68,6 +78,7 @@ export const POST = safe(async (req, context) => {
         poNumber: poNumber ?? null,
         receivedVia: receivedVia ?? 'app',
         contactPhone: contact ?? null,
+        isExtraWork,
         createdById: membership.userId,
       })
       .returning();

@@ -52,7 +52,8 @@ function getNextBusinessDay(fromDate: Date): Date {
 }
 
 // Helper: Get service-based row color
-function getServiceRowColor(serviceName: string, isDispatched: boolean, isRescheduled: boolean, isComplete: boolean): string {
+function getServiceRowColor(serviceName: string, isDispatched: boolean, isRescheduled: boolean, isComplete: boolean, isExtraWork?: boolean): string {
+  if (isExtraWork) return 'bg-red-100 dark:bg-red-900/40 border-l-4 border-red-500'; // Extra work / duplicate
   if (isComplete) return 'bg-yellow-100 dark:bg-yellow-900/40 border-l-4 border-yellow-500'; // Highlight completed jobs
   if (isRescheduled) return 'bg-purple-100 dark:bg-purple-900/20';
   const lower = serviceName.toLowerCase();
@@ -81,6 +82,7 @@ type UpcomingJob = {
   assignedForemanName?: string | null;
   jobRequestServiceId?: string | null;
   originalStartDate?: string | null;
+  isExtraWork?: boolean | null;
 };
 
 type DecoratedJob = UpcomingJob & {
@@ -274,7 +276,8 @@ export default function SchedulePage() {
     // Count jobs that have been manually assigned vs unassigned
     const counts: Record<string, number> = {};
     decoratedJobs.forEach((job) => {
-      const assignedForeman = selectedForemenMap.get(job.id);
+      // Check both the selectedForemenMap AND the job's saved assignedForemanName
+      const assignedForeman = selectedForemenMap.get(job.id) || job.assignedForemanName;
       if (assignedForeman) {
         // Find the foreman id by name
         const foremanConfig = FOREMEN_DIRECTORY.find(f => f.name === assignedForeman);
@@ -282,7 +285,7 @@ export default function SchedulePage() {
           counts[foremanConfig.id] = (counts[foremanConfig.id] ?? 0) + 1;
         }
       } else {
-        // Job is unassigned
+        // Job is truly unassigned (no foreman in map AND no saved assignedForemanName)
         counts[UNASSIGNED_FOREMAN.id] = (counts[UNASSIGNED_FOREMAN.id] ?? 0) + 1;
       }
     });
@@ -298,7 +301,7 @@ export default function SchedulePage() {
       orderedTabs.push({
         id: UNASSIGNED_FOREMAN.id,
         name: UNASSIGNED_FOREMAN.name,
-        count: counts[UNASSIGNED_FOREMAN.id] ?? decoratedJobs.length,
+        count: counts[UNASSIGNED_FOREMAN.id] ?? 0, // Only count truly unassigned jobs
       });
     }
 
@@ -349,6 +352,12 @@ export default function SchedulePage() {
       });
     }
 
+    // Sort by walkTime ascending (earliest 8:00 AM at top)
+    jobs = [...jobs].sort((a, b) => {
+      const timeA = a.walkTime || a.walk_time || '23:59';
+      const timeB = b.walkTime || b.walk_time || '23:59';
+      return timeA.localeCompare(timeB);
+    });
 
     return jobs;
   }, [activeForemanId, decoratedJobs, isContractor, session?.user?.name, selectedForemenMap]);
@@ -640,7 +649,8 @@ export default function SchedulePage() {
 
                     const isRescheduled = rescheduledJobs.has(job.id);
                     const isComplete = job.status === 'COMPLETE';
-                    const rowColor = getServiceRowColor(serviceLabel, false, isRescheduled, isComplete);
+                    const isExtraWork = job.isExtraWork === true;
+                    const rowColor = getServiceRowColor(serviceLabel, false, isRescheduled, isComplete, isExtraWork);
 
                     return (
                       <tr key={job.id} className={rowColor}>
@@ -667,7 +677,8 @@ export default function SchedulePage() {
                         <td className="px-4 py-2 text-sm text-gray-900 dark:text-white">{builder}</td>
                         <td className="px-4 py-2 text-sm text-gray-900 dark:text-white">{getFriendlyName(community)}</td>
                         <td className="px-4 py-2 text-sm text-gray-900 dark:text-white">
-                          <span className="inline-flex items-center rounded-md px-3 py-1 text-sm font-medium">
+                          <span className="inline-flex items-center gap-1 rounded-md px-3 py-1 text-sm font-medium">
+                            {isExtraWork && <span className="text-red-600" title="Extra Work / Duplicate">⚠️</span>}
                             {serviceLabel}
                           </span>
                         </td>
@@ -697,22 +708,44 @@ export default function SchedulePage() {
                         <td className="px-4 py-2 text-sm text-gray-900 dark:text-white">
                           <div className="flex gap-2">
                             {!isContractor ? (
-                              /* Admin view: Dispatch to button */
-                              <button
-                                onClick={() => openDispatchModal(job)}
-                                className="px-3 py-1 bg-blue-500 text-white text-xs rounded hover:bg-blue-600"
-                              >
-                                Dispatch to
-                              </button>
+                              /* Admin view: Dispatch button - green if dispatched, blue if pending */
+                              job.status === 'SENT' || job.status === 'DISPATCHED' ? (
+                                <button
+                                  onClick={() => openDispatchModal(job)}
+                                  className="px-3 py-1 bg-green-500 text-white text-xs rounded hover:bg-green-600 font-medium"
+                                >
+                                  ✓ Dispatched
+                                </button>
+                              ) : (
+                                <button
+                                  onClick={() => openDispatchModal(job)}
+                                  className="px-3 py-1 bg-blue-500 text-white text-xs rounded hover:bg-blue-600"
+                                >
+                                  Dispatch to
+                                </button>
+                              )
                             ) : (
-                              /* Contractor view: Green checkmark for job done */
-                              <button
-                                onClick={() => handleMarkComplete(job.id, job.status || 'PENDING')}
-                                className={`px-2 py-1 text-xs rounded hover:opacity-90 ${isComplete ? 'bg-yellow-500 text-black' : 'bg-green-500 text-white'}`}
-                                title={isComplete ? "Mark as incomplete" : "Mark job complete"}
-                              >
-                                {isComplete ? '↩' : '✓'}
-                              </button>
+                              /* Contractor view: Clear Completed box with Undo */
+                              isComplete ? (
+                                <div className="flex items-center gap-2 bg-green-100 dark:bg-green-900/30 px-3 py-1 rounded border border-green-300 dark:border-green-700">
+                                  <span className="text-green-700 dark:text-green-300 text-xs font-semibold">✓ Completed</span>
+                                  <button
+                                    onClick={() => handleMarkComplete(job.id, job.status || 'COMPLETE')}
+                                    className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+                                    title="Undo completion"
+                                  >
+                                    ↩
+                                  </button>
+                                </div>
+                              ) : (
+                                <button
+                                  onClick={() => handleMarkComplete(job.id, job.status || 'PENDING')}
+                                  className="px-3 py-1 bg-green-500 text-white text-xs rounded hover:bg-green-600"
+                                  title="Mark job complete"
+                                >
+                                  ✓ Mark Done
+                                </button>
+                              )
                             )}
 
                             {/* Reschedule button - visible to everyone */}
