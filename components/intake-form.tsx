@@ -537,19 +537,17 @@ export function IntakeForm() {
             <label htmlFor="walkTime" className="block text-sm font-medium text-gray-700 mb-2">
               {t('walkTime')}
             </label>
-            <Controller
-              control={control}
-              name="walkTime"
-              render={({ field }) => (
-                <SearchableSelect
-                  value={field.value ?? ''}
-                  onChange={field.onChange}
-                  options={WALK_TIME_OPTIONS}
-                  placeholder="Select walk time..."
-                  emptyStateLabel="No times available"
-                />
-              )}
-            />
+            <select
+              id="walkTime"
+              {...register('walkTime')}
+              className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            >
+              {WALK_TIME_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
           </div>
         </div>
       </div>

@@ -5,6 +5,7 @@ import { Tab } from '@headlessui/react';
 import { ServicesCrud } from '@/components/services-crud';
 import { ModelPlansCrud } from '@/components/model-plans-crud';
 import { RatesCrud } from '@/components/rates-crud';
+import { BuildersCrud } from '@/components/builders-crud';
 import { Suspense } from 'react';
 
 function classNames(...classes: string[]) {
@@ -21,30 +22,36 @@ function LoadingSpinner() {
 
 export default function ContractsPage() {
   const tabs = [
-    { 
-      name: 'Services', 
-      icon: '🛠️', 
+    {
+      name: 'Builders',
+      icon: '🏗️',
+      description: 'Add and manage builders and their communities',
+      component: BuildersCrud
+    },
+    {
+      name: 'Services',
+      icon: '🛠️',
       description: 'Define and manage service types offered to builders',
-      component: ServicesCrud 
+      component: ServicesCrud
     },
-    { 
-      name: 'Model Plans', 
-      icon: '🏠', 
+    {
+      name: 'Model Plans',
+      icon: '🏠',
       description: 'Configure house models with default settings for each builder',
-      component: ModelPlansCrud 
+      component: ModelPlansCrud
     },
-    { 
-      name: 'Rates', 
-      icon: '💵', 
+    {
+      name: 'Rates',
+      icon: '💵',
       description: 'Set pricing for services by builder, community, or model plan',
-      component: RatesCrud 
+      component: RatesCrud
     },
   ];
 
   return (
     <>
-      <PageHeader 
-        title="Contracts & Configuration" 
+      <PageHeader
+        title="Contracts & Configuration"
         description="Manage services, model plans, and pricing rates"
         action={
           <div className="flex items-center gap-2 px-4 py-2 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
@@ -77,7 +84,7 @@ export default function ContractsPage() {
               </Tab>
             ))}
           </Tab.List>
-          
+
           <Tab.Panels>
             {tabs.map((tab, idx) => (
               <Tab.Panel
