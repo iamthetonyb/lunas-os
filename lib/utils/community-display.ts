@@ -14,7 +14,8 @@ export function getFriendlyName(name: string): string {
     if (!name) return '';
 
     // Remove trailing numbers (e.g., "Aries - 3000" or "Aries 3000")
-    let friendly = name.replace(/\s*-?\s*\d+$/, '').trim();
+    // DISABLED: User confirmed numbers are part of the name
+    let friendly = name; // .replace(/\s*-?\s*\d+$/, '').trim();
 
     // Convert DW abbreviations
     friendly = friendly

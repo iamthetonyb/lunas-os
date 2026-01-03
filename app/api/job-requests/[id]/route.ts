@@ -138,10 +138,8 @@ export const DELETE = safe(async (req, { params: paramsPromise }: { params: Prom
         // 2a. Delete field tickets linked to assignments
         await tx.delete(fieldTickets).where(inArray(fieldTickets.assignmentId, assignmentIds));
 
-        // 2b. Unlink blue book entries
-        await tx.update(blueBookEntries)
-          .set({ assignmentId: null })
-          .where(inArray(blueBookEntries.assignmentId, assignmentIds));
+        // 2b. DELETE blue book entries
+        await tx.delete(blueBookEntries).where(inArray(blueBookEntries.assignmentId, assignmentIds));
 
         // 2c. Delete assignments
         await tx.delete(assignments).where(inArray(assignments.jobRequestServiceId, serviceIds));
