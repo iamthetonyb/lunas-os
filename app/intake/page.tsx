@@ -314,17 +314,20 @@ export default function IntakePage() {
       alert('Cannot delete intake: ID is missing.');
       return;
     }
+    console.log('[intake] Attempting to delete:', intakeId);
     if (!window.confirm('Are you sure you want to delete this intake?')) {
       return;
     }
 
     try {
       await fetchJSON(`/api/job-requests/${intakeId}`, { method: 'DELETE' });
+      console.log('[intake] Successfully deleted:', intakeId);
       await mutate('/api/job-requests/recent');
       setDetailModalOpen(false); // Close modal if open
     } catch (error) {
-      console.error('Failed to delete intake', error);
-      alert('Failed to delete intake.');
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      console.error('[intake] Failed to delete:', intakeId, message);
+      alert(`Failed to delete intake: ${message}`);
     }
   }
 

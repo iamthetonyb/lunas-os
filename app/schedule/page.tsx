@@ -208,12 +208,12 @@ export default function SchedulePage() {
   );
   const { data: crews } = useSWR<any[]>('/api/crews', fetcher);
   const scheduleRange = useMemo(() => {
-    const start = new Date(date);
-    const end = new Date(start);
-    end.setDate(end.getDate() + 14);
+    // Single day filter - show only jobs for the selected date
+    const selectedDate = new Date(date);
+    const dateStr = selectedDate.toISOString().split('T')[0];
     return {
-      start: start.toISOString().split('T')[0],
-      end: end.toISOString().split('T')[0],
+      start: dateStr,
+      end: dateStr, // Same day - strict single-day filter
     };
   }, [date]);
 
@@ -352,8 +352,18 @@ export default function SchedulePage() {
       });
     }
 
-    // Sort by walkTime ascending (earliest 8:00 AM at top)
+    // Sort by: 1) Foreman name (alphabetical), 2) walkTime ascending (earliest first)
     jobs = [...jobs].sort((a, b) => {
+      // Get assigned foreman names
+      const foremanA = (selectedForemenMap.get(a.id) || a.assignedForemanName || 'ZZZ Unassigned').toLowerCase();
+      const foremanB = (selectedForemenMap.get(b.id) || b.assignedForemanName || 'ZZZ Unassigned').toLowerCase();
+
+      // Primary sort: Foreman name (alphabetical)
+      if (foremanA !== foremanB) {
+        return foremanA.localeCompare(foremanB);
+      }
+
+      // Secondary sort: walkTime ascending (8:00 AM before 10:00 AM)
       const timeA = a.walkTime || a.walk_time || '23:59';
       const timeB = b.walkTime || b.walk_time || '23:59';
       return timeA.localeCompare(timeB);
@@ -402,6 +412,7 @@ export default function SchedulePage() {
           jobId: dispatchModal.job.id,
           foremanName: foremanName,
           crewName: dispatchModal.selectedCrew,
+          serviceDate: dispatchModal.job.startDate, // Pass the job's service date
         }),
       });
       mutateAssignments();
