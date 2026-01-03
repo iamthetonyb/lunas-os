@@ -113,8 +113,23 @@ export async function DELETE(
     try {
         const db = await getDb();
 
-        // Delete assignments linked to this batch first
-        await db.delete(assignments).where(eq(assignments.dispatchBatchId, id));
+        // 1. Get all assignment IDs linked to this batch
+        const assignmentsToDelete = await db
+            .select({ id: assignments.id })
+            .from(assignments)
+            .where(eq(assignments.dispatchBatchId, id));
+
+        const assignmentIds = assignmentsToDelete.map((a) => a.id);
+
+        if (assignmentIds.length > 0) {
+            // 2. DELETE blue book entries linked to these assignments
+            await db
+                .delete(blueBookEntries)
+                .where(inArray(blueBookEntries.assignmentId, assignmentIds));
+
+            // 3. Delete assignments
+            await db.delete(assignments).where(eq(assignments.dispatchBatchId, id));
+        }
 
         // Delete the dispatch batch
         await db.delete(dispatchBatches).where(eq(dispatchBatches.id, id));

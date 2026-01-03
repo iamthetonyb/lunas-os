@@ -739,7 +739,7 @@ export default function SchedulePage() {
                                   onClick={() => openDispatchModal(job)}
                                   className="px-3 py-1 bg-green-500 text-white text-xs rounded hover:bg-green-600 font-medium"
                                 >
-                                  ✓ Dispatched
+                                  Re-Dispatch
                                 </button>
                               ) : (
                                 <button
