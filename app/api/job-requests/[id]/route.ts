@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { getDb } from '@/lib/db/get-db';
-import { jobRequests, jobRequestServices, assignments } from '@/db/schema';
+import { jobRequests, jobRequestServices, assignments, fieldTickets, blueBookEntries } from '@/db/schema';
 import { ok, err, safe } from '@/lib/api/http';
 import { requireMembership } from '@/lib/auth/guards';
 import { eq, inArray } from 'drizzle-orm';
@@ -126,7 +126,26 @@ export const DELETE = safe(async (req, { params: paramsPromise }: { params: Prom
 
     // 2. Delete assignments linked to these services
     if (serviceIds.length > 0) {
-      await tx.delete(assignments).where(inArray(assignments.jobRequestServiceId, serviceIds));
+      // Find assignments first to clean up downstream
+      const assignmentRows = await tx
+        .select({ id: assignments.id })
+        .from(assignments)
+        .where(inArray(assignments.jobRequestServiceId, serviceIds));
+
+      const assignmentIds = assignmentRows.map(a => a.id);
+
+      if (assignmentIds.length > 0) {
+        // 2a. Delete field tickets linked to assignments
+        await tx.delete(fieldTickets).where(inArray(fieldTickets.assignmentId, assignmentIds));
+
+        // 2b. Unlink blue book entries
+        await tx.update(blueBookEntries)
+          .set({ assignmentId: null })
+          .where(inArray(blueBookEntries.assignmentId, assignmentIds));
+
+        // 2c. Delete assignments
+        await tx.delete(assignments).where(inArray(assignments.jobRequestServiceId, serviceIds));
+      }
     }
 
     // 3. Delete services
