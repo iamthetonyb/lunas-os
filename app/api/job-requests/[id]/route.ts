@@ -95,28 +95,18 @@ export const PUT = safe(async (req, { params: paramsPromise }: { params: Promise
 
 
 export const DELETE = safe(async (req, { params: paramsPromise }: { params: Promise<{ id: string }> }) => {
-
   await requireMembership(['admin', 'backoffice']);
-
   const db = await getDb();
-
-
   const params = await paramsPromise;
   const paramsParsed = paramsSchema.safeParse(params);
-
   if (!paramsParsed.success) {
-
     return err('Invalid job request ID', 400);
-
   }
-
   const { id: jobRequestId } = paramsParsed.data;
 
-
-
   await db.transaction(async (tx) => {
-
-    // 1. Find all services for this job request
+    // CRITICAL FIX: Explicit delete order to handle FK constraints safely
+    // 1. Delete Blue Book Entries linked to assignments of this job request
     const services = await tx
       .select({ id: jobRequestServices.id })
       .from(jobRequestServices)
@@ -124,9 +114,7 @@ export const DELETE = safe(async (req, { params: paramsPromise }: { params: Prom
 
     const serviceIds = services.map(s => s.id);
 
-    // 2. Delete assignments linked to these services
     if (serviceIds.length > 0) {
-      // Find assignments first to clean up downstream
       const assignmentRows = await tx
         .select({ id: assignments.id })
         .from(assignments)
@@ -135,28 +123,48 @@ export const DELETE = safe(async (req, { params: paramsPromise }: { params: Prom
       const assignmentIds = assignmentRows.map(a => a.id);
 
       if (assignmentIds.length > 0) {
-        // 2a. Delete field tickets linked to assignments
-        await tx.delete(fieldTickets).where(inArray(fieldTickets.assignmentId, assignmentIds));
-
-        // 2b. DELETE blue book entries
+        // Step 1: Delete Blue Book Entries
         await tx.delete(blueBookEntries).where(inArray(blueBookEntries.assignmentId, assignmentIds));
 
-        // 2c. Delete assignments
+        // Also clean up Field Tickets (safety)
+        await tx.delete(fieldTickets).where(inArray(fieldTickets.assignmentId, assignmentIds));
+
+        // Step 2: Delete Assignments
         await tx.delete(assignments).where(inArray(assignments.jobRequestServiceId, serviceIds));
       }
     }
 
-    // 3. Delete services
+    // Step 3: Delete Job Request Services
     await tx.delete(jobRequestServices).where(eq(jobRequestServices.jobRequestId, jobRequestId));
 
-    // 4. Delete job request
+    // Step 4: Delete Job Request
     await tx.delete(jobRequests).where(eq(jobRequests.id, jobRequestId));
-
   });
 
-
-
   return new Response(null, { status: 204 });
+});
 
+export const PATCH = safe(async (req, { params: paramsPromise }: { params: Promise<{ id: string }> }) => {
+  await requireMembership(['admin', 'backoffice', 'contractor']);
+  const db = await getDb();
+  const params = await paramsPromise;
+  const paramsParsed = paramsSchema.safeParse(params);
+  if (!paramsParsed.success) return err('Invalid ID', 400);
+  const { id } = paramsParsed.data;
+
+  const body = await req.json();
+  const { amount, notes, status, isExtraWork } = body;
+
+  const updateData: any = {};
+  if (amount !== undefined) updateData.amount = amount; // will be decimal in DB
+  if (notes !== undefined) updateData.notes = notes;
+  if (status !== undefined) updateData.status = status;
+  if (isExtraWork !== undefined) updateData.isExtraWork = isExtraWork;
+
+  if (Object.keys(updateData).length > 0) {
+    await db.update(jobRequests).set(updateData).where(eq(jobRequests.id, id));
+  }
+
+  return ok({ success: true });
 });
 

@@ -3,7 +3,7 @@ import Ably from 'ably/promises';
 
 let ablyRest: any | null = null;
 
-function getAblyRest(): any | null {
+export function getAblyRest(): any | null {
   if (!process.env.ABLY_API_KEY) {
     return null;
   }

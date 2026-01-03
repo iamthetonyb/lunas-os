@@ -42,7 +42,7 @@ export const blueBookEntries = pgTable('blue_book_entries', {
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 });
 
-export const assignmentStatusEnum = pgEnum('assignment_status', ['DRAFT', 'SENT', 'ACCEPTED', 'IN_PROGRESS', 'COMPLETE', 'NOT_DONE']);
+export const assignmentStatusEnum = pgEnum('assignment_status', ['DRAFT', 'SENT', 'ACCEPTED', 'IN_PROGRESS', 'COMPLETE', 'NOT_DONE', 'DISPATCHED']);
 
 export const assignments = pgTable('assignments', {
   id: uuid('id').primaryKey().defaultRandom(),
