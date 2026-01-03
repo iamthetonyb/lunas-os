@@ -1,6 +1,6 @@
 import { getDb } from '@/lib/db/get-db';
 import { blueBookEntries, jobRequests, jobRequestServices, builders, communities, modelPlans, services } from '@/db/schema';
-import { and, gte, lte, isNotNull, eq } from 'drizzle-orm';
+import { and, gte, lte, isNotNull, eq, sql } from 'drizzle-orm';
 import { safe, ok } from '@/lib/api/http';
 import { requireMembership } from '@/lib/auth/guards';
 
@@ -72,7 +72,6 @@ export const GET = safe(async (req: Request) => {
       lot: jobRequests.lot,
       poNumber: jobRequests.poNumber,
       requestedBy: jobRequests.requestedBy,
-      isExtraWork: jobRequests.isExtraWork,
       builderName: builders.name,
       communityName: communities.name,
       modelPlanName: modelPlans.name,
@@ -132,7 +131,6 @@ export const GET = safe(async (req: Request) => {
     lot: string | null;
     poNumber: string | null;
     requestedBy: string | null;
-    isExtraWork: boolean | null;
     builderName: string | null;
     communityName: string | null;
     modelPlanName: string | null;
@@ -148,7 +146,6 @@ export const GET = safe(async (req: Request) => {
         lot: row.lot,
         poNumber: row.poNumber,
         requestedBy: row.requestedBy,
-        isExtraWork: row.isExtraWork,
         builderName: row.builderName,
         communityName: row.communityName,
         modelPlanName: row.modelPlanName,
@@ -194,7 +191,7 @@ export const GET = safe(async (req: Request) => {
         walkTime: null,
         requestedBy: req.requestedBy,
         assignedForemanName: null,
-        isExtraWork: req.isExtraWork,
+        isExtraWork: false, // Default to false
       }];
     }
 
@@ -216,7 +213,7 @@ export const GET = safe(async (req: Request) => {
       walkTime: service.walkTime,
       requestedBy: req.requestedBy,
       assignedForemanName: service.assignedForemanName,
-      isExtraWork: req.isExtraWork,
+      isExtraWork: false, // Default to false
     }));
   });
 
