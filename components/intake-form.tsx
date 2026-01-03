@@ -251,7 +251,7 @@ export function IntakeForm() {
   const communityOptions = useMemo(() => {
     return (communities ?? []).map((community) => ({
       value: community.id,
-      label: getFriendlyName(community.name),
+      label: `${getFriendlyName(community.name)} (${builderMap.get(community.builderId ?? '') ?? 'Unknown'})`,
       description: builderMap.get(community.builderId ?? '') ?? undefined,
     }));
   }, [communities, builderMap]);
