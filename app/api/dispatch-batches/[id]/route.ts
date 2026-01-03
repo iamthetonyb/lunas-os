@@ -1,7 +1,7 @@
 import { getDb } from '@/lib/db/get-db';
 import { json } from '@/lib/utils/json';
 import { dispatchBatches } from '@/db/schema/dispatch_batches';
-import { assignments } from '@/db/schema/assignments';
+import { assignments, blueBookEntries } from '@/db/schema/assignments';
 import { jobRequestServices } from '@/db/schema/job_request_services';
 import { jobRequests } from '@/db/schema/job_requests';
 import { communities } from '@/db/schema/communities';
@@ -9,7 +9,7 @@ import { builders } from '@/db/schema/builders';
 import { services } from '@/db/schema/services';
 import { crews } from '@/db/schema/crews';
 import { users } from '@/db/schema/users';
-import { eq } from 'drizzle-orm';
+import { eq, inArray } from 'drizzle-orm';
 
 export const runtime = 'nodejs';
 export const preferredRegion = 'auto';
