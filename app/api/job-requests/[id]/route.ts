@@ -1,9 +1,9 @@
 import { z } from 'zod';
 import { getDb } from '@/lib/db/get-db';
-import { jobRequests, jobRequestServices } from '@/db/schema';
+import { jobRequests, jobRequestServices, assignments } from '@/db/schema';
 import { ok, err, safe } from '@/lib/api/http';
 import { requireMembership } from '@/lib/auth/guards';
-import { eq } from 'drizzle-orm';
+import { eq, inArray } from 'drizzle-orm';
 
 export const runtime = 'nodejs';
 
@@ -88,44 +88,58 @@ export const PUT = safe(async (req, { params: paramsPromise }: { params: Promise
     return request;
   });
 
-    return ok(result);
+  return ok(result);
 
-  });
+});
 
-  
 
-  export const DELETE = safe(async (req, { params: paramsPromise }: { params: Promise<{ id: string }> }) => {
 
-    await requireMembership(['admin', 'backoffice']);
+export const DELETE = safe(async (req, { params: paramsPromise }: { params: Promise<{ id: string }> }) => {
 
-    const db = await getDb();
+  await requireMembership(['admin', 'backoffice']);
 
-  
-    const params = await paramsPromise;
-    const paramsParsed = paramsSchema.safeParse(params);
+  const db = await getDb();
 
-    if (!paramsParsed.success) {
 
-      return err('Invalid job request ID', 400);
+  const params = await paramsPromise;
+  const paramsParsed = paramsSchema.safeParse(params);
 
+  if (!paramsParsed.success) {
+
+    return err('Invalid job request ID', 400);
+
+  }
+
+  const { id: jobRequestId } = paramsParsed.data;
+
+
+
+  await db.transaction(async (tx) => {
+
+    // 1. Find all services for this job request
+    const services = await tx
+      .select({ id: jobRequestServices.id })
+      .from(jobRequestServices)
+      .where(eq(jobRequestServices.jobRequestId, jobRequestId));
+
+    const serviceIds = services.map(s => s.id);
+
+    // 2. Delete assignments linked to these services
+    if (serviceIds.length > 0) {
+      await tx.delete(assignments).where(inArray(assignments.jobRequestServiceId, serviceIds));
     }
 
-    const { id: jobRequestId } = paramsParsed.data;
+    // 3. Delete services
+    await tx.delete(jobRequestServices).where(eq(jobRequestServices.jobRequestId, jobRequestId));
 
-  
-
-    await db.transaction(async (tx) => {
-
-      await tx.delete(jobRequestServices).where(eq(jobRequestServices.jobRequestId, jobRequestId));
-
-      await tx.delete(jobRequests).where(eq(jobRequests.id, jobRequestId));
-
-    });
-
-  
-
-    return new Response(null, { status: 204 });
+    // 4. Delete job request
+    await tx.delete(jobRequests).where(eq(jobRequests.id, jobRequestId));
 
   });
 
-  
+
+
+  return new Response(null, { status: 204 });
+
+});
+

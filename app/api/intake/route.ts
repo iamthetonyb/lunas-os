@@ -140,7 +140,13 @@ export const POST = safe(async (req, context) => {
           }
         }
 
-        const services = await tx.insert(jobRequestServices).values(
+        if (!request || !request.id) {
+          throw new Error('Failed to create job request record');
+        }
+
+        console.log(`[intake] Inserted job request ${request.id}, now adding ${serviceIds.length} services...`);
+
+        const insertedServices = await tx.insert(jobRequestServices).values(
           serviceIds.map((serviceId) => ({
             jobRequestId: request.id,
             serviceId,
@@ -149,9 +155,11 @@ export const POST = safe(async (req, context) => {
           }))
         ).returning();
 
+        console.log(`[intake] Successfully added ${insertedServices.length} services.`);
+
         // Create Assignments for each service if we have a crew
         if (crewId) {
-          for (const svc of services) {
+          for (const svc of insertedServices) {
             await tx.insert(assignments).values({
               jobRequestServiceId: svc.id,
               crewId: crewId!,
