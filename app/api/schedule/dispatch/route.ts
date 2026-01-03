@@ -143,6 +143,11 @@ export async function POST(request: NextRequest) {
                 .where(eq(blueBookEntries.id, jobId));
         }
 
+        // CRITICAL FIX: Update assignment status explicitly
+        await db.update(assignments)
+            .set({ status: 'DISPATCHED' })
+            .where(eq(assignments.id, assignment.id));
+
         // Update blue book entry status if applicable
         try {
             await db
@@ -157,7 +162,16 @@ export async function POST(request: NextRequest) {
         }
 
         // Publish realtime event
-        await publishOrgEvent(membership.orgId, 'dispatch.updated', { batchId });
+        // await publishOrgEvent(membership.orgId, 'dispatch.updated', { batchId });
+
+        // Critical Fix: Publish to specific 'schedule' channel
+        const rest = await import('@/lib/ably').then(m => m.getAblyRest());
+        if (rest) {
+            await rest.channels.get('schedule').publish('update', {
+                id: jobId,
+                status: 'DISPATCHED'
+            });
+        }
 
         return json({
             ok: true,

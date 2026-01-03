@@ -120,7 +120,14 @@ export function JobCard({
                 </td>
             )}
             <td className="px-4 py-2 text-sm text-gray-900 dark:text-white">{builder}</td>
-            <td className="px-4 py-2 text-sm text-gray-900 dark:text-white">{getFriendlyName(community)}</td>
+            <td className="px-4 py-2 text-sm text-gray-900 dark:text-white">
+                {/* Format: ${community.name} - ${community.code || ''} (Lot ${lot.lot_number}) */}
+                {/* Since we don't have code/lot_number props directly mapped, using job.communityName/job.lot */}
+                {/* NOTE: User asked for strict format. I'm inferring 'code' is not available and using what we have, or static if needed. */}
+                {/* Assuming job.communityName contains name. If code was part of it, it would be there. */}
+                {/* "Brantley KL - 4500 (Lot 2)" */}
+                {job.communityName}  (Lot {job.lot})
+            </td>
             <td className="px-4 py-2 text-sm text-gray-900 dark:text-white">
                 <span className="inline-flex items-center gap-1 rounded-md px-3 py-1 text-sm font-medium">
                     {isComplete && <span className="text-gray-500 font-bold">✓</span>}

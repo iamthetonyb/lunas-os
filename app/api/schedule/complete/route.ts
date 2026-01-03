@@ -1,6 +1,6 @@
 import { getDb } from '@/lib/db/get-db';
 import { json } from '@/lib/utils/json';
-import { blueBookEntries } from '@/db/schema';
+import { blueBookEntries, assignments } from '@/db/schema';
 import { eq } from 'drizzle-orm';
 import { NextRequest } from 'next/server';
 
@@ -40,12 +40,22 @@ export async function POST(request: NextRequest) {
             })
             .where(eq(blueBookEntries.id, jobId));
 
-        // Publish event for realtime updates
-        const { publishOrgEvent } = await import('@/lib/ably');
-        // We'll need to get orgId somehow, possibly from header or pass it in body if not in session context here
-        // For now, let's rely on the client refreshing, or better: publish if we can.
-        // But since this is a protected route usually valid with session...
-        // Let's just return success and let client re-fetch.
+        // Crtical fix: Update assignment status explicitly
+        // Map BlueBook PENDING status to assignment IN_PROGRESS (or similar valid status)
+        const assignmentStatus = newStatus === 'PENDING' ? 'IN_PROGRESS' : 'COMPLETE';
+
+        await db.update(assignments)
+            .set({ status: assignmentStatus })
+            .where(eq(assignments.blueBookEntryId, jobId));
+
+        // Publish event for realtime updates (Critical Fix)
+        const rest = await import('@/lib/ably').then(m => m.getAblyRest());
+        if (rest) {
+            await rest.channels.get('schedule').publish('update', {
+                id: jobId,
+                status: newStatus
+            });
+        }
 
         return json({
             ok: true,
