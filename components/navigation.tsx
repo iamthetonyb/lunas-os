@@ -10,7 +10,7 @@ import { useEffect, useState } from 'react';
 const baseNavigation = [
   { name: 'Dashboard', href: '/dashboard', icon: '📊' },
   { name: 'Intake', href: '/intake', icon: '📝' },
-  { name: 'Extra Work', href: '/work-log', icon: '🧾' },
+  { name: 'Extra Work', href: '/extra-work', icon: '🧾' },
   { name: 'Schedule', href: '/schedule', icon: '📅' },
   { name: 'Dispatch', href: '/dispatch', icon: '🚚' },
   { name: 'Blue Book', href: '/blue-book', icon: '📘' },

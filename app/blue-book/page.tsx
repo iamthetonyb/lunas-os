@@ -1171,8 +1171,8 @@ export default function BlueBookPage() {
         <div className="mb-6 flex flex-wrap items-center gap-3">
           <button
             className={`rounded-full border px-4 py-2 text-sm transition ${activeBuilderId === 'all'
-                ? 'border-blue-500 bg-blue-500 text-white'
-                : 'border-gray-300 bg-white text-gray-700 hover:border-blue-400'
+              ? 'border-blue-500 bg-blue-500 text-white'
+              : 'border-gray-300 bg-white text-gray-700 hover:border-blue-400'
               }`}
             onClick={() => setActiveBuilderId('all')}
           >
@@ -1186,8 +1186,8 @@ export default function BlueBookPage() {
               <button
                 key={builder.id}
                 className={`rounded-full border px-4 py-2 text-sm transition ${isActive
-                    ? 'border-blue-500 bg-blue-500 text-white'
-                    : 'border-gray-300 bg-white text-gray-700 hover:border-blue-400'
+                  ? 'border-blue-500 bg-blue-500 text-white'
+                  : 'border-gray-300 bg-white text-gray-700 hover:border-blue-400'
                   }`}
                 onClick={() => setActiveBuilderId(builder.id)}
               >
@@ -1575,8 +1575,8 @@ export default function BlueBookPage() {
                                             <div className="flex items-center gap-2">
                                               <span
                                                 className={`inline-flex rounded-full px-2 py-1 text-xs font-semibold ${entry.status === 'COMPLETE'
-                                                    ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
-                                                    : 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200'
+                                                  ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
+                                                  : 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200'
                                                   }`}
                                               >
                                                 {entry.status}
@@ -1749,7 +1749,7 @@ export default function BlueBookPage() {
               </div>
               {formError && <p className="text-sm text-red-600">{formError}</p>}
               <div className="flex justify-between gap-3">
-                {editingEntry?.source === 'manual' && (
+                {editingEntry?.source !== 'scraped' && (
                   <button
                     type="button"
                     className="rounded-lg border border-red-300 bg-red-50 px-4 py-2 text-sm font-semibold text-red-600 hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-50"

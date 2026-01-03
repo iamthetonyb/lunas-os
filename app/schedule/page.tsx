@@ -12,6 +12,7 @@ import { Dialog, Transition } from '@headlessui/react';
 import { ConfirmationModal } from '@/components/ui/confirmation-modal';
 import { useOrgRealtime } from '@/lib/realtime/use-org-realtime';
 import { toast } from 'sonner';
+import { JobCard } from '@/components/schedule/job-card';
 
 const fetcher = <T,>(url: string) => fetchJSON<T>(url);
 
@@ -387,7 +388,10 @@ export default function SchedulePage() {
     return Object.entries(grouped).sort(([a], [b]) => a.localeCompare(b));
   }, [visibleJobs]);
 
-  const openDispatchModal = (job: DecoratedJob) => {
+  const [dispatchSuccessCallback, setDispatchSuccessCallback] = useState<(() => void) | null>(null);
+
+  const openDispatchModal = (job: DecoratedJob, onSuccess?: () => void) => {
+    setDispatchSuccessCallback(() => onSuccess);
     setDispatchModal({
       isOpen: true,
       job,
@@ -398,6 +402,7 @@ export default function SchedulePage() {
 
   const closeDispatchModal = () => {
     setDispatchModal({ isOpen: false, job: null, selectedForeman: '', selectedCrew: '' });
+    setDispatchSuccessCallback(null);
   };
 
   const handleDispatch = async () => {
@@ -420,6 +425,12 @@ export default function SchedulePage() {
       });
       mutateAssignments();
       toast.success(`Job dispatched to ${dispatchModal.selectedCrew}!`);
+
+      // Trigger optimistic update callback if present
+      if (dispatchSuccessCallback) {
+        dispatchSuccessCallback();
+      }
+
       closeDispatchModal();
     } catch (error) {
       console.error('Failed to dispatch job', error);
@@ -612,179 +623,20 @@ export default function SchedulePage() {
                   </tr>
                 </thead>
                 <tbody className="bg-white dark:bg-slate-900 divide-y divide-gray-200 dark:divide-slate-700">
-                  {visibleJobs.map((job) => {
-                    const foreman = job.foremanName || 'Unassigned Foreman';
-                    const builder = job.builderName || '—';
-                    const community = job.communityName || '—';
-                    const serviceLabel = job.serviceDisplay || '—';
-
-                    const serviceLower = serviceLabel.toLowerCase();
-                    const isExtraService = serviceLower.includes('extra');
-                    const isSweepService = serviceLower.includes('sweep');
-                    const isPowerWashService = serviceLower.includes('power wash');
-
-                    const formatTime = (timeStr: string | null) => {
-                      if (!timeStr) return null;
-                      // Expecting "HH:mm" or "HH:mm:ss"
-                      // We want "H:mm" (e.g. "9:00", "10:00")
-                      // If it is 24 hour: "14:00" -> "14:00" (User didn't specify AM/PM preference, just "top of hour")
-                      // But usually user wants "9:00" not "09:00"
-                      const [h, m] = timeStr.split(':');
-                      if (!h) return timeStr;
-                      return `${parseInt(h, 10)}:${m || '00'}`;
-                    };
-
-                    const rawWalkTime = (job as { walkTime?: string | null; walk_time?: string | null })
-                      .walkTime ?? (job as { walk_time?: string | null }).walk_time ?? null;
-                    const walkTime = formatTime(rawWalkTime);
-                    // Date display fix: Use manual slice to avoid timezone shift
-                    const formatDisplayDate = (dateStr: string | null) => {
-                      if (!dateStr) return null;
-                      // dateStr is likely "YYYY-MM-DD"
-                      const [year, month, day] = dateStr.split('-');
-                      if (!year || !month || !day) return dateStr;
-                      return `${month}/${day}/${year}`;
-                    };
-
-                    const rescheduledDate = rescheduledJobs.get(job.id);
-                    const originalDate = job.originalStartDate;
-
-                    const notesParts = [
-                      job.lot ? `Lot ${job.lot}` : null,
-                      walkTime ? `Walk ${walkTime}` : null,
-                      originalDate && originalDate !== job.startDate ? `Original Date: ${formatDisplayDate(originalDate)}` : null,
-                      rescheduledDate ? `Rescheduled to ${formatDisplayDate(rescheduledDate)}` : null,
-                    ].filter(Boolean);
-                    const notes = notesParts.join(' • ') || '—';
-
-                    const startDateStamp = job.startDate
-                      ? formatDisplayDate(job.startDate)
-                      : null;
-
-
-                    // Case-insensitive status checks
-
-
-                    const statusUpper = (job.status || '').toUpperCase();
-                    const isRescheduled = rescheduledJobs.has(job.id);
-                    const isComplete = statusUpper === 'COMPLETE';
-                    const isDispatched = statusUpper === 'SENT' || statusUpper === 'DISPATCHED';
-                    const isExtraWork = job.isExtraWork === true;
-
-                    // DEBUG LOGGING REQUESTED BY USER
-                    console.log(`[JobCard] ID: ${job.id}, Status: ${job.status}, Dispatched: ${isDispatched}, Complete: ${isComplete}`);
-
-                    const rowColor = getServiceRowColor(serviceLabel, isDispatched, isRescheduled, isComplete, isExtraWork);
-
-                    return (
-                      <tr key={job.id} className={rowColor}>
-                        {!isContractor && (
-                          <td className="px-4 py-2 text-sm text-gray-900 dark:text-gray-300">
-                            {!isContractor && !job.id.includes('-') ? (
-                              <select
-                                className="block w-full rounded-md border-0 py-1.5 pl-3 pr-10 text-gray-900 ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-blue-600 sm:text-sm sm:leading-6 dark:bg-slate-700 dark:text-white dark:ring-slate-600"
-                                value={selectedForemenMap.get(job.id) || ''}
-                                onChange={(e) => handleForemanChange(job.id, e.target.value)}
-                              >
-                                <option value="">Select Foreman...</option>
-                                {FOREMEN_DIRECTORY.map((f) => (
-                                  <option key={f.id} value={f.name}>{f.name}</option>
-                                ))}
-                              </select>
-                            ) : (
-                              <span className="font-medium text-gray-900 dark:text-white">
-                                {selectedForemenMap.get(job.jobRequestServiceId || job.id) || 'Not assigned'}
-                              </span>
-                            )}
-                          </td>
-                        )}
-                        <td className="px-4 py-2 text-sm text-gray-900 dark:text-white">{builder}</td>
-                        <td className="px-4 py-2 text-sm text-gray-900 dark:text-white">{getFriendlyName(community)}</td>
-                        <td className="px-4 py-2 text-sm text-gray-900 dark:text-white">
-                          <span className="inline-flex items-center gap-1 rounded-md px-3 py-1 text-sm font-medium">
-                            {isComplete && <span className="text-gray-500 font-bold">✓</span>}
-                            {isExtraWork && <span className="text-red-600" title="Extra Work / Duplicate">⚠️</span>}
-                            {serviceLabel}
-                          </span>
-                        </td>
-                        <td className="px-4 py-2 text-sm text-gray-900 dark:text-gray-300">
-                          <div className="flex flex-col gap-1">
-                            {startDateStamp && (
-                              <span className="inline-flex items-center self-start rounded-md bg-gray-100 dark:bg-slate-700 px-2 py-0.5 text-xs text-gray-600 dark:text-gray-300">
-                                {startDateStamp}
-                              </span>
-                            )}
-                            <div className="space-y-0.5">
-                              <p>{job.lot ? `Lot ${job.lot}` : null}</p>
-                              {walkTime && <p className="text-xs opacity-75">Walk: {walkTime}</p>}
-                              {originalDate && originalDate !== job.startDate && (
-                                <p className="text-xs text-blue-600 dark:text-blue-400 font-medium">
-                                  Original: {formatDisplayDate(originalDate)}
-                                </p>
-                              )}
-                              {rescheduledDate && (
-                                <p className="text-xs text-purple-600 dark:text-purple-400 font-medium">
-                                  Resched: {formatDisplayDate(rescheduledDate)}
-                                </p>
-                              )}
-                            </div>
-                          </div>
-                        </td>
-                        <td className="px-4 py-2 text-sm text-gray-900 dark:text-white">
-                          <div className="flex gap-2">
-                            {!isContractor ? (
-                              /* Admin view: Dispatch button - green if dispatched, blue if pending */
-                              job.status === 'SENT' || job.status === 'DISPATCHED' ? (
-                                <button
-                                  onClick={() => openDispatchModal(job)}
-                                  className="px-3 py-1 bg-green-500 text-white text-xs rounded hover:bg-green-600 font-medium"
-                                >
-                                  Re-Dispatch
-                                </button>
-                              ) : (
-                                <button
-                                  onClick={() => openDispatchModal(job)}
-                                  className="px-3 py-1 bg-blue-500 text-white text-xs rounded hover:bg-blue-600"
-                                >
-                                  Dispatch to
-                                </button>
-                              )
-                            ) : (
-                              /* Contractor view: Clear Completed box with Undo */
-                              isComplete ? (
-                                <div className="flex items-center gap-2 bg-green-100 dark:bg-green-900/30 px-3 py-1 rounded border border-green-300 dark:border-green-700">
-                                  <span className="text-green-700 dark:text-green-300 text-xs font-bold">Completed</span>
-                                  <button
-                                    onClick={() => handleMarkComplete(job.id, job.status || 'COMPLETE')}
-                                    className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
-                                    title="Undo completion"
-                                  >
-                                    ↩
-                                  </button>
-                                </div>
-                              ) : (
-                                <button
-                                  onClick={() => handleMarkComplete(job.id, job.status || 'PENDING')}
-                                  className="px-3 py-1 bg-green-500 text-white text-xs rounded hover:bg-green-600"
-                                  title="Mark job complete"
-                                >
-                                  ✓ Mark Done
-                                </button>
-                              )
-                            )}
-
-                            {/* Reschedule button - visible to everyone */}
-                            <button
-                              onClick={() => openRescheduleModal(job)}
-                              className="px-3 py-1 bg-purple-500 text-white text-xs rounded hover:bg-purple-600"
-                            >
-                              Reschedule
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })}
+                  {visibleJobs.map((job) => (
+                    <JobCard
+                      key={job.id}
+                      job={job}
+                      isContractor={isContractor}
+                      rescheduledDate={rescheduledJobs.get(job.id)}
+                      selectedForemanName={selectedForemenMap.get(job.id)}
+                      foremenDirectory={FOREMEN_DIRECTORY}
+                      onForemanChange={handleForemanChange}
+                      onDispatch={openDispatchModal}
+                      onMarkComplete={handleMarkComplete}
+                      onReschedule={openRescheduleModal}
+                    />
+                  ))}
                 </tbody>
               </table>
             </div>
