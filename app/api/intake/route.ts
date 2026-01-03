@@ -53,87 +53,121 @@ export const POST = safe(async (req, context) => {
 
   const dueDateISO = dueDate.toISOString().split('T')[0];
 
-  const result = await db.transaction(async (tx) => {
-    // Check for duplicate: same community + lot
-    const existingJob = await tx.query.jobRequests.findFirst({
-      where: and(
-        eq(jobRequests.communityId, rest.communityId),
-        eq(jobRequests.lot, rest.lot)
-      ),
-    });
+  let result;
+  try {
+    result = await db.transaction(async (tx) => {
+      // Check for duplicate: same community + lot (only if isExtraWork column exists)
+      let isExtraWork = false;
+      try {
+        const existingJob = await tx.query.jobRequests.findFirst({
+          where: and(
+            eq(jobRequests.communityId, rest.communityId),
+            eq(jobRequests.lot, rest.lot)
+          ),
+        });
+        isExtraWork = !!existingJob;
+      } catch {
+        // Column may not exist yet, ignore
+      }
 
-    const isExtraWork = !!existingJob;
+      // Try to insert with isExtraWork first, fallback without it
+      let request;
+      try {
+        [request] = await tx
+          .insert(jobRequests)
+          .values({
+            builderId: rest.builderId,
+            communityId: rest.communityId,
+            modelPlanId: rest.modelPlanId ?? null,
+            lot: rest.lot,
+            address: rest.address ?? null,
+            dueDate: dueDateISO,
+            requestedBy: requestedBy ?? null,
+            notes: notes ?? null,
+            poNumber: poNumber ?? null,
+            receivedVia: receivedVia ?? 'app',
+            contactPhone: contact ?? null,
+            isExtraWork,
+            createdById: membership.userId,
+          })
+          .returning();
+      } catch (insertError) {
+        // If isExtraWork column doesn't exist, retry without it
+        console.log('[intake] Retrying insert without isExtraWork column');
+        [request] = await tx
+          .insert(jobRequests)
+          .values({
+            builderId: rest.builderId,
+            communityId: rest.communityId,
+            modelPlanId: rest.modelPlanId ?? null,
+            lot: rest.lot,
+            address: rest.address ?? null,
+            dueDate: dueDateISO,
+            requestedBy: requestedBy ?? null,
+            notes: notes ?? null,
+            poNumber: poNumber ?? null,
+            receivedVia: receivedVia ?? 'app',
+            contactPhone: contact ?? null,
+            createdById: membership.userId,
+          })
+          .returning();
+      }
 
-    const [request] = await tx
-      .insert(jobRequests)
-      .values({
-        builderId: rest.builderId,
-        communityId: rest.communityId,
-        modelPlanId: rest.modelPlanId ?? null,
-        lot: rest.lot,
-        address: rest.address ?? null,
-        dueDate: dueDateISO,
-        requestedBy: requestedBy ?? null,
-        notes: notes ?? null,
-        poNumber: poNumber ?? null,
-        receivedVia: receivedVia ?? 'app',
-        contactPhone: contact ?? null,
-        isExtraWork,
-        createdById: membership.userId,
-      })
-      .returning();
+      if (serviceIds.length) {
+        // Find foreman/crew if requestedBy matches a known crew lead or crew name
+        let crewId: string | null = null;
+        if (requestedBy) {
+          const foremanName = requestedBy.trim().toLowerCase();
+          // First try matching by crew name
+          const allCrews = await tx.select().from(crews);
+          let match = allCrews.find(c => c.name.toLowerCase() === foremanName);
 
-    if (serviceIds.length) {
-      // Find foreman/crew if requestedBy matches a known crew lead or crew name
-      let crewId: string | null = null;
-      if (requestedBy) {
-        const foremanName = requestedBy.trim().toLowerCase();
-        // First try matching by crew name
-        const allCrews = await tx.select().from(crews);
-        let match = allCrews.find(c => c.name.toLowerCase() === foremanName);
-
-        // If no direct crew name match, try matching by foreman user name
-        if (!match) {
-          for (const crew of allCrews) {
-            if (crew.foremanId) {
-              const foremanUser = await tx.select().from(users).where(eq(users.id, crew.foremanId));
-              if (foremanUser.length > 0 && foremanUser[0].name?.toLowerCase() === foremanName) {
-                match = crew;
-                break;
+          // If no direct crew name match, try matching by foreman user name
+          if (!match) {
+            for (const crew of allCrews) {
+              if (crew.foremanId) {
+                const foremanUser = await tx.select().from(users).where(eq(users.id, crew.foremanId));
+                if (foremanUser.length > 0 && foremanUser[0].name?.toLowerCase() === foremanName) {
+                  match = crew;
+                  break;
+                }
               }
             }
           }
+
+          if (match) {
+            crewId = match.id;
+          }
         }
 
-        if (match) {
-          crewId = match.id;
+        const services = await tx.insert(jobRequestServices).values(
+          serviceIds.map((serviceId) => ({
+            jobRequestId: request.id,
+            serviceId,
+            walkTime: walkTime ?? null,
+            assignedForemanName: crewId ? requestedBy : null, // Persist name for easy lookup
+          }))
+        ).returning();
+
+        // Create Assignments for each service if we have a crew
+        if (crewId) {
+          for (const svc of services) {
+            await tx.insert(assignments).values({
+              jobRequestServiceId: svc.id,
+              crewId: crewId!,
+              status: 'DRAFT', // Default to draft so it shows on schedule
+              scheduledStart: dueDate ? new Date(dueDateISO) : null, // Tentative start date
+            });
+          }
         }
       }
 
-      const services = await tx.insert(jobRequestServices).values(
-        serviceIds.map((serviceId) => ({
-          jobRequestId: request.id,
-          serviceId,
-          walkTime: walkTime ?? null,
-          assignedForemanName: crewId ? requestedBy : null, // Persist name for easy lookup
-        }))
-      ).returning();
-
-      // Create Assignments for each service if we have a crew
-      if (crewId) {
-        for (const svc of services) {
-          await tx.insert(assignments).values({
-            jobRequestServiceId: svc.id,
-            crewId: crewId!,
-            status: 'DRAFT', // Default to draft so it shows on schedule
-            scheduledStart: dueDate ? new Date(dueDateISO) : null, // Tentative start date
-          });
-        }
-      }
-    }
-
-    return request;
-  });
+      return request;
+    });
+  } catch (dbError) {
+    console.error('[intake] Database error:', dbError);
+    return err('Database error: ' + ((dbError as Error).message || 'Unknown error'), 500);
+  }
 
   // Broadcast update
   await publishOrgEvent(membership.orgId, 'intake.updated', { requestId: result.id });
