@@ -2,6 +2,7 @@ import { getDb } from '@/lib/db/get-db';
 import { contractRates } from '@/db/schema';
 import { json } from '@/lib/utils/json';
 import { withTimeout } from '@/lib/api-helpers';
+import { ne } from 'drizzle-orm';
 
 export const runtime = 'nodejs';
 export const preferredRegion = 'auto';
@@ -10,7 +11,10 @@ export const dynamic = 'force-dynamic';
 export async function GET() {
   try {
     const db = await getDb();
-    const rates = await db.query.contractRates.findMany();
+    // Only return active rates (soft delete filter)
+    const rates = await db.query.contractRates.findMany({
+      where: ne(contractRates.active, false),
+    });
     return json(rates ?? []);
   } catch (error) {
     console.error('Error fetching contract rates:', error);

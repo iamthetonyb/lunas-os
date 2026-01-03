@@ -27,7 +27,7 @@ async function main() {
             'communities',
             'services',
             'model_plans',
-            'rates',
+            'contract_rates',
         ];
 
         for (const table of tables) {

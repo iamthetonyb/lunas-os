@@ -18,6 +18,9 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
 export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const resolvedParams = await params;
   const { id } = resolvedParams;
-  await db.delete(modelPlans).where(eq(modelPlans.id, id));
+  // Soft delete
+  await db.update(modelPlans)
+    .set({ active: false })
+    .where(eq(modelPlans.id, id));
   return new Response(null, { status: 204 });
 }
