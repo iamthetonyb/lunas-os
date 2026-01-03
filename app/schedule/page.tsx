@@ -55,8 +55,8 @@ function getNextBusinessDay(fromDate: Date): Date {
 // Helper: Get service-based row color
 function getServiceRowColor(serviceName: string, isDispatched: boolean, isRescheduled: boolean, isComplete: boolean, isExtraWork?: boolean): string {
   if (isExtraWork) return 'bg-red-100 dark:bg-red-900/40 border-l-4 border-red-500'; // Extra work / duplicate
-  if (isComplete) return 'bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 border-l-4 border-gray-500'; // Gray/Dimmed for complete
-  if (isDispatched) return 'bg-green-50 dark:bg-green-900/20 border-l-4 border-green-500'; // Green for dispatched
+  if (isComplete) return 'bg-slate-100/50 dark:bg-slate-800/50 border-l-4 border-slate-500 opacity-75'; // Completed: Slate + Opacity
+  if (isDispatched) return 'bg-green-50 dark:bg-green-900/10 border-l-4 border-green-500'; // Dispatched: Green
   if (isRescheduled) return 'bg-purple-100 dark:bg-purple-900/20';
 
   const lower = serviceName.toLowerCase();
@@ -662,10 +662,19 @@ export default function SchedulePage() {
                       : null;
 
 
+                    // Case-insensitive status checks
+
+
+                    const statusUpper = (job.status || '').toUpperCase();
                     const isRescheduled = rescheduledJobs.has(job.id);
-                    const isComplete = job.status === 'COMPLETE';
+                    const isComplete = statusUpper === 'COMPLETE';
+                    const isDispatched = statusUpper === 'SENT' || statusUpper === 'DISPATCHED';
                     const isExtraWork = job.isExtraWork === true;
-                    const rowColor = getServiceRowColor(serviceLabel, false, isRescheduled, isComplete, isExtraWork);
+
+                    // DEBUG LOGGING REQUESTED BY USER
+                    console.log(`[JobCard] ID: ${job.id}, Status: ${job.status}, Dispatched: ${isDispatched}, Complete: ${isComplete}`);
+
+                    const rowColor = getServiceRowColor(serviceLabel, isDispatched, isRescheduled, isComplete, isExtraWork);
 
                     return (
                       <tr key={job.id} className={rowColor}>
