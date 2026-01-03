@@ -1,4 +1,4 @@
-import { pgTable, uuid, decimal, text, date } from 'drizzle-orm/pg-core';
+import { pgTable, uuid, decimal, text, date, boolean } from 'drizzle-orm/pg-core';
 import { builders } from './builders';
 import { services } from './services';
 import { modelPlans } from './model_plans';
@@ -13,4 +13,5 @@ export const contractRates = pgTable('contract_rates', {
   unitLabel: text('unit_label'),
   effectiveOn: date('effective_on'),
   expiresOn: date('expires_on'),
+  active: boolean('active').default(true),
 });

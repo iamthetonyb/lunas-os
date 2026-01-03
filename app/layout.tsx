@@ -3,10 +3,11 @@ import './globals.css';
 import { SWRProvider } from '@/components/swr-provider';
 import { ConditionalLayout } from '@/components/conditional-layout';
 import Providers from './providers';
+import { Toaster } from 'sonner';
 
-export const metadata: Metadata = { 
-  title: 'Lunas OS', 
-  description: 'Construction Cleanup Management' 
+export const metadata: Metadata = {
+  title: 'Lunas OS',
+  description: 'Construction Cleanup Management'
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
@@ -18,6 +19,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             <ConditionalLayout>{children}</ConditionalLayout>
           </SWRProvider>
         </Providers>
+        <Toaster richColors position="top-right" closeButton />
       </body>
     </html>
   );

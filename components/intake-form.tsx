@@ -6,6 +6,7 @@ import { z } from 'zod';
 import { useTranslation } from 'react-i18next';
 import useSWR, { mutate } from 'swr';
 import { useRouter } from 'next/navigation';
+import { toast } from 'sonner';
 import {
   useEffect,
   useMemo,
@@ -356,10 +357,11 @@ export function IntakeForm() {
       });
       await mutate('/api/job-requests/recent');
       await mutate('/api/schedule/blue-book');
+      toast.success('Job request created successfully!');
       router.push('/intake');
     } catch (error) {
       console.error('Error creating job request:', error);
-      alert('Error creating job request. Please try again.');
+      toast.error('Failed to create job request. Please try again.');
     }
   });
 

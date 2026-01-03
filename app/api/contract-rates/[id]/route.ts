@@ -30,7 +30,12 @@ export async function DELETE(_: NextRequest, { params }: { params: Promise<{ id:
     const resolvedParams = await params;
     const { id } = resolvedParams;
     const db = await getDb();
-    await db.delete(contractRates).where(eq(contractRates.id, id));
+
+    // Soft delete
+    await db.update(contractRates)
+      .set({ active: false })
+      .where(eq(contractRates.id, id));
+
     return json({ ok: true }, 200);
   } catch (error) {
     console.error('Error deleting contract rate:', error);

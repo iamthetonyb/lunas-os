@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import useSWR, { mutate } from 'swr';
 import { fetchJSON } from '@/lib/utils/fetch-json';
+import { toast } from 'sonner';
 
 type Builder = { id: string; name: string };
 type Community = { id: string; name: string; builderId?: string | null };
@@ -38,8 +39,9 @@ export function BuildersCrud() {
             });
             setNewBuilderName('');
             mutate('/api/builders');
+            toast.success(`Builder "${newBuilderName}" added!`);
         } catch (error) {
-            alert('Failed to add builder');
+            toast.error('Failed to add builder');
         } finally {
             setIsAddingBuilder(false);
         }
@@ -55,8 +57,9 @@ export function BuildersCrud() {
             });
             setEditingBuilderId(null);
             mutate('/api/builders');
+            toast.success('Builder updated!');
         } catch (error) {
-            alert('Failed to update builder');
+            toast.error('Failed to update builder');
         }
     };
 
@@ -66,8 +69,9 @@ export function BuildersCrud() {
             await fetchJSON(`/api/builders/${id}`, { method: 'DELETE' });
             mutate('/api/builders');
             if (selectedBuilderId === id) setSelectedBuilderId(null);
+            toast.success(`Builder "${name}" deleted!`);
         } catch (error) {
-            alert('Failed to delete builder. It may have associated data.');
+            toast.error('Failed to delete builder. It may have associated data.');
         }
     };
 
@@ -85,8 +89,9 @@ export function BuildersCrud() {
             });
             setNewCommunityName('');
             mutate('/api/communities');
+            toast.success(`Community "${newCommunityName}" added!`);
         } catch (error) {
-            alert('Failed to add community');
+            toast.error('Failed to add community');
         } finally {
             setIsAddingCommunity(false);
         }
@@ -102,8 +107,9 @@ export function BuildersCrud() {
             });
             setEditingCommunityId(null);
             mutate('/api/communities');
+            toast.success('Community updated!');
         } catch (error) {
-            alert('Failed to update community');
+            toast.error('Failed to update community');
         }
     };
 
@@ -112,8 +118,9 @@ export function BuildersCrud() {
         try {
             await fetchJSON(`/api/communities/${id}`, { method: 'DELETE' });
             mutate('/api/communities');
+            toast.success(`Community "${name}" deleted!`);
         } catch (error) {
-            alert('Failed to delete community. It may have associated jobs.');
+            toast.error('Failed to delete community. It may have associated jobs.');
         }
     };
 
@@ -154,8 +161,8 @@ export function BuildersCrud() {
                             <div
                                 key={builder.id}
                                 className={`flex items-center justify-between px-3 py-2 rounded-lg text-sm transition ${selectedBuilderId === builder.id
-                                        ? 'bg-blue-100 dark:bg-blue-900'
-                                        : 'bg-white dark:bg-slate-800 hover:bg-gray-100 dark:hover:bg-slate-700'
+                                    ? 'bg-blue-100 dark:bg-blue-900'
+                                    : 'bg-white dark:bg-slate-800 hover:bg-gray-100 dark:hover:bg-slate-700'
                                     }`}
                             >
                                 {editingBuilderId === builder.id ? (

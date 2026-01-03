@@ -39,15 +39,17 @@ export async function DELETE(req: Request, context: { params: Promise<{ id: stri
         const db = await getDb();
         const { id } = await context.params;
 
-        const [deleted] = await db.delete(builders)
+        // Soft delete: set active = false instead of hard delete
+        const [deactivated] = await db.update(builders)
+            .set({ active: false })
             .where(eq(builders.id, id))
             .returning();
 
-        if (!deleted) {
+        if (!deactivated) {
             return json({ ok: false, error: 'Builder not found' }, 404);
         }
 
-        return json({ ok: true });
+        return json({ ok: true, message: 'Builder deactivated' });
     } catch (error) {
         console.error('Error deleting builder:', error);
         return json({ ok: false, error: (error as Error).message ?? 'Failed to delete builder' }, 500);

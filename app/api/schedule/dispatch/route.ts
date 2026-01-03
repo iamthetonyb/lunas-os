@@ -18,14 +18,15 @@ export async function POST(request: NextRequest) {
     try {
         const membership = await requireMembership(['admin', 'backoffice', 'contractor']);
         const body = await request.json();
-        const { jobId, foremanName, crewName } = body;
+        const { jobId, foremanName, crewName, serviceDate } = body;
 
         if (!jobId || !foremanName || !crewName) {
             return json({ ok: false, error: 'jobId, foremanName, and crewName are required' }, 400);
         }
 
         const db = await getDb();
-        const today = new Date().toISOString().split('T')[0];
+        // Use provided serviceDate (from job's due date) or fall back to today
+        const batchServiceDate = serviceDate || new Date().toISOString().split('T')[0];
 
         // Find or create crew by name
         const existingCrews = await db.select().from(crews);
@@ -39,10 +40,10 @@ export async function POST(request: NextRequest) {
             crew = newCrew;
         }
 
-        // Check if a batch already exists for this crew/foreman today
+        // Check if a batch already exists for this crew/foreman on this service date
         const existingBatch = await db.query.dispatchBatches.findFirst({
             where: and(
-                eq(dispatchBatches.serviceDate, today),
+                eq(dispatchBatches.serviceDate, batchServiceDate),
                 eq(dispatchBatches.crewName, crewName),
                 eq(dispatchBatches.foremanName, foremanName),
                 eq(dispatchBatches.status, 'SENT')
@@ -56,7 +57,7 @@ export async function POST(request: NextRequest) {
             const [newBatch] = await db
                 .insert(dispatchBatches)
                 .values({
-                    serviceDate: today,
+                    serviceDate: batchServiceDate,
                     status: 'SENT',
                     crewName: crewName,
                     foremanName: foremanName,

@@ -2,6 +2,7 @@ import { getDb } from '@/lib/db/get-db';
 import { services } from '@/db/schema';
 import { json } from '@/lib/utils/json';
 import { withTimeout } from '@/lib/api-helpers';
+import { eq, ne } from 'drizzle-orm';
 
 export const runtime = 'nodejs';
 export const preferredRegion = 'auto';
@@ -10,8 +11,11 @@ export const dynamic = 'force-dynamic';
 export async function GET() {
   try {
     const db = await getDb();
-    const allServices = await db.query.services.findMany();
-    return json(allServices ?? []);
+    // Only return active services (soft delete filter)
+    const activeServices = await db.query.services.findMany({
+      where: ne(services.active, false),
+    });
+    return json(activeServices ?? []);
   } catch (error) {
     console.error('Error fetching services:', error);
     return json({ ok: false, error: (error as Error).message ?? 'Failed to load services' }, 500);

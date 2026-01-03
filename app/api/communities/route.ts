@@ -2,6 +2,7 @@ import { getDb } from '@/lib/db/get-db';
 import { communities } from '@/db/schema';
 import { json } from '@/lib/utils/json';
 import { requireMembership } from '@/lib/auth/guards';
+import { ne } from 'drizzle-orm';
 
 export const runtime = 'nodejs';
 export const preferredRegion = 'auto';
@@ -9,8 +10,11 @@ export const preferredRegion = 'auto';
 export async function GET() {
   try {
     const db = await getDb();
-    const allCommunities = await db.query.communities.findMany();
-    return json(allCommunities ?? []);
+    // Only return active communities (soft delete filter)
+    const activeCommunities = await db.query.communities.findMany({
+      where: ne(communities.active, false),
+    });
+    return json(activeCommunities ?? []);
   } catch (error) {
     console.error('Error fetching communities:', error);
     return json({ ok: false, error: (error as Error).message ?? 'Failed to load communities' }, 500);

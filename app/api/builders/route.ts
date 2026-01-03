@@ -2,6 +2,7 @@ import { getDb } from '@/lib/db/get-db';
 import { builders } from '@/db/schema';
 import { json } from '@/lib/utils/json';
 import { requireMembership } from '@/lib/auth/guards';
+import { eq, ne } from 'drizzle-orm';
 
 export const runtime = 'nodejs';
 export const preferredRegion = 'auto';
@@ -9,8 +10,11 @@ export const preferredRegion = 'auto';
 export async function GET() {
   try {
     const db = await getDb();
-    const allBuilders = await db.query.builders.findMany();
-    return json(allBuilders ?? []);
+    // Only return active builders (soft delete filter)
+    const activeBuilders = await db.query.builders.findMany({
+      where: ne(builders.active, false),
+    });
+    return json(activeBuilders ?? []);
   } catch (error) {
     console.error('Error fetching builders:', error);
     return json({ ok: false, error: (error as Error).message ?? 'Failed to load builders' }, 500);
