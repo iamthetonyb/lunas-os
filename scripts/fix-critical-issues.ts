@@ -84,9 +84,13 @@ async function main() {
       `);
             console.log('[migration] Reassigned blue_book_entries from Default Builder to Pulte');
 
-            // Delete Default Builder
-            await db.execute(sql`DELETE FROM builders WHERE id = ${defaultBuilderId}`);
-            console.log('[migration] ✅ Deleted Default Builder');
+            // Soft Delete Default Builder
+            await db.execute(sql`UPDATE builders SET active = false WHERE id = ${defaultBuilderId}`);
+            console.log('[migration] ✅ Soft Deleted Default Builder (active=false)');
+
+            // Soft delete any communities owned by Default Builder
+            await db.execute(sql`UPDATE communities SET active = false WHERE builder_id = ${defaultBuilderId}`);
+            console.log('[migration] ✅ Soft Deleted Default Builder communities');
         } else {
             console.log('[migration] Default Builder not found, skipping...');
         }
@@ -104,9 +108,9 @@ async function main() {
             await db.execute(sql`UPDATE job_requests SET community_id = NULL WHERE community_id = ${sunsetHillsId}`);
             await db.execute(sql`UPDATE blue_book_entries SET community_id = NULL WHERE community_id = ${sunsetHillsId}`);
 
-            // Delete community
-            await db.execute(sql`DELETE FROM communities WHERE id = ${sunsetHillsId}`);
-            console.log('[migration] ✅ Deleted Sunset Hills community');
+            // Soft Delete community
+            await db.execute(sql`UPDATE communities SET active = false WHERE id = ${sunsetHillsId}`);
+            console.log('[migration] ✅ Soft Deleted Sunset Hills community');
         } else {
             console.log('[migration] Sunset Hills not found, skipping...');
         }

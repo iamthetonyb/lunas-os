@@ -156,8 +156,10 @@ export default function DispatchPage() {
                 <tbody className="bg-white dark:bg-slate-800 divide-y divide-gray-200 dark:divide-gray-700">
                   {displayBatches.map((batch) => {
                     // Use a more robust date parsing to avoid timezone shifts
-                    const d = batch.serviceDate ? new Date(batch.serviceDate + 'T12:00:00') : null;
-                    const dateStr = d ? d.toLocaleDateString() : '—';
+                    // Manual parsing to ensure MM/DD/YYYY without timezone shift
+                    const dateStr = batch.serviceDate
+                      ? new Date(batch.serviceDate).toLocaleDateString('en-US', { timeZone: 'UTC', year: 'numeric', month: '2-digit', day: '2-digit' })
+                      : '—';
                     const status = batch.status ?? 'PENDING';
 
                     return (
