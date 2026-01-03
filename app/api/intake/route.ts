@@ -1,11 +1,11 @@
 import { z } from 'zod';
 import { getDb } from '@/lib/db/get-db';
-import { jobRequests, jobRequestServices, users } from '@/db/schema';
+import { jobRequests, jobRequestServices, users, services } from '@/db/schema';
 import { ok, err, safe } from '@/lib/api/http';
 import { requireMembership } from '@/lib/auth/guards';
 import { publishOrgEvent } from '@/lib/ably';
 import { assignments, crews } from '@/db/schema';
-import { eq, and } from 'drizzle-orm';
+import { eq, and, inArray } from 'drizzle-orm';
 
 
 export const runtime = 'nodejs';
@@ -56,6 +56,10 @@ export const POST = safe(async (req, context) => {
   let result;
   try {
     result = await db.transaction(async (tx) => {
+
+
+      // ...
+
       // Check for duplicate: same community + lot (only if isExtraWork column exists)
       let isExtraWork = false;
       try {
@@ -68,6 +72,23 @@ export const POST = safe(async (req, context) => {
         isExtraWork = !!existingJob;
       } catch {
         // Column may not exist yet, ignore
+      }
+
+      // Also check if any selected service is distinctively "Extra"
+      if (serviceIds.length > 0) {
+        try {
+          const selectedServices = await tx
+            .select({ name: services.name })
+            .from(services)
+            .where(inArray(services.id, serviceIds));
+
+          const hasExtraService = selectedServices.some(s => s.name.toLowerCase().includes('extra'));
+          if (hasExtraService) {
+            isExtraWork = true;
+          }
+        } catch (err) {
+          console.error('[intake] Failed to check for extra services:', err);
+        }
       }
 
       // Try to insert with isExtraWork first, fallback without it
