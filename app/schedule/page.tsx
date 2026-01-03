@@ -55,12 +55,14 @@ function getNextBusinessDay(fromDate: Date): Date {
 // Helper: Get service-based row color
 function getServiceRowColor(serviceName: string, isDispatched: boolean, isRescheduled: boolean, isComplete: boolean, isExtraWork?: boolean): string {
   if (isExtraWork) return 'bg-red-100 dark:bg-red-900/40 border-l-4 border-red-500'; // Extra work / duplicate
-  if (isComplete) return 'bg-yellow-100 dark:bg-yellow-900/40 border-l-4 border-yellow-500'; // Highlight completed jobs
+  if (isComplete) return 'bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 border-l-4 border-gray-500'; // Gray/Dimmed for complete
+  if (isDispatched) return 'bg-green-50 dark:bg-green-900/20 border-l-4 border-green-500'; // Green for dispatched
   if (isRescheduled) return 'bg-purple-100 dark:bg-purple-900/20';
+
   const lower = serviceName.toLowerCase();
-  if (lower.includes('tub') || lower.includes('window')) return 'bg-green-100 dark:bg-green-900/20';
-  if (lower.includes('sweep')) return isDispatched ? 'bg-orange-100 dark:bg-orange-900/40' : 'bg-orange-50 dark:bg-orange-900/20';
-  if (lower.includes('power wash') || lower.includes('wash')) return 'bg-blue-100 dark:bg-blue-900/20';
+  if (lower.includes('tub') || lower.includes('window')) return 'bg-green-50 dark:bg-green-900/10'; // Lighter green for specific services if not dispatched
+  if (lower.includes('sweep')) return 'bg-orange-50 dark:bg-orange-900/20';
+  if (lower.includes('power wash') || lower.includes('wash')) return 'bg-blue-50 dark:bg-blue-900/10';
   return 'bg-white dark:bg-slate-800';
 }
 
@@ -691,6 +693,7 @@ export default function SchedulePage() {
                         <td className="px-4 py-2 text-sm text-gray-900 dark:text-white">{getFriendlyName(community)}</td>
                         <td className="px-4 py-2 text-sm text-gray-900 dark:text-white">
                           <span className="inline-flex items-center gap-1 rounded-md px-3 py-1 text-sm font-medium">
+                            {isComplete && <span className="text-gray-500 font-bold">✓</span>}
                             {isExtraWork && <span className="text-red-600" title="Extra Work / Duplicate">⚠️</span>}
                             {serviceLabel}
                           </span>
@@ -741,7 +744,7 @@ export default function SchedulePage() {
                               /* Contractor view: Clear Completed box with Undo */
                               isComplete ? (
                                 <div className="flex items-center gap-2 bg-green-100 dark:bg-green-900/30 px-3 py-1 rounded border border-green-300 dark:border-green-700">
-                                  <span className="text-green-700 dark:text-green-300 text-xs font-semibold">✓ Completed</span>
+                                  <span className="text-green-700 dark:text-green-300 text-xs font-bold">Completed</span>
                                   <button
                                     onClick={() => handleMarkComplete(job.id, job.status || 'COMPLETE')}
                                     className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
