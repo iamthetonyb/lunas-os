@@ -1,4 +1,4 @@
-import { pgTable, text, uuid, json, unique } from 'drizzle-orm/pg-core';
+import { pgTable, text, uuid, json, unique, boolean } from 'drizzle-orm/pg-core';
 import { builders } from './builders';
 
 export const modelPlans = pgTable('model_plans', {
@@ -8,6 +8,7 @@ export const modelPlans = pgTable('model_plans', {
   name: text('name').notNull(),
   sqft: text('sqft'),
   defaults: json('defaults'),
+  active: boolean('active').default(true),
 }, (table) => {
   return {
     builderIdCodeUnique: unique('builder_id_code_unique').on(table.builderId, table.code),

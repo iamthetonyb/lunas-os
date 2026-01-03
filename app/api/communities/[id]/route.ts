@@ -39,15 +39,17 @@ export async function DELETE(req: Request, context: { params: Promise<{ id: stri
         const db = await getDb();
         const { id } = await context.params;
 
-        const [deleted] = await db.delete(communities)
+        // Soft delete: set active = false instead of hard delete
+        const [deactivated] = await db.update(communities)
+            .set({ active: false })
             .where(eq(communities.id, id))
             .returning();
 
-        if (!deleted) {
+        if (!deactivated) {
             return json({ ok: false, error: 'Community not found' }, 404);
         }
 
-        return json({ ok: true });
+        return json({ ok: true, message: 'Community deactivated' });
     } catch (error) {
         console.error('Error deleting community:', error);
         return json({ ok: false, error: (error as Error).message ?? 'Failed to delete community' }, 500);

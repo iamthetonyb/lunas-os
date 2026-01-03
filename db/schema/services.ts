@@ -1,4 +1,4 @@
-import { pgTable, text, uuid, pgEnum } from 'drizzle-orm/pg-core';
+import { pgTable, text, uuid, pgEnum, boolean } from 'drizzle-orm/pg-core';
 
 export const unitKindEnum = pgEnum('unit_kind', ['PER_JOB', 'PER_SQFT', 'PER_UNIT']);
 
@@ -8,4 +8,5 @@ export const services = pgTable('services', {
   name: text('name').notNull(),
   category: text('category'),
   unitKind: unitKindEnum('unit_kind'),
+  active: boolean('active').default(true),
 });

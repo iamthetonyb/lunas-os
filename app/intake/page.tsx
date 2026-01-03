@@ -9,6 +9,7 @@ import { Dialog, Transition } from '@headlessui/react';
 import { EditIntakeModal } from '@/components/edit-intake-modal';
 import { useSession } from 'next-auth/react';
 import { useOrgRealtime } from '@/lib/realtime/use-org-realtime';
+import { toast } from 'sonner';
 
 // Helper: Parse ISO date string as local date (avoids UTC midnight -> previous day issue)
 const formatDateLocal = (dateStr: string | null | undefined): string => {
@@ -324,10 +325,11 @@ export default function IntakePage() {
       console.log('[intake] Successfully deleted:', intakeId);
       await mutate('/api/job-requests/recent');
       setDetailModalOpen(false); // Close modal if open
+      toast.success('Intake deleted successfully!');
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown error';
       console.error('[intake] Failed to delete:', intakeId, message);
-      alert(`Failed to delete intake: ${message}`);
+      toast.error(`Failed to delete intake: ${message}`);
     }
   }
 

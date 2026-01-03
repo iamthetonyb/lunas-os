@@ -11,6 +11,7 @@ import { getFriendlyName } from '@/lib/utils/community-display';
 import { Dialog, Transition } from '@headlessui/react';
 import { ConfirmationModal } from '@/components/ui/confirmation-modal';
 import { useOrgRealtime } from '@/lib/realtime/use-org-realtime';
+import { toast } from 'sonner';
 
 const fetcher = <T,>(url: string) => fetchJSON<T>(url);
 
@@ -416,10 +417,11 @@ export default function SchedulePage() {
         }),
       });
       mutateAssignments();
+      toast.success(`Job dispatched to ${dispatchModal.selectedCrew}!`);
       closeDispatchModal();
     } catch (error) {
       console.error('Failed to dispatch job', error);
-      alert('Failed to dispatch job. Please try again.');
+      toast.error('Failed to dispatch job. Please try again.');
     }
   };
 
