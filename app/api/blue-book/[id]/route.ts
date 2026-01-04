@@ -110,16 +110,25 @@ export async function DELETE(req: Request, { params: paramsPromise }: { params: 
       return json({ ok: false, error: 'Entry not found' }, 404);
     }
 
-    if (existing[0].source?.toUpperCase() !== 'MANUAL') {
+    const isManual = !existing[0].source || existing[0].source.toUpperCase() === 'MANUAL';
+    if (!isManual) {
       return json({ ok: false, error: 'Only manually created entries can be deleted' }, 403);
     }
 
-    const result = await db
-      .delete(blueBookEntries)
-      .where(eq(blueBookEntries.id, params.id))
-      .returning();
+    try {
+      await db
+        .delete(blueBookEntries)
+        .where(eq(blueBookEntries.id, params.id))
+        .returning();
 
-    return json({ ok: true, message: 'Entry deleted successfully' });
+      return json({ ok: true, message: 'Entry deleted successfully' });
+    } catch (deleteError: any) {
+      // Check for foreign key constraint violation
+      if (deleteError.message?.includes('foreign key constraint') || deleteError.code === '23503') {
+        return json({ ok: false, error: 'Cannot delete entry because it is dispatched.' }, 400);
+      }
+      throw deleteError;
+    }
   } catch (error) {
     console.error('Error deleting blue book entry:', error);
     return json({ ok: false, error: (error as Error).message ?? 'Failed to delete entry' }, 500);

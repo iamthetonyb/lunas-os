@@ -1140,8 +1140,13 @@ export default function BlueBookPage() {
   };
 
   const handleDelete = async () => {
-    if (!editingEntry || editingEntry.source?.toUpperCase() !== 'MANUAL') return;
-    if (!confirm('Are you sure you want to delete this manual entry?')) return;
+    if (!editingEntry) return;
+
+    // Allow deleting if source is null/undefined or 'MANUAL'
+    const isManual = !editingEntry.source || editingEntry.source.toUpperCase() === 'MANUAL';
+    if (!isManual) return;
+
+    if (!confirm('Are you sure you want to delete this entry?')) return;
 
     setSaving(true);
     setFormError(null);
@@ -1756,7 +1761,7 @@ export default function BlueBookPage() {
               </div>
               {formError && <p className="text-sm text-red-600">{formError}</p>}
               <div className="flex justify-between gap-3">
-                {editingEntry?.source !== 'scraped' && (
+                {(!editingEntry?.source || editingEntry.source.toUpperCase() === 'MANUAL') && (
                   <button
                     type="button"
                     className="rounded-lg border border-red-300 bg-red-50 px-4 py-2 text-sm font-semibold text-red-600 hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-50"

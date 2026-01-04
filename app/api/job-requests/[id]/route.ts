@@ -56,7 +56,8 @@ export const PUT = safe(async (req, { params: paramsPromise }: { params: Promise
   const dueDateISO = dueDate.toISOString().split('T')[0];
 
   const result = await db.transaction(async (tx) => {
-    const [request] = await tx
+    // 1. Update simple fields
+    const [updatedRequest] = await tx
       .update(jobRequests)
       .set({
         builderId: rest.builderId,
@@ -76,49 +77,49 @@ export const PUT = safe(async (req, { params: paramsPromise }: { params: Promise
       .where(eq(jobRequests.id, jobRequestId))
       .returning();
 
-    // Safe approach: only delete services that aren't assigned
-    const existingServices = await tx
-      .select({ id: jobRequestServices.id, serviceId: jobRequestServices.serviceId })
+    if (!updatedRequest) throw new Error('Job Request not found or failed to update');
+
+    // 2. Fetch existing services
+    const currentServices = await tx
+      .select({
+        id: jobRequestServices.id,
+        serviceId: jobRequestServices.serviceId
+      })
       .from(jobRequestServices)
       .where(eq(jobRequestServices.jobRequestId, jobRequestId));
 
-    const existingServiceIdsArr = existingServices.map((s) => s.serviceId);
+    const currentServiceIds = currentServices.map((s) => s.serviceId);
     const incomingServiceIds = serviceIds;
 
-    // 1. Services to remove (in DB but not in payload)
-    const servicesToRemove = existingServices.filter((s) => !incomingServiceIds.includes(s.serviceId as string));
-
-    if (servicesToRemove.length > 0) {
-      for (const s of servicesToRemove) {
-        // Check if this specific JRS is assigned
-        const [assignment] = await tx
-          .select({ id: assignments.id })
-          .from(assignments)
-          .where(eq(assignments.jobRequestServiceId, s.id))
-          .limit(1);
-
-        if (!assignment) {
-          // Safe to delete
-          await tx.delete(jobRequestServices).where(eq(jobRequestServices.id, s.id));
-        }
-      }
-    }
-
-    // 2. Services to add (in payload but not in DB)
-    const servicesToAdd = incomingServiceIds.filter((id) => !existingServiceIdsArr.includes(id));
-
+    // A. Services to Add (in payload but not in DB)
+    const servicesToAdd = incomingServiceIds.filter((id) => !currentServiceIds.includes(id));
     if (servicesToAdd.length > 0) {
       await tx.insert(jobRequestServices).values(
         servicesToAdd.map((serviceId) => ({
-          jobRequestId: request.id,
+          jobRequestId: jobRequestId,
           serviceId,
           walkTime: walkTime ?? null,
         }))
       );
     }
 
-    // 3. Update walkTime for any existing services that remain (optional but good for consistency)
-    const servicesToKeep = incomingServiceIds.filter((id) => existingServiceIdsArr.includes(id));
+    // B. Services to Remove (in DB but not in payload)
+    const servicesToRemove = currentServices.filter((s) => !incomingServiceIds.includes(s.serviceId as string));
+    for (const s of servicesToRemove) {
+      // Check for assignments
+      const [assignment] = await tx
+        .select({ id: assignments.id })
+        .from(assignments)
+        .where(eq(assignments.jobRequestServiceId, s.id))
+        .limit(1);
+
+      if (!assignment) {
+        await tx.delete(jobRequestServices).where(eq(jobRequestServices.id, s.id));
+      }
+    }
+
+    // C. Services to Keep (update walkTime)
+    const servicesToKeep = incomingServiceIds.filter((id) => currentServiceIds.includes(id));
     if (servicesToKeep.length > 0) {
       await tx
         .update(jobRequestServices)
@@ -131,11 +132,30 @@ export const PUT = safe(async (req, { params: paramsPromise }: { params: Promise
         );
     }
 
-    return request;
+    // 3. Return fully updated object
+    // Fetch again with joined services to return full state
+    const [finalRequest] = await tx
+      .select()
+      .from(jobRequests)
+      .where(eq(jobRequests.id, jobRequestId));
+
+    const finalServices = await tx
+      .select({
+        id: jobRequestServices.id,
+        serviceId: jobRequestServices.serviceId,
+        walkTime: jobRequestServices.walkTime,
+        assignedForemanName: jobRequestServices.assignedForemanName,
+      })
+      .from(jobRequestServices)
+      .where(eq(jobRequestServices.jobRequestId, jobRequestId));
+
+    return {
+      ...finalRequest,
+      services: finalServices
+    };
   });
 
   return ok(result);
-
 });
 
 

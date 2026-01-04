@@ -73,8 +73,9 @@ export default function DashboardPage() {
   );
 
   // Calculate dynamic stats
+  const intakeList = Array.isArray(recentIntakes) ? recentIntakes : (recentIntakes as any)?.data || [];
   const activeJobCount = blueBookEntries.filter((e: any) => e.status !== 'COMPLETE').length;
-  const pendingIntakeCount = recentIntakes.length;
+  const pendingIntakeCount = intakeList.length;
   const scheduledTodayCount = dispatchBatches.filter((b: any) => {
     const today = new Date().toISOString().split('T')[0];
     return b.serviceDate === today && b.status === 'SENT';
@@ -199,7 +200,7 @@ export default function DashboardPage() {
                 </p>
               ) : (
                 <div className="space-y-4">
-                  {recentIntakes.map((intake) => (
+                  {intakeList.map((intake: any) => (
                     <div
                       key={intake.id}
                       className="flex flex-col gap-2 pb-4 border-b border-gray-100 dark:border-slate-700 last:pb-0 last:border-0"
