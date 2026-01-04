@@ -35,12 +35,22 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
     const { id } = resolvedParams;
 
     const db = await getDb();
+    const [assignment] = await db.select({ dispatchBatchId: assignments.dispatchBatchId }).from(assignments).where(eq(assignments.id, id)).limit(1);
 
     // 1. DELETE FROM blue_book_entries WHERE assignment_id = [id]
     await db.delete(blueBookEntries).where(eq(blueBookEntries.assignmentId, id));
 
     // 2. Delete Assignment
     await db.delete(assignments).where(eq(assignments.id, id));
+
+    // 3. Zombie Batch Check: If no assignments remain for this batch, delete it
+    if (assignment?.dispatchBatchId) {
+      const remaining = await db.select({ id: assignments.id }).from(assignments).where(eq(assignments.dispatchBatchId, assignment.dispatchBatchId));
+      if (remaining.length === 0) {
+        const { dispatchBatches } = await import('@/db/schema');
+        await db.delete(dispatchBatches).where(eq(dispatchBatches.id, assignment.dispatchBatchId));
+      }
+    }
 
     return json({ ok: true });
   } catch (error) {
