@@ -199,7 +199,7 @@ export default function DashboardPage() {
                 </p>
               ) : (
                 <div className="space-y-4">
-                  {recentIntakes.map((intake) => (
+                  {(Array.isArray(recentIntakes) ? recentIntakes : (recentIntakes as any)?.data || []).map((intake: any) => (
                     <div
                       key={intake.id}
                       className="flex flex-col gap-2 pb-4 border-b border-gray-100 dark:border-slate-700 last:pb-0 last:border-0"

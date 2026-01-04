@@ -40,6 +40,7 @@ export default function DispatchDetailPage({ params }: { params: Promise<{ id: s
     const { id } = use(params);
     const { data: session } = useSession();
     const isContractor = session?.user?.role === 'FOREMAN' || session?.user?.role === 'CREW';
+    const isAdmin = session?.user?.role === 'admin' || session?.user?.role === 'backoffice';
 
     const [deleteModal, setDeleteModal] = useState<{ isOpen: boolean; jobId: string | null }>({
         isOpen: false,
@@ -242,13 +243,16 @@ export default function DispatchDetailPage({ params }: { params: Promise<{ id: s
                                                         ✓
                                                     </button>
                                                 )}
-                                                <button
-                                                    onClick={() => openDeleteModal(job.id)}
-                                                    className="px-3 py-1 bg-red-100 text-red-600 text-xs rounded hover:bg-red-200"
-                                                    title="Remove Job"
-                                                >
-                                                    ✕
-                                                </button>
+                                                {/* Visible to contractors OR explicitly allowed for admins/backoffice */}
+                                                {(isAdmin || !isContractor) && (
+                                                    <button
+                                                        onClick={() => openDeleteModal(job.id)}
+                                                        className="px-3 py-1 bg-red-100 text-red-600 text-xs rounded hover:bg-red-200"
+                                                        title="Remove Job"
+                                                    >
+                                                        ✕
+                                                    </button>
+                                                )}
                                             </td>
                                         </tr>
                                     ))}
