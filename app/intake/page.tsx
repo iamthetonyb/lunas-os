@@ -46,7 +46,15 @@ export type RecentIntake = {
   status: string | null;
 };
 
-const fetcher = (url: string) => fetchJSON<RecentIntake[]>(url);
+type RecentIntakesResponse = {
+  intakes: RecentIntake[];
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+};
+
+const fetcher = (url: string) => fetchJSON<RecentIntakesResponse>(url);
 
 function DetailItem({ label, value }: { label: string; value: string | null | undefined }) {
   if (!value) return null;
@@ -202,7 +210,8 @@ function IntakeDetailModal({
 }
 
 function RecentIntakes({ onIntakeSelect, onDelete, onEdit }: { onIntakeSelect: (intake: RecentIntake) => void, onDelete: (intakeId: string) => void, onEdit: (intake: RecentIntake) => void }) {
-  const { data: intakes, isLoading, error } = useSWR('/api/job-requests/recent', fetcher);
+  const [page, setPage] = useState(1);
+  const { data, isLoading, error } = useSWR(`/api/job-requests/recent?page=${page}&limit=10`, fetcher);
 
   if (isLoading) {
     return <p className="text-gray-500">Loading recent intakes...</p>;
@@ -212,65 +221,95 @@ function RecentIntakes({ onIntakeSelect, onDelete, onEdit }: { onIntakeSelect: (
     return <p className="text-red-500">Failed to load recent intakes.</p>;
   }
 
+  const { intakes, total, totalPages } = data || { intakes: [], total: 0, totalPages: 0 };
+
   if (!intakes || intakes.length === 0) {
     return <p className="text-gray-500">No recent intakes found.</p>;
   }
 
   return (
-    <div className="overflow-x-auto">
-      <table className="min-w-full divide-y divide-gray-200 text-sm">
-        <thead className="bg-gray-50">
-          <tr>
-            <th className="px-4 py-2 text-left font-semibold text-gray-500">Community</th>
-            <th className="px-4 py-2 text-left font-semibold text-gray-500">Builder</th>
-            <th className="px-4 py-2 text-left font-semibold text-gray-500">Lot</th>
-            <th className="px-4 py-2 text-left font-semibold text-gray-500">Due Date</th>
-            <th className="px-4 py-2 text-left font-semibold text-gray-500">Services</th>
-            <th className="px-4 py-2 text-left font-semibold text-gray-500">Actions</th>
-          </tr>
-        </thead>
-        <tbody className="divide-y divide-gray-100 bg-white">
-          {intakes.map((intake) => (
-            <tr
-              key={intake.id}
-              onClick={() => onIntakeSelect(intake)}
-              className="cursor-pointer hover:bg-gray-50"
-            >
-              <td className="px-4 py-3 font-medium text-gray-900">{intake.communityName}</td>
-              <td className="px-4 py-3 text-gray-700">{intake.builderName}</td>
-              <td className="px-4 py-3 text-gray-700">{intake.lot}</td>
-              <td className="px-4 py-3 text-gray-700">
-                {formatDateLocal(intake.dueDate)}
-              </td>
-              <td className="px-4 py-3 text-gray-600">
-                {intake.services.map((s) => s.name).join(', ')}
-              </td>
-              <td className="px-4 py-3 text-right">
-                <div className="flex justify-end gap-2">
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onEdit(intake);
-                    }}
-                    className="text-blue-600 hover:underline"
-                  >
-                    Edit
-                  </button>
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onDelete(intake.id);
-                    }}
-                    className="text-red-600 hover:underline"
-                  >
-                    Delete
-                  </button>
-                </div>
-              </td>
+    <div className="space-y-4">
+      <div className="overflow-x-auto">
+        <table className="min-w-full divide-y divide-gray-200 text-sm">
+          <thead className="bg-gray-50">
+            <tr>
+              <th className="px-4 py-2 text-left font-semibold text-gray-500">Community</th>
+              <th className="px-4 py-2 text-left font-semibold text-gray-500">Builder</th>
+              <th className="px-4 py-2 text-left font-semibold text-gray-500">Lot</th>
+              <th className="px-4 py-2 text-left font-semibold text-gray-500">Due Date</th>
+              <th className="px-4 py-2 text-left font-semibold text-gray-500">Services</th>
+              <th className="px-4 py-2 text-left font-semibold text-gray-500">Actions</th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody className="divide-y divide-gray-100 bg-white">
+            {intakes.map((intake) => (
+              <tr
+                key={intake.id}
+                onClick={() => onIntakeSelect(intake)}
+                className="cursor-pointer hover:bg-gray-50"
+              >
+                <td className="px-4 py-3 font-medium text-gray-900">{intake.communityName}</td>
+                <td className="px-4 py-3 text-gray-700">{intake.builderName}</td>
+                <td className="px-4 py-3 text-gray-700">{intake.lot}</td>
+                <td className="px-4 py-3 text-gray-700">
+                  {formatDateLocal(intake.dueDate)}
+                </td>
+                <td className="px-4 py-3 text-gray-600">
+                  {intake.services.map((s) => s.name).join(', ')}
+                </td>
+                <td className="px-4 py-3 text-right">
+                  <div className="flex justify-end gap-2">
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onEdit(intake);
+                      }}
+                      className="text-blue-600 hover:underline"
+                    >
+                      Edit
+                    </button>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onDelete(intake.id);
+                      }}
+                      className="text-red-600 hover:underline"
+                    >
+                      Delete
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      {/* Pagination Controls */}
+      <div className="flex items-center justify-between px-4 py-3 border-t border-gray-100 bg-gray-50 rounded-b-lg">
+        <div className="text-sm text-gray-500">
+          Showing <span className="font-medium">{intakes.length}</span> of <span className="font-medium">{total}</span> intakes
+        </div>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setPage(p => Math.max(1, p - 1))}
+            disabled={page === 1}
+            className="px-3 py-1 border border-gray-300 rounded-md text-sm font-medium disabled:opacity-50 hover:bg-white"
+          >
+            Previous
+          </button>
+          <span className="text-sm text-gray-700">
+            Page {page} of {totalPages}
+          </span>
+          <button
+            onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+            disabled={page === totalPages}
+            className="px-3 py-1 border border-gray-300 rounded-md text-sm font-medium disabled:opacity-50 hover:bg-white"
+          >
+            Next
+          </button>
+        </div>
+      </div>
     </div>
   );
 }

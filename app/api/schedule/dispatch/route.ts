@@ -118,6 +118,7 @@ export async function POST(request: NextRequest) {
                     lot: jobRequests.lot,
                     modelPlanId: jobRequests.modelPlanId,
                     poNumber: jobRequests.poNumber,
+                    dueDate: jobRequests.dueDate,
                 })
                     .from(jobRequests)
                     .where(eq(jobRequests.id, jrs.jobRequestId))
@@ -131,6 +132,7 @@ export async function POST(request: NextRequest) {
                         modelPlanId: jobReq.modelPlanId,
                         serviceId: jrs.serviceId,
                         poNumber: jobReq.poNumber,
+                        startDate: jobReq.dueDate,
                         status: 'PENDING',
                         assignmentId: assignment.id,
                         assignedForemanName: foremanName,

@@ -1,4 +1,4 @@
-import { desc, eq, inArray } from 'drizzle-orm';
+import { desc, eq, inArray, sql } from 'drizzle-orm';
 import { safe, ok } from '@/lib/api/http';
 import { requireMembership } from '@/lib/auth/guards';
 import { getDb } from '@/lib/db/get-db';
@@ -17,6 +17,18 @@ export const GET = safe(async (req, context) => {
   // Allow any authenticated user with org membership (no specific role required)
   const membership = await requireMembership([]);
   const db = await getDb();
+
+  const { searchParams } = new URL(req.url);
+  const page = parseInt(searchParams.get('page') || '1');
+  const limit = parseInt(searchParams.get('limit') || '10');
+  const offset = (page - 1) * limit;
+
+  const [totalCountRow] = await db
+    .select({ count: sql<number>`count(*)` })
+    .from(jobRequests)
+    .where(eq(jobRequests.createdById, membership.userId));
+
+  const total = Number(totalCountRow?.count || 0);
 
   const baseRows = await db
     .select({
@@ -47,7 +59,8 @@ export const GET = safe(async (req, context) => {
     .leftJoin(modelPlans, eq(jobRequests.modelPlanId, modelPlans.id))
     .where(eq(jobRequests.createdById, membership.userId))
     .orderBy(desc(jobRequests.createdAt))
-    .limit(10);
+    .limit(limit)
+    .offset(offset);
 
   const requestIds = baseRows.map((row) => row.id);
   const servicesByRequest = new Map<
@@ -84,5 +97,11 @@ export const GET = safe(async (req, context) => {
     services: servicesByRequest.get(row.id) ?? [],
   }));
 
-  return ok(formatted);
+  return ok({
+    intakes: formatted,
+    total,
+    page,
+    limit,
+    totalPages: Math.ceil(total / limit),
+  });
 });
