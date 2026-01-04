@@ -1145,7 +1145,7 @@ export default function BlueBookPage() {
     if (!editingEntry) return;
 
     // Correct Logic: Allow deleting if source is null/undefined or 'MANUAL'
-    const isManual = !editingEntry.source || editingEntry.source.toUpperCase() === 'MANUAL';
+    const isManual = !editingEntry.source || editingEntry.source.toLowerCase() === 'manual';
     if (!isManual) return;
 
     if (!confirm('Are you sure you want to delete this entry?')) return;
@@ -1763,7 +1763,7 @@ export default function BlueBookPage() {
               </div>
               {formError && <p className="text-sm text-red-600">{formError}</p>}
               <div className="flex justify-between gap-3">
-                {(!editingEntry?.source || editingEntry.source.toUpperCase() === 'MANUAL') && (
+                {(!editingEntry?.source || editingEntry.source.toLowerCase() === 'manual') && (
                   <button
                     type="button"
                     className="rounded-lg border border-red-300 bg-red-50 px-4 py-2 text-sm font-semibold text-red-600 hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-50"
