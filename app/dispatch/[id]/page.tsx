@@ -247,7 +247,7 @@ export default function DispatchDetailPage({ params }: { params: Promise<{ id: s
                                                 {(isAdmin || !isContractor) && (
                                                     <button
                                                         onClick={() => openDeleteModal(job.id)}
-                                                        className="px-3 py-1 bg-red-100 text-red-600 text-xs rounded hover:bg-red-200"
+                                                        className="px-3 py-1 bg-red-50 text-red-600 text-xs rounded hover:bg-red-100 transition-colors"
                                                         title="Remove Job"
                                                     >
                                                         ✕
