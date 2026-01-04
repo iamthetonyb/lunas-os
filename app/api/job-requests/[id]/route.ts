@@ -3,7 +3,7 @@ import { getDb } from '@/lib/db/get-db';
 import { jobRequests, jobRequestServices, assignments, fieldTickets, blueBookEntries } from '@/db/schema';
 import { ok, err, safe } from '@/lib/api/http';
 import { requireMembership } from '@/lib/auth/guards';
-import { eq, inArray } from 'drizzle-orm';
+import { eq, inArray, and } from 'drizzle-orm';
 
 export const runtime = 'nodejs';
 
@@ -76,17 +76,59 @@ export const PUT = safe(async (req, { params: paramsPromise }: { params: Promise
       .where(eq(jobRequests.id, jobRequestId))
       .returning();
 
-    // Simple approach: delete and re-insert services
-    await tx.delete(jobRequestServices).where(eq(jobRequestServices.jobRequestId, jobRequestId));
+    // Safe approach: only delete services that aren't assigned
+    const existingServices = await tx
+      .select({ id: jobRequestServices.id, serviceId: jobRequestServices.serviceId })
+      .from(jobRequestServices)
+      .where(eq(jobRequestServices.jobRequestId, jobRequestId));
 
-    if (serviceIds.length) {
+    const existingServiceIdsArr = existingServices.map((s) => s.serviceId);
+    const incomingServiceIds = serviceIds;
+
+    // 1. Services to remove (in DB but not in payload)
+    const servicesToRemove = existingServices.filter((s) => !incomingServiceIds.includes(s.serviceId as string));
+
+    if (servicesToRemove.length > 0) {
+      for (const s of servicesToRemove) {
+        // Check if this specific JRS is assigned
+        const [assignment] = await tx
+          .select({ id: assignments.id })
+          .from(assignments)
+          .where(eq(assignments.jobRequestServiceId, s.id))
+          .limit(1);
+
+        if (!assignment) {
+          // Safe to delete
+          await tx.delete(jobRequestServices).where(eq(jobRequestServices.id, s.id));
+        }
+      }
+    }
+
+    // 2. Services to add (in payload but not in DB)
+    const servicesToAdd = incomingServiceIds.filter((id) => !existingServiceIdsArr.includes(id));
+
+    if (servicesToAdd.length > 0) {
       await tx.insert(jobRequestServices).values(
-        serviceIds.map((serviceId) => ({
+        servicesToAdd.map((serviceId) => ({
           jobRequestId: request.id,
           serviceId,
           walkTime: walkTime ?? null,
         }))
       );
+    }
+
+    // 3. Update walkTime for any existing services that remain (optional but good for consistency)
+    const servicesToKeep = incomingServiceIds.filter((id) => existingServiceIdsArr.includes(id));
+    if (servicesToKeep.length > 0) {
+      await tx
+        .update(jobRequestServices)
+        .set({ walkTime: walkTime ?? null })
+        .where(
+          and(
+            eq(jobRequestServices.jobRequestId, jobRequestId),
+            inArray(jobRequestServices.serviceId, servicesToKeep)
+          )
+        );
     }
 
     return request;

@@ -123,7 +123,7 @@ type LotSummary = {
   modelPlanName: string | null;
   modelPlanCode: string | null;
   modelPlanSqft: string | null;
-  earliestStart: number;
+  nextActivityDate: number;
   totalAmount: number;
 };
 
@@ -134,7 +134,7 @@ type CommunityGroup = {
   communityName: string | null;
   entries: BlueBookEntry[];
   lots: LotSummary[];
-  earliestStart: number;
+  nextActivityDate: number;
   checkNumbers: string[];
   totalAmount: number;
 };
@@ -617,13 +617,20 @@ export default function BlueBookPage() {
               });
             });
 
-            const earliestStart = sortedEntries.length
+            const incompleteEntries = sortedEntries.filter((e) => (e.status || 'PENDING').toUpperCase() !== 'COMPLETE');
+            const nextActivityDate = incompleteEntries.length
               ? Math.min(
-                ...sortedEntries.map((entry) =>
+                ...incompleteEntries.map((entry) =>
                   toTimestamp(entry.startDate ?? entry.checkDate)
                 )
               )
-              : Number.MAX_SAFE_INTEGER;
+              : (sortedEntries.length
+                ? Math.min(
+                  ...sortedEntries.map((entry) =>
+                    toTimestamp(entry.startDate ?? entry.checkDate)
+                  )
+                )
+                : Number.MAX_SAFE_INTEGER);
             const totalAmount = sortedEntries.reduce(
               (sum, entry) => sum + parseAmount(entry.amount),
               0
@@ -640,19 +647,19 @@ export default function BlueBookPage() {
               modelPlanName: planSource?.modelPlanName ?? null,
               modelPlanCode: planSource?.modelPlanCode ?? null,
               modelPlanSqft: planSource?.modelPlanSqft ?? null,
-              earliestStart,
+              nextActivityDate,
               totalAmount,
             };
           })
           .sort((a, b) => {
             // Sort by earliest start date first, then by lot number
-            if (a.earliestStart !== b.earliestStart) {
-              return a.earliestStart - b.earliestStart;
+            if (a.nextActivityDate !== b.nextActivityDate) {
+              return a.nextActivityDate - b.nextActivityDate;
             }
             return a.lotLabel.localeCompare(b.lotLabel, undefined, { numeric: true, sensitivity: 'base' });
           });
 
-        const earliestStart = community.entries.length
+        const nextActivityDate = community.entries.length
           ? Math.min(
             ...community.entries.map((entry) =>
               toTimestamp(entry.startDate ?? entry.checkDate)
@@ -680,7 +687,7 @@ export default function BlueBookPage() {
           communityName: community.communityName,
           entries: community.entries,
           lots,
-          earliestStart,
+          nextActivityDate,
           checkNumbers,
           totalAmount,
         };
@@ -694,7 +701,7 @@ export default function BlueBookPage() {
         } else if (nameA || nameB) {
           return nameA ? -1 : 1;
         }
-        return a.earliestStart - b.earliestStart;
+        return a.nextActivityDate - b.nextActivityDate;
       });
   }, [entries, phaseOverrides]);
 
@@ -1284,12 +1291,12 @@ export default function BlueBookPage() {
                   <div className="divide-y divide-gray-200 dark:divide-slate-700">
                     {group.lots.map((lot) => {
                       const lotOpen = openLots[lot.key];
-                      const hasEarliestStart =
-                        Number.isFinite(lot.earliestStart) &&
-                        lot.earliestStart !== Number.MAX_SAFE_INTEGER;
-                      const earliestDateLabel = hasEarliestStart
-                        ? new Date(lot.earliestStart).toLocaleDateString()
-                        : 'No start date';
+                      const hasNextActivity =
+                        Number.isFinite(lot.nextActivityDate) &&
+                        lot.nextActivityDate !== Number.MAX_SAFE_INTEGER;
+                      const nextActivityLabel = hasNextActivity
+                        ? new Date(lot.nextActivityDate).toLocaleDateString()
+                        : 'No activity scheduled';
                       const lotTotalAmount = lot.entries.reduce((sum, entry) => {
                         if (!entry.amount) return sum;
                         const numeric = Number(entry.amount);
@@ -1330,7 +1337,7 @@ export default function BlueBookPage() {
                                 Lot {lot.lotLabel}
                               </p>
                               <p className="text-xs text-gray-500 dark:text-gray-400">
-                                {`First activity: ${earliestDateLabel} · ${phaseStatusText}`}
+                                {`Next activity: ${nextActivityLabel} · ${phaseStatusText}`}
                               </p>
                             </div>
                             <div className="flex items-center gap-4 text-xs text-gray-500 dark:text-gray-300">
