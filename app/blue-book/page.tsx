@@ -31,6 +31,8 @@ type BlueBookEntry = {
   modelPlanCode: string | null;
   modelPlanSqft: string | null;
   source?: string | null; // 'scraped' or 'manual'
+  createdAt: string;
+  updatedAt: string;
 };
 
 type BlueBookResponse = {
@@ -621,13 +623,13 @@ export default function BlueBookPage() {
             const nextActivityDate = incompleteEntries.length
               ? Math.min(
                 ...incompleteEntries.map((entry) =>
-                  toTimestamp(entry.startDate ?? entry.checkDate)
+                  toTimestamp(entry.startDate ?? entry.createdAt)
                 )
               )
               : (sortedEntries.length
                 ? Math.min(
                   ...sortedEntries.map((entry) =>
-                    toTimestamp(entry.startDate ?? entry.checkDate)
+                    toTimestamp(entry.startDate ?? entry.createdAt)
                   )
                 )
                 : Number.MAX_SAFE_INTEGER);
@@ -1142,7 +1144,7 @@ export default function BlueBookPage() {
   const handleDelete = async () => {
     if (!editingEntry) return;
 
-    // Allow deleting if source is null/undefined or 'MANUAL'
+    // Correct Logic: Allow deleting if source is null/undefined or 'MANUAL'
     const isManual = !editingEntry.source || editingEntry.source.toUpperCase() === 'MANUAL';
     if (!isManual) return;
 

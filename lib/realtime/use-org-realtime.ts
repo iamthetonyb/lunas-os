@@ -12,10 +12,11 @@ export function useOrgRealtime(orgId?: string | null) {
     if (typeof window === 'undefined') return;
     if (!orgId) return;
 
-    const key = process.env.NEXT_PUBLIC_ABLY_KEY;
+    let key = process.env.NEXT_PUBLIC_ABLY_KEY;
     if (!key) {
-      console.info('[realtime] disabled: missing NEXT_PUBLIC_ABLY_KEY');
-      return;
+      // Fallback to explicitly provided key if env var is missing in browser
+      key = 'Vzdujg.O15-Nw:xgGfoD6w6QFz9oDVUcmZ8zPwHm21_de30HxiXotMJs8';
+      console.info('[realtime] using fallback Ably key');
     }
 
     let disposed = false;
