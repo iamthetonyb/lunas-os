@@ -9,6 +9,7 @@ import { useSession } from 'next-auth/react';
 import { getFriendlyName } from '@/lib/utils/community-display';
 import { ConfirmationModal } from '@/components/ui/confirmation-modal';
 import { useState } from 'react';
+import { toast } from 'sonner';
 
 const fetcher = <T,>(url: string) => fetchJSON<T>(url);
 
@@ -40,7 +41,7 @@ export default function DispatchDetailPage({ params }: { params: Promise<{ id: s
     const { data: session } = useSession();
     const isContractor = session?.user?.role === 'FOREMAN' || session?.user?.role === 'CREW';
 
-    const [completeModal, setCompleteModal] = useState<{ isOpen: boolean; jobId: string | null }>({
+    const [deleteModal, setDeleteModal] = useState<{ isOpen: boolean; jobId: string | null }>({
         isOpen: false,
         jobId: null,
     });
@@ -50,8 +51,17 @@ export default function DispatchDetailPage({ params }: { params: Promise<{ id: s
         fetcher
     );
 
+    const [completeModal, setCompleteModal] = useState<{ isOpen: boolean; jobId: string | null }>({
+        isOpen: false,
+        jobId: null,
+    });
+
     const openCompleteModal = (jobId: string) => {
         setCompleteModal({ isOpen: true, jobId });
+    };
+
+    const openDeleteModal = (jobId: string) => {
+        setDeleteModal({ isOpen: true, jobId });
     };
 
     const handleMarkCompleteConfirm = async () => {
@@ -62,9 +72,23 @@ export default function DispatchDetailPage({ params }: { params: Promise<{ id: s
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ jobId: completeModal.jobId }),
             });
-            mutate(`/api/dispatch-batches/${id}`); // Revalidate SWR data
+            mutate(`/api/dispatch-batches/${id}`);
         } catch (error) {
             console.error('Failed to mark job complete', error);
+        }
+    };
+
+    const handleDeleteConfirm = async () => {
+        if (!deleteModal.jobId) return;
+        try {
+            await fetchJSON(`/api/assignments/${deleteModal.jobId}`, {
+                method: 'DELETE',
+            });
+            mutate(`/api/dispatch-batches/${id}`);
+            toast.success('Job removed from dispatch');
+        } catch (error) {
+            console.error('Failed to delete assignment', error);
+            toast.error('Failed to remove job');
         }
     };
 
@@ -211,15 +235,23 @@ export default function DispatchDetailPage({ params }: { params: Promise<{ id: s
                                                 </span>
                                             </td>
                                             {isContractor && (
-                                                <td className="px-6 py-4 whitespace-nowrap text-sm">
+                                                <td className="px-6 py-4 whitespace-nowrap text-sm flex gap-2">
                                                     {job.status !== 'COMPLETE' && (
                                                         <button
                                                             onClick={() => openCompleteModal(job.id)}
                                                             className="px-3 py-1 bg-green-500 text-white text-xs rounded hover:bg-green-600"
+                                                            title="Mark Complete"
                                                         >
-                                                            ✓ Complete
+                                                            ✓
                                                         </button>
                                                     )}
+                                                    <button
+                                                        onClick={() => openDeleteModal(job.id)}
+                                                        className="px-3 py-1 bg-red-100 text-red-600 text-xs rounded hover:bg-red-200"
+                                                        title="Remove Job"
+                                                    >
+                                                        🗑
+                                                    </button>
                                                 </td>
                                             )}
                                         </tr>
@@ -239,6 +271,16 @@ export default function DispatchDetailPage({ params }: { params: Promise<{ id: s
                 message="Are you sure you want to mark this job as complete?"
                 confirmText="Complete"
                 variant="primary"
+            />
+
+            <ConfirmationModal
+                isOpen={deleteModal.isOpen}
+                onClose={() => setDeleteModal({ isOpen: false, jobId: null })}
+                onConfirm={handleDeleteConfirm}
+                title="Remove Job from Dispatch"
+                message="Are you sure you want to remove this job from this dispatch batch? This will also remove any associated Blue Book entries."
+                confirmText="Delete"
+                variant="danger"
             />
         </>
     );
