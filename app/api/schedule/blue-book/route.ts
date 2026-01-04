@@ -1,5 +1,5 @@
 import { getDb } from '@/lib/db/get-db';
-import { blueBookEntries, jobRequests, jobRequestServices, builders, communities, modelPlans, services } from '@/db/schema';
+import { blueBookEntries, jobRequests, jobRequestServices, builders, communities, modelPlans, services, assignments } from '@/db/schema';
 import { and, gte, lte, isNotNull, eq, sql } from 'drizzle-orm';
 import { safe, ok } from '@/lib/api/http';
 import { requireMembership } from '@/lib/auth/guards';
@@ -81,6 +81,7 @@ export const GET = safe(async (req: Request) => {
       serviceName: services.name,
       walkTime: jobRequestServices.walkTime,
       assignedForemanName: jobRequestServices.assignedForemanName,
+      assignmentStatus: assignments.status,
     })
     .from(jobRequests)
     .leftJoin(builders, eq(jobRequests.builderId, builders.id))
@@ -88,6 +89,7 @@ export const GET = safe(async (req: Request) => {
     .leftJoin(modelPlans, eq(jobRequests.modelPlanId, modelPlans.id))
     .leftJoin(jobRequestServices, eq(jobRequests.id, jobRequestServices.jobRequestId))
     .leftJoin(services, eq(jobRequestServices.serviceId, services.id))
+    .leftJoin(assignments, eq(jobRequestServices.id, assignments.jobRequestServiceId))
     .where(
       and(
         isNotNull(jobRequests.dueDate),
@@ -136,7 +138,7 @@ export const GET = safe(async (req: Request) => {
     builderName: string | null;
     communityName: string | null;
     modelPlanName: string | null;
-    services: Array<{ id: string | null; jobRequestServiceId: string | null; name: string | null; walkTime: string | null; assignedForemanName: string | null }>;
+    services: Array<{ id: string | null; jobRequestServiceId: string | null; name: string | null; walkTime: string | null; assignedForemanName: string | null; assignmentStatus: string | null }>;
   }>();
 
   jobRequestData.forEach((row) => {
@@ -162,6 +164,7 @@ export const GET = safe(async (req: Request) => {
         name: row.serviceName,
         walkTime: row.walkTime,
         assignedForemanName: row.assignedForemanName,
+        assignmentStatus: row.assignmentStatus,
       });
     }
   });
@@ -185,6 +188,7 @@ export const GET = safe(async (req: Request) => {
         lot: req.lot,
         contractorName: 'No Service',
         serviceName: 'No Service',
+        serviceDisplay: 'No Service',
         jobNumber: jobNumber,
         accountCategoryCode: null,
         invoiceNumber: req.poNumber,
@@ -210,9 +214,10 @@ export const GET = safe(async (req: Request) => {
       serviceName: service.name,
       jobNumber: jobNumber,
       accountCategoryCode: null,
+      serviceDisplay: service.name || 'Cleanup',
+      status: service.assignmentStatus || 'Pending',
       invoiceNumber: req.poNumber,
       amount: null,
-      status: 'Pending',
       walkTime: service.walkTime,
       requestedBy: req.requestedBy,
       assignedForemanName: service.assignedForemanName,

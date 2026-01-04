@@ -81,10 +81,10 @@ export default function DashboardPage() {
   }).length;
 
   const stats = [
-    { name: 'Active Jobs', value: activeJobCount.toString(), change: activeJobCount > 0 ? `+${activeJobCount}` : '0', icon: '📋' },
-    { name: 'Pending Intakes', value: pendingIntakeCount.toString(), change: pendingIntakeCount > 0 ? `+${pendingIntakeCount}` : '0', icon: '📝' },
-    { name: 'Scheduled Today', value: scheduledTodayCount.toString(), change: '0', icon: '📅' },
-    { name: 'Dispatch Batches', value: dispatchBatches.length.toString(), change: dispatchBatches.length > 0 ? `+${dispatchBatches.length}` : '0', icon: '🚀' },
+    { name: 'Active Jobs', value: (activeJobCount ?? 0).toString(), change: (activeJobCount ?? 0) > 0 ? `+${activeJobCount}` : '0', icon: '📋' },
+    { name: 'Pending Intakes', value: (pendingIntakeCount ?? 0).toString(), change: (pendingIntakeCount ?? 0) > 0 ? `+${pendingIntakeCount}` : '0', icon: '📝' },
+    { name: 'Scheduled Today', value: (scheduledTodayCount ?? 0).toString(), change: '0', icon: '📅' },
+    { name: 'Dispatch Batches', value: (dispatchBatches?.length ?? 0).toString(), change: (dispatchBatches?.length ?? 0) > 0 ? `+${dispatchBatches?.length}` : '0', icon: '🚀' },
   ];
 
   return (
@@ -287,7 +287,7 @@ export default function DashboardPage() {
                         const startDateLabel = entry.startDate
                           ? new Date(entry.startDate).toLocaleDateString()
                           : '—';
-                        const amountLabel = entry.amount
+                        const amountLabel = entry.amount !== null && entry.amount !== undefined
                           ? new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(Number(entry.amount))
                           : '—';
 
