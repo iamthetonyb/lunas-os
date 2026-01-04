@@ -69,9 +69,18 @@ export async function POST(request: NextRequest) {
 
         // Create assignment linking job to batch
         // We need to determine if jobId belongs to jobRequestServices or blueBookEntries
+        // Simplified fetch: just check existence and get minimal data
         const [jrs, bbe] = await Promise.all([
-            db.query.jobRequestServices.findFirst({ where: eq(jobRequestServices.id, jobId) }),
-            db.query.blueBookEntries.findFirst({ where: eq(blueBookEntries.id, jobId) })
+            db.select({ id: jobRequestServices.id, jobRequestId: jobRequestServices.jobRequestId, serviceId: jobRequestServices.serviceId })
+                .from(jobRequestServices)
+                .where(eq(jobRequestServices.id, jobId))
+                .limit(1)
+                .then(rows => rows[0]),
+            db.select({ id: blueBookEntries.id })
+                .from(blueBookEntries)
+                .where(eq(blueBookEntries.id, jobId))
+                .limit(1)
+                .then(rows => rows[0])
         ]);
 
         if (!jrs && !bbe) {
@@ -93,44 +102,42 @@ export async function POST(request: NextRequest) {
                 .update(jobRequestServices)
                 .set({
                     assignedForemanName: foremanName,
-                    // updatedAt: new Date(),
                 })
                 .where(eq(jobRequestServices.id, jobId));
 
             // AUTO-CREATE BLUE BOOK ENTRY if not exists
-            // Verify if one already exists for this service
             const existingBBE = await db.query.blueBookEntries.findFirst({
                 where: eq(blueBookEntries.assignmentId, assignment.id)
             });
 
-            if (!existingBBE) {
-                // Fetch full JRS details (we only have the ID from check above)
-                const fullJrs = await db.query.jobRequestServices.findFirst({
-                    where: eq(jobRequestServices.id, jobId),
-                });
+            if (!existingBBE && jrs.jobRequestId) {
+                const [jobReq] = await db.select({
+                    id: jobRequests.id,
+                    builderId: jobRequests.builderId,
+                    communityId: jobRequests.communityId,
+                    lot: jobRequests.lot,
+                    modelPlanId: jobRequests.modelPlanId,
+                    poNumber: jobRequests.poNumber,
+                })
+                    .from(jobRequests)
+                    .where(eq(jobRequests.id, jrs.jobRequestId))
+                    .limit(1);
 
-                if (fullJrs && fullJrs.jobRequestId) {
-                    const jobReq = await db.query.jobRequests.findFirst({
-                        where: eq(jobRequests.id, fullJrs.jobRequestId)
+                if (jobReq) {
+                    await db.insert(blueBookEntries).values({
+                        builderId: jobReq.builderId,
+                        communityId: jobReq.communityId,
+                        lot: jobReq.lot,
+                        modelPlanId: jobReq.modelPlanId,
+                        serviceId: jrs.serviceId,
+                        poNumber: jobReq.poNumber,
+                        status: 'PENDING',
+                        assignmentId: assignment.id,
+                        assignedForemanName: foremanName,
+                        source: 'dispatch',
                     });
-
-                    if (jobReq) {
-                        await db.insert(blueBookEntries).values({
-                            builderId: jobReq.builderId,
-                            communityId: jobReq.communityId,
-                            lot: jobReq.lot,
-                            modelPlanId: jobReq.modelPlanId,
-                            serviceId: fullJrs.serviceId,
-                            poNumber: jobReq.poNumber,
-                            status: 'PENDING',
-                            assignmentId: assignment.id,
-                            assignedForemanName: foremanName,
-                            source: 'dispatch',
-                        });
-                    }
                 }
             }
-
         } else if (bbe) {
             await db
                 .update(blueBookEntries)

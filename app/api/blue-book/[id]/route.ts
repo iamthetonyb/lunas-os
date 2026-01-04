@@ -36,36 +36,36 @@ export async function PATCH(req: Request, { params: paramsPromise }: { params: P
     }
 
     const body = (await req.json()) as PatchBody;
-  const updates: Partial<typeof blueBookEntries.$inferInsert> = {};
+    const updates: Partial<typeof blueBookEntries.$inferInsert> = {};
 
-  if ('lot' in body) updates.lot = body.lot?.trim() || null;
-  if ('startDate' in body) updates.startDate = normalizeDate(body.startDate);
-  if ('status' in body && body.status && ['COMPLETE', 'PENDING'].includes(body.status)) {
-    updates.status = body.status as 'COMPLETE' | 'PENDING';
-  }
-  if ('invoiceNumber' in body) updates.poNumber = body.invoiceNumber?.trim() || null;
-  if ('amount' in body) {
-    const amountNumber = typeof body.amount === 'string' ? Number(body.amount) : body.amount;
-    updates.amount =
-      typeof amountNumber === 'number' && Number.isFinite(amountNumber)
-        ? amountNumber.toFixed(2)
-        : null;
-  }
-  if ('accountCategoryName' in body) {
-    updates.accountCategoryName = body.accountCategoryName?.trim() || null;
-  }
-  if ('accountCategoryCode' in body) {
-    updates.accountCategoryCode = body.accountCategoryCode?.trim() || null;
-  }
-  if ('checkNumber' in body) {
-    updates.checkNumber = body.checkNumber?.trim() || null;
-  }
-  if ('checkDate' in body) {
-    updates.checkDate = normalizeDate(body.checkDate);
-  }
-  if ('modelPlanId' in body) {
-    updates.modelPlanId = body.modelPlanId ?? null;
-  }
+    if ('lot' in body) updates.lot = body.lot?.trim() || null;
+    if ('startDate' in body) updates.startDate = normalizeDate(body.startDate);
+    if ('status' in body && body.status && ['COMPLETE', 'PENDING'].includes(body.status)) {
+      updates.status = body.status as 'COMPLETE' | 'PENDING';
+    }
+    if ('invoiceNumber' in body) updates.poNumber = body.invoiceNumber?.trim() || null;
+    if ('amount' in body) {
+      const amountNumber = typeof body.amount === 'string' ? Number(body.amount) : body.amount;
+      updates.amount =
+        typeof amountNumber === 'number' && Number.isFinite(amountNumber)
+          ? amountNumber.toFixed(2)
+          : null;
+    }
+    if ('accountCategoryName' in body) {
+      updates.accountCategoryName = body.accountCategoryName?.trim() || null;
+    }
+    if ('accountCategoryCode' in body) {
+      updates.accountCategoryCode = body.accountCategoryCode?.trim() || null;
+    }
+    if ('checkNumber' in body) {
+      updates.checkNumber = body.checkNumber?.trim() || null;
+    }
+    if ('checkDate' in body) {
+      updates.checkDate = normalizeDate(body.checkDate);
+    }
+    if ('modelPlanId' in body) {
+      updates.modelPlanId = body.modelPlanId ?? null;
+    }
 
     if (Object.keys(updates).length === 0) {
       return json({ ok: false, error: 'No updates provided' }, 400);
@@ -110,7 +110,7 @@ export async function DELETE(req: Request, { params: paramsPromise }: { params: 
       return json({ ok: false, error: 'Entry not found' }, 404);
     }
 
-    if (existing[0].source !== 'manual') {
+    if (existing[0].source?.toUpperCase() !== 'MANUAL') {
       return json({ ok: false, error: 'Only manually created entries can be deleted' }, 403);
     }
 

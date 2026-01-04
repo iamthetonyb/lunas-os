@@ -23,6 +23,8 @@ const intakeUpdatePayloadSchema = z.object({
   contactPhone: z.string().optional().nullable(),
   contactEmail: z.string().optional().nullable(),
   poNumber: z.string().optional().nullable(),
+  amount: z.union([z.number(), z.string(), z.null()]).optional(),
+  status: z.string().optional().nullable(),
   serviceIds: z.array(z.string().uuid()).min(1, 'Select at least one service'),
 });
 
@@ -48,7 +50,7 @@ export const PUT = safe(async (req, { params: paramsPromise }: { params: Promise
     return err('Invalid payload', 400, parsed.error.flatten());
   }
 
-  const { serviceIds, walkTime, contactPhone, contactEmail, dueDate, requestedBy, notes, poNumber, ...rest } =
+  const { serviceIds, walkTime, contactPhone, contactEmail, dueDate, requestedBy, notes, poNumber, amount, status, ...rest } =
     parsed.data;
 
   const dueDateISO = dueDate.toISOString().split('T')[0];
@@ -68,6 +70,8 @@ export const PUT = safe(async (req, { params: paramsPromise }: { params: Promise
         poNumber: poNumber ?? null,
         contactPhone: contactPhone ?? null,
         contactEmail: contactEmail ?? null,
+        amount: amount !== undefined ? (amount === '' || amount === null ? null : amount.toString()) : undefined,
+        status: status ?? undefined,
       })
       .where(eq(jobRequests.id, jobRequestId))
       .returning();
@@ -153,15 +157,25 @@ export const PATCH = safe(async (req, { params: paramsPromise }: { params: Promi
   const { id } = paramsParsed.data;
 
   const body = await req.json();
-  const { amount, notes, status, isExtraWork } = body;
+  const { amount, notes, status, isExtraWork, lot, address, dueDate, poNumber, requestedBy, contactPhone, contactEmail } = body;
 
   const updateData: any = {};
-  if (amount !== undefined) updateData.amount = amount; // will be decimal in DB
+  if (amount !== undefined) updateData.amount = amount;
   if (notes !== undefined) updateData.notes = notes;
   if (status !== undefined) updateData.status = status;
   if (isExtraWork !== undefined) updateData.isExtraWork = isExtraWork;
+  if (lot !== undefined) updateData.lot = lot;
+  if (address !== undefined) updateData.address = address;
+  if (dueDate !== undefined) updateData.dueDate = dueDate;
+  if (poNumber !== undefined) updateData.poNumber = poNumber;
+  if (requestedBy !== undefined) updateData.requestedBy = requestedBy;
+  if (contactPhone !== undefined) updateData.contactPhone = contactPhone;
+  if (contactEmail !== undefined) updateData.contactEmail = contactEmail;
 
   if (Object.keys(updateData).length > 0) {
+    if (updateData.dueDate) {
+      updateData.dueDate = new Date(updateData.dueDate).toISOString().split('T')[0];
+    }
     await db.update(jobRequests).set(updateData).where(eq(jobRequests.id, id));
   }
 
