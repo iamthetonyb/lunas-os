@@ -52,6 +52,8 @@ const baseSchema = z.object({
   contactPhone: z.string().optional(),
   contactEmail: z.string().email('Invalid email format').optional().or(z.literal('')),
   poNumber: z.string().optional(),
+  amount: z.union([z.number(), z.string(), z.null()]).optional(),
+  status: z.string().optional(),
 });
 
 type FormData = z.infer<typeof baseSchema>;
@@ -92,6 +94,8 @@ function EditIntakeForm({ intake, onSuccess, onClose }: { intake: RecentIntake; 
       contactPhone: intake.contactPhone ?? '',
       contactEmail: intake.contactEmail ?? '',
       poNumber: intake.poNumber ?? '',
+      amount: intake.amount ?? '',
+      status: intake.status ?? 'PENDING',
     },
   });
 
@@ -125,7 +129,11 @@ function EditIntakeForm({ intake, onSuccess, onClose }: { intake: RecentIntake; 
   );
 
   const builderOptions = useMemo<SelectOption[]>(() => (builders ?? []).map((builder) => ({ value: builder.id, label: builder.name })), [builders]);
-  const communityOptions = useMemo(() => (communities ?? []).map((community) => ({ value: community.id, label: community.name })), [communities]);
+  const communityOptions = useMemo(() => {
+    if (!communities) return [];
+    const filtered = builderId ? communities.filter(c => c.builderId === builderId) : communities;
+    return filtered.map((community) => ({ value: community.id, label: community.name }));
+  }, [communities, builderId]);
   const modelPlanOptions = useMemo(() => {
     if (!modelPlans) return [];
     const filtered = builderId ? modelPlans.filter((plan) => plan.builderId === builderId) : modelPlans;
@@ -235,6 +243,20 @@ function EditIntakeForm({ intake, onSuccess, onClose }: { intake: RecentIntake; 
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">PO Number</label>
           <input {...register('poNumber')} placeholder="PO Number" className="w-full px-4 py-2.5 border border-gray-300 rounded-lg" />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Amount ($)</label>
+          <input {...register('amount')} type="number" step="0.01" placeholder="0.00" className="w-full px-4 py-2.5 border border-gray-300 rounded-lg" />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
+          <select {...register('status')} className="w-full px-4 py-2.5 border border-gray-300 rounded-lg bg-white">
+            <option value="PENDING">Pending</option>
+            <option value="APPROVED">Approved</option>
+            <option value="COMPLETED">Completed</option>
+            <option value="BILLED">Billed</option>
+            <option value="PAID">Paid</option>
+          </select>
         </div>
       </div>
       <div>

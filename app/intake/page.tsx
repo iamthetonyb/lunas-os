@@ -42,6 +42,8 @@ export type RecentIntake = {
     name: string;
     walkTime: string | null;
   }[];
+  amount: string | null;
+  status: string | null;
 };
 
 const fetcher = (url: string) => fetchJSON<RecentIntake[]>(url);

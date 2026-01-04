@@ -249,12 +249,14 @@ export function IntakeForm() {
   }, [builders]);
 
   const communityOptions = useMemo(() => {
-    return (communities ?? []).map((community) => ({
+    const list = communities ?? [];
+    const filtered = builderId ? list.filter(c => c.builderId === builderId) : list;
+    return filtered.map((community) => ({
       value: community.id,
       label: `${getFriendlyName(community.name)} (${builderMap.get(community.builderId ?? '') ?? 'Unknown'})`,
       description: builderMap.get(community.builderId ?? '') ?? undefined,
     }));
-  }, [communities, builderMap]);
+  }, [communities, builderMap, builderId]);
 
   const communityMap = useMemo(() => {
     const map = new Map<string, CommunityDTO>();
