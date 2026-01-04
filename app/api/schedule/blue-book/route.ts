@@ -49,6 +49,7 @@ export const GET = safe(async (req: Request) => {
       status: true,
       assignedForemanName: true,
       communityId: true,
+      source: true,
     },
     with: {
       builder: {
@@ -121,6 +122,7 @@ export const GET = safe(async (req: Request) => {
       amount: entry.amount,
       status: entry.status,
       assignedForemanName: entry.assignedForemanName,
+      isScraped: entry.source === 'scraped',
     };
   });
 
@@ -191,7 +193,8 @@ export const GET = safe(async (req: Request) => {
         walkTime: null,
         requestedBy: req.requestedBy,
         assignedForemanName: null,
-        isExtraWork: false, // Default to false
+        isExtraWork: false,
+        isScraped: false,
       }];
     }
 
@@ -213,7 +216,8 @@ export const GET = safe(async (req: Request) => {
       walkTime: service.walkTime,
       requestedBy: req.requestedBy,
       assignedForemanName: service.assignedForemanName,
-      isExtraWork: false, // Default to false
+      isExtraWork: false,
+      isScraped: false,
     }));
   });
 

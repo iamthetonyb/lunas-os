@@ -33,6 +33,8 @@ export const GET = safe(async (req, context) => {
       dueDate: jobRequests.dueDate,
       notes: jobRequests.notes,
       poNumber: jobRequests.poNumber,
+      amount: jobRequests.amount,
+      status: jobRequests.status,
       createdById: jobRequests.createdById,
       createdAt: jobRequests.createdAt,
       builderName: builders.name,

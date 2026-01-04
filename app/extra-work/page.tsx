@@ -45,26 +45,16 @@ export default function ExtraWorkPage() {
 
 
   const handleUpdate = async (id: string, field: string, value: any) => {
-    // Basic optimistic UI could be added here, but for now we rely on mutate
     try {
       await fetchJSON(`/api/job-requests/${id}`, {
-        method: 'PUT', // Using PUT or we might need a PATCH endpoint. 
-        // Existing PUT requires full payload. We should check if we can partial update or if we need to implement PATCH.
-        // Step 4333 shows PUT expects full payload (zod schema).
-        // I might need to implement a PATCH or just use what I have.
-        // Wait, the PUT logic re-creates services too.
-        // I should probably Implement a PATCH route or separate update logic for these fields.
-        // But user said "Update POST ...". No, they said "Restore Editable Input Fields... Ensure they save to the DB".
-        // I will implement a PATCH in job-requests/[id] first? Or allow partial PUT?
-        // The existing PUT validation is strict.
-        // I'll add a PATCH handler to `app/api/job-requests/[id]/route.ts` in the next tool call? 
-        // Or assume I can use a new endpoint.
-        // I'll use a new helper `updateJobRequestField` which calls a new PATCH.
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ [field]: value }),
       });
-      // Actually, I'll write the UI code assuming PATCH exists, then fix the backend.
+      // Mutate results after update to ensure UI is in sync
+      // Actually we use defaultValue so onBlur is fine, but mutate helps if there are side effects
     } catch (e) {
-      console.error(e);
-      // toast error
+      console.error('Update failed:', e);
     }
   };
 
@@ -103,82 +93,108 @@ export default function ExtraWorkPage() {
               {!isLoading && (!jobs || jobs.length === 0) && (
                 <tr><td colSpan={7} className="px-4 py-6 text-center text-gray-500">No extra work requests found.</td></tr>
               )}
-              {jobs?.map((job) => (
-                <tr key={job.id} className="hover:bg-gray-50">
-                  {/* ... Date, Builder, Lot ... (Static) */}
-                  <td className="px-4 py-3 text-gray-900 whitespace-nowrap">
-                    {job.dueDate ? new Date(job.dueDate).toLocaleDateString() : '—'}
-                  </td>
-                  <td className="px-4 py-3 text-gray-900">
-                    <div className="font-medium">{job.builderName}</div>
-                    <div className="text-xs text-gray-500">{job.communityName}</div>
-                  </td>
-                  <td className="px-4 py-3 text-gray-900">
-                    <div className="font-medium">Lot {job.lot}</div>
-                    <div className="text-xs text-gray-500">{job.address}</div>
-                  </td>
-                  <td className="px-4 py-3 text-gray-900">
-                    <div className="flex flex-wrap gap-1">
-                      {job.services?.map(s => (
-                        <span key={s.id} className="inline-flex rounded-full bg-blue-100 px-2 py-0.5 text-xs font-semibold text-blue-800">
-                          {s.name}
-                        </span>
-                      ))}
-                    </div>
-                  </td>
-                  {/* Editable Fields */}
-                  <td className="px-4 py-3 text-gray-900">
-                    <input
-                      type="number"
-                      defaultValue={(job as any).amount || ''}
-                      className="w-24 px-2 py-1 border rounded"
-                      placeholder="$0.00"
-                      onBlur={(e) => {
-                        const val = e.target.value;
-                        fetchJSON(`/api/job-requests/${job.id}`, {
-                          method: 'PATCH',
-                          headers: { 'Content-Type': 'application/json' },
-                          body: JSON.stringify({ amount: val })
-                        });
-                      }}
-                    />
-                  </td>
-                  <td className="px-4 py-3 text-gray-900">
-                    <input
-                      type="text"
-                      defaultValue={job.notes || ''}
-                      className="w-full px-2 py-1 border rounded"
-                      placeholder="Notes..."
-                      onBlur={(e) => {
-                        fetchJSON(`/api/job-requests/${job.id}`, {
-                          method: 'PATCH',
-                          headers: { 'Content-Type': 'application/json' },
-                          body: JSON.stringify({ notes: e.target.value })
-                        });
-                      }}
-                    />
-                  </td>
-                  <td className="px-4 py-3 text-gray-900">
-                    <select
-                      defaultValue={(job as any).status || ''}
-                      className="w-32 px-2 py-1 border rounded"
-                      onChange={(e) => {
-                        fetchJSON(`/api/job-requests/${job.id}`, {
-                          method: 'PATCH',
-                          headers: { 'Content-Type': 'application/json' },
-                          body: JSON.stringify({ status: e.target.value })
-                        });
-                      }}
-                    >
-                      <option value="">Select...</option>
-                      <option value="PENDING">Pending</option>
-                      <option value="APPROVED">Approved</option>
-                      <option value="COMPLETED">Completed</option>
-                      <option value="BILLED">Billed</option>
-                    </select>
-                  </td>
-                </tr>
-              ))}
+              {jobs?.map((job) => {
+                const serviceKey = job.services.map(s => s.name).sort().join('|');
+                // Basic duplicate check (very naive but follows user request)
+                const isDuplicate = jobs.some(other =>
+                  other.id !== job.id &&
+                  other.communityName === job.communityName &&
+                  other.lot === job.lot &&
+                  other.services.map(s => s.name).sort().join('|') === serviceKey
+                );
+
+                return (
+                  <tr key={job.id} className={isDuplicate ? "bg-red-50 hover:bg-red-100" : "hover:bg-gray-50"}>
+                    <td className="px-4 py-3">
+                      <input
+                        type="date"
+                        defaultValue={job.dueDate ? new Date(job.dueDate).toISOString().split('T')[0] : ''}
+                        className="w-full px-2 py-1 border rounded text-xs"
+                        onBlur={(e) => handleUpdate(job.id, 'dueDate', e.target.value)}
+                      />
+                    </td>
+                    <td className="px-4 py-3 text-gray-900">
+                      <div className="font-medium flex items-center gap-1">
+                        {job.builderName}
+                        {isDuplicate && <span className="text-[10px] bg-red-500 text-white px-1 rounded">DUP</span>}
+                      </div>
+                      <div className="text-xs text-gray-500">{job.communityName}</div>
+                    </td>
+                    <td className="px-4 py-3 text-gray-900">
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-1">
+                          <span className="text-xs text-gray-400">Lot:</span>
+                          <input
+                            type="text"
+                            defaultValue={job.lot}
+                            className="w-16 px-1 py-0.5 border rounded text-xs"
+                            onBlur={(e) => handleUpdate(job.id, 'lot', e.target.value)}
+                          />
+                        </div>
+                        <input
+                          type="text"
+                          defaultValue={job.address || ''}
+                          className="w-full px-1 py-0.5 border rounded text-[10px]"
+                          placeholder="Address"
+                          onBlur={(e) => handleUpdate(job.id, 'address', e.target.value)}
+                        />
+                      </div>
+                    </td>
+                    <td className="px-4 py-3 text-gray-900">
+                      <div className="flex flex-wrap gap-1">
+                        {job.services?.map(s => (
+                          <span key={s.id} className="inline-flex rounded-full bg-blue-100 px-2 py-0.5 text-[10px] font-semibold text-blue-800">
+                            {s.name}
+                          </span>
+                        ))}
+                      </div>
+                    </td>
+                    <td className="px-4 py-3 text-gray-900">
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-1">
+                          <span className="text-[10px] text-gray-400">$</span>
+                          <input
+                            type="number"
+                            defaultValue={(job as any).amount || ''}
+                            className="w-20 px-1 py-0.5 border rounded text-xs"
+                            placeholder="Price"
+                            onBlur={(e) => handleUpdate(job.id, 'amount', e.target.value)}
+                          />
+                        </div>
+                        <input
+                          type="text"
+                          defaultValue={(job as any).poNumber || ''}
+                          className="w-full px-1 py-0.5 border rounded text-[10px]"
+                          placeholder="Invoice #"
+                          onBlur={(e) => handleUpdate(job.id, 'poNumber', e.target.value)}
+                        />
+                      </div>
+                    </td>
+                    <td className="px-4 py-3 text-gray-900">
+                      <textarea
+                        defaultValue={job.notes || ''}
+                        rows={2}
+                        className="w-full px-2 py-1 border rounded text-xs resize-none"
+                        placeholder="Notes..."
+                        onBlur={(e) => handleUpdate(job.id, 'notes', e.target.value)}
+                      />
+                    </td>
+                    <td className="px-4 py-3 text-gray-900">
+                      <select
+                        defaultValue={(job as any).status || 'PENDING'}
+                        className="w-28 px-1 py-1 border rounded text-xs"
+                        onChange={(e) => handleUpdate(job.id, 'status', e.target.value)}
+                      >
+                        <option value="PENDING">Pending</option>
+                        <option value="APPROVED">Approved</option>
+                        <option value="COMPLETED">Completed</option>
+                        <option value="BILLED">Billed</option>
+                        <option value="PAID">Paid</option>
+                      </select>
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
