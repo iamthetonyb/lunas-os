@@ -1133,7 +1133,7 @@ export default function BlueBookPage() {
   };
 
   const handleDelete = async () => {
-    if (!editingEntry || editingEntry.source !== 'manual') return;
+    if (!editingEntry || editingEntry.source?.toUpperCase() !== 'MANUAL') return;
     if (!confirm('Are you sure you want to delete this manual entry?')) return;
 
     setSaving(true);

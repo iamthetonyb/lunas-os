@@ -1,7 +1,7 @@
 import { getDb } from '@/lib/db/get-db';
 import { json } from '@/lib/utils/json';
 import { dispatchBatches } from '@/db/schema/dispatch_batches';
-import { assignments, blueBookEntries } from '@/db/schema/assignments';
+import { assignments } from '@/db/schema/assignments';
 import { jobRequestServices } from '@/db/schema/job_request_services';
 import { jobRequests } from '@/db/schema/job_requests';
 import { communities } from '@/db/schema/communities';
@@ -9,7 +9,7 @@ import { builders } from '@/db/schema/builders';
 import { services } from '@/db/schema/services';
 import { crews } from '@/db/schema/crews';
 import { users } from '@/db/schema/users';
-import { eq, inArray } from 'drizzle-orm';
+import { eq, sql } from 'drizzle-orm';
 
 export const runtime = 'nodejs';
 export const preferredRegion = 'auto';
@@ -23,7 +23,6 @@ export async function GET(
     try {
         const db = await getDb();
 
-        // Get the dispatch batch
         const batch = await db.select({
             id: dispatchBatches.id,
             serviceDate: dispatchBatches.serviceDate,
@@ -43,7 +42,6 @@ export async function GET(
 
         const dispatchBatch = batch[0];
 
-        // Get assignments linked to this batch with job details using explicit joins
         const batchAssignments = await db.select({
             assignmentId: assignments.id,
             assignmentStatus: assignments.status,
@@ -59,7 +57,6 @@ export async function GET(
             builderName: builders.name,
             lot: jobRequests.lot,
             address: jobRequests.address,
-            // Add assignedForemanName from the service itself
             serviceForeman: jobRequestServices.assignedForemanName,
         })
             .from(assignments)
@@ -72,13 +69,11 @@ export async function GET(
             .leftJoin(builders, eq(jobRequests.builderId, builders.id))
             .where(eq(assignments.dispatchBatchId, id));
 
-        // Get crew and foreman info - batch values take precedence as they were captured at dispatch time
         const crewName = dispatchBatch.crewName || batchAssignments[0]?.crewName || 'Unknown Crew';
         const foremanName = dispatchBatch.foremanName || batchAssignments[0]?.foremanName || 'Unassigned';
 
-        // Map jobs from assignments
         const jobs = batchAssignments.map((assignment) => ({
-            id: assignment.jobRequestServiceId || assignment.assignmentId,
+            id: assignment.assignmentId,
             communityName: assignment.communityName || null,
             builderName: assignment.builderName || null,
             lot: assignment.lot || null,
@@ -104,6 +99,7 @@ export async function GET(
     }
 }
 
+// THE FIXED DELETE FUNCTION (Using Raw SQL for Safety)
 export async function DELETE(
     request: Request,
     { params }: { params: Promise<{ id: string }> }
@@ -113,26 +109,26 @@ export async function DELETE(
     try {
         const db = await getDb();
 
-        // 1. Get all assignment IDs linked to this batch
-        const assignmentsToDelete = await db
-            .select({ id: assignments.id })
-            .from(assignments)
-            .where(eq(assignments.dispatchBatchId, id));
+        // Use a transaction or sequential SQL execution to ensure order
+        // 1. Delete Blue Book Entries linked to assignments in this batch
+        await db.execute(sql`
+            DELETE FROM blue_book_entries 
+            WHERE assignment_id IN (
+                SELECT id FROM assignments WHERE dispatch_batch_id = ${id}
+            )
+        `);
 
-        const assignmentIds = assignmentsToDelete.map((a) => a.id);
+        // 2. Delete the Assignments
+        await db.execute(sql`
+            DELETE FROM assignments 
+            WHERE dispatch_batch_id = ${id}
+        `);
 
-        if (assignmentIds.length > 0) {
-            // 2. DELETE blue book entries linked to these assignments
-            await db
-                .delete(blueBookEntries)
-                .where(inArray(blueBookEntries.assignmentId, assignmentIds));
-
-            // 3. Delete assignments
-            await db.delete(assignments).where(eq(assignments.dispatchBatchId, id));
-        }
-
-        // Delete the dispatch batch
-        await db.delete(dispatchBatches).where(eq(dispatchBatches.id, id));
+        // 3. Delete the Batch itself
+        await db.execute(sql`
+            DELETE FROM dispatch_batches 
+            WHERE id = ${id}
+        `);
 
         return json({ ok: true, message: 'Dispatch batch deleted' });
     } catch (error) {

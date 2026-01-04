@@ -200,9 +200,7 @@ export default function DispatchDetailPage({ params }: { params: Promise<{ id: s
                                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Foreman</th>
                                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Walk Time</th>
                                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
-                                        {isContractor && (
-                                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
-                                        )}
+                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
                                     </tr>
                                 </thead>
                                 <tbody className="bg-white divide-y divide-gray-200">
@@ -234,26 +232,24 @@ export default function DispatchDetailPage({ params }: { params: Promise<{ id: s
                                                     {job.status || 'PENDING'}
                                                 </span>
                                             </td>
-                                            {isContractor && (
-                                                <td className="px-6 py-4 whitespace-nowrap text-sm flex gap-2">
-                                                    {job.status !== 'COMPLETE' && (
-                                                        <button
-                                                            onClick={() => openCompleteModal(job.id)}
-                                                            className="px-3 py-1 bg-green-500 text-white text-xs rounded hover:bg-green-600"
-                                                            title="Mark Complete"
-                                                        >
-                                                            ✓
-                                                        </button>
-                                                    )}
+                                            <td className="px-6 py-4 whitespace-nowrap text-sm flex gap-2">
+                                                {isContractor && job.status !== 'COMPLETE' && (
                                                     <button
-                                                        onClick={() => openDeleteModal(job.id)}
-                                                        className="px-3 py-1 bg-red-100 text-red-600 text-xs rounded hover:bg-red-200"
-                                                        title="Remove Job"
+                                                        onClick={() => openCompleteModal(job.id)}
+                                                        className="px-3 py-1 bg-green-500 text-white text-xs rounded hover:bg-green-600"
+                                                        title="Mark Complete"
                                                     >
-                                                        🗑
+                                                        ✓
                                                     </button>
-                                                </td>
-                                            )}
+                                                )}
+                                                <button
+                                                    onClick={() => openDeleteModal(job.id)}
+                                                    className="px-3 py-1 bg-red-100 text-red-600 text-xs rounded hover:bg-red-200"
+                                                    title="Remove Job"
+                                                >
+                                                    ✕
+                                                </button>
+                                            </td>
                                         </tr>
                                     ))}
                                 </tbody>
