@@ -148,13 +148,13 @@ export async function POST(request: NextRequest) {
                     .where(eq(jobRequests.id, jrs.jobRequestId))
                     .limit(1);
 
-                if (jobReq) {
+                if (jobReq && jobReq.builderId && jobReq.communityId && jrs.serviceId) {
                     // Try to find an existing pending Blue Book entry from intake
                     const existingPendingBBE = await db.query.blueBookEntries.findFirst({
                         where: and(
                             eq(blueBookEntries.builderId, jobReq.builderId),
                             eq(blueBookEntries.communityId, jobReq.communityId),
-                            eq(blueBookEntries.lot, jobReq.lot),
+                            eq(blueBookEntries.lot, jobReq.lot ?? ''), // Handle potential null lot
                             eq(blueBookEntries.serviceId, jrs.serviceId),
                             eq(blueBookEntries.status, 'PENDING')
                             // We don't strictly check source='intake' to allow linking imported/manual ones too if they match exactly
