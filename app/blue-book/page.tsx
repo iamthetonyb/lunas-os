@@ -1175,23 +1175,26 @@ export default function BlueBookPage() {
     }
   };
 
-  const handleDelete = async () => {
-    if (!editingEntry) return;
+  const handleDelete = async (id?: string) => {
+    const entryId = id || editingEntry?.id;
+    if (!entryId) return;
 
     // Fix: Allow if Admin OR if Manual (Admins must always see button)
-    const isManual = editingEntry.source === 'manual';
-    if (!isAdmin && !isManual) return;
+    // If we have an ID but no editingEntry (direct delete), we trust the admin check in the UI + API safety
+    if (!isAdmin && editingEntry?.source !== 'manual') return;
 
     if (!confirm('Are you sure you want to delete this entry?')) return;
 
     setSaving(true);
     setFormError(null);
     try {
-      await fetchJSON(`/api/blue-book/${editingEntry.id}`, {
+      await fetchJSON(`/api/blue-book/${entryId}`, {
         method: 'DELETE',
       });
       await mutate();
-      setEditingEntry(null);
+      if (editingEntry?.id === entryId) {
+        setEditingEntry(null);
+      }
     } catch (err) {
       const message =
         err instanceof Error ? err.message : typeof err === 'string' ? err : 'Unexpected error';
@@ -1646,6 +1649,15 @@ export default function BlueBookPage() {
                                               >
                                                 Edit
                                               </button>
+                                              {isAdmin && (
+                                                <button
+                                                  className="ml-3 text-red-500 hover:text-red-700 transition-transform hover:scale-110"
+                                                  onClick={() => handleDelete(entry.id)}
+                                                  title="Delete Entry"
+                                                >
+                                                  ❌
+                                                </button>
+                                              )}
                                             </td>
                                           </tr>
                                         ))}
@@ -1810,7 +1822,7 @@ export default function BlueBookPage() {
                     <button
                       type="button"
                       className="rounded-lg border border-red-300 bg-red-50 px-4 py-2 text-sm font-semibold text-red-600 hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-50"
-                      onClick={handleDelete}
+                      onClick={() => handleDelete()}
                       disabled={saving}
                     >
                       {saving ? 'Deleting…' : 'Delete Entry'}

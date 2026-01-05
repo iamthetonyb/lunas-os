@@ -97,26 +97,27 @@ export default function DispatchPage() {
                 + New Job
               </Link>
             )}
-            <div className="flex items-center bg-white dark:bg-slate-700 rounded-lg border border-gray-300 dark:border-slate-600 p-1">
-              <button
-                onClick={handlePrevDay}
-                className="p-1.5 hover:bg-gray-100 dark:hover:bg-slate-600 rounded"
-              >
-                ←
-              </button>
+            <button
+              onClick={handlePrevDay}
+              className="p-1.5 hover:bg-gray-100 dark:hover:bg-slate-600 rounded text-gray-600 dark:text-gray-300"
+            >
+              ←
+            </button>
+            <div className="relative">
               <input
                 type="date"
                 value={date}
                 onChange={(e) => setDate(e.target.value)}
-                className="px-2 py-1 bg-transparent border-none focus:ring-0 text-sm font-medium text-gray-900 dark:text-white"
+                className="px-2 py-1 bg-transparent border-none focus:ring-0 text-sm font-medium text-gray-900 dark:text-white cursor-pointer [&::-webkit-calendar-picker-indicator]:opacity-0 [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:inset-0 [&::-webkit-calendar-picker-indicator]:w-full [&::-webkit-calendar-picker-indicator]:cursor-pointer"
               />
-              <button
-                onClick={handleNextDay}
-                className="p-1.5 hover:bg-gray-100 dark:hover:bg-slate-600 rounded"
-              >
-                →
-              </button>
+              <span className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-xs">📅</span>
             </div>
+            <button
+              onClick={handleNextDay}
+              className="p-1.5 hover:bg-gray-100 dark:hover:bg-slate-600 rounded text-gray-600 dark:text-gray-300"
+            >
+              →
+            </button>
           </div>
         }
       />
@@ -216,7 +217,7 @@ export default function DispatchPage() {
             </div>
           )}
         </div>
-      </main>
+      </main >
 
       <ConfirmationModal
         isOpen={deleteModal.isOpen}
