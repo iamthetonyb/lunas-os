@@ -361,7 +361,8 @@ export function IntakeForm() {
       // Force refresh using global matcher for any job request list
       await mutate((key) => Array.isArray(key) || (typeof key === 'string' && key.includes('/api/job-requests')));
       await mutate('/api/schedule/blue-book');
-      await mutate((key) => typeof key === 'string' && key.startsWith('/api/blue-book'));
+      // Instant Refresh: Clear all schedule/blue-book cache entries (including those with date params)
+      await mutate((key) => typeof key === 'string' && key.startsWith('/api/schedule/blue-book'));
       toast.success('Job request created successfully!');
       router.push('/intake');
     } catch (error) {
@@ -529,12 +530,15 @@ export function IntakeForm() {
             <label htmlFor="dueDate" className="block text-sm font-medium text-gray-700 mb-2">
               {t('dueDate')} <span className="text-red-500">*</span>
             </label>
-            <input
-              id="dueDate"
-              type="date"
-              {...register('dueDate')}
-              className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-            />
+            <div className="relative">
+              <input
+                id="dueDate"
+                type="date"
+                {...register('dueDate')}
+                className="w-full px-4 py-2.5 bg-transparent border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 cursor-pointer [&::-webkit-calendar-picker-indicator]:opacity-0 [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:inset-0 [&::-webkit-calendar-picker-indicator]:w-full [&::-webkit-calendar-picker-indicator]:cursor-pointer"
+              />
+              <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-sm">📅</span>
+            </div>
             {errors.dueDate && (
               <p className="mt-1 text-sm text-red-600">{errors.dueDate.message}</p>
             )}
