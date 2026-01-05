@@ -38,6 +38,8 @@ if (typeof window !== 'undefined') {
       react: {
         useSuspense: false,
       },
+      // Explicitly disable backend
+      backend: undefined,
     });
 }
 
