@@ -180,6 +180,8 @@ function EditIntakeForm({ intake, onSuccess, onClose }: { intake: RecentIntake; 
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data),
       });
+      // Force refresh all job request related queries
+      await mutate((key) => typeof key === 'string' && key.startsWith('/api/job-requests'));
       onSuccess();
     } catch (error) {
       console.error('Error updating job request:', error);
