@@ -9,6 +9,7 @@ import {
     communities,
     modelPlans,
     services,
+    blueBookEntries,
 } from '@/db/schema';
 
 export const runtime = 'nodejs';
