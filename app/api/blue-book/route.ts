@@ -14,6 +14,8 @@ export const GET = safe(async (req: Request) => {
   const invoiced = searchParams.get('invoiced');
   const searchTerm = searchParams.get('search')?.trim();
   const sortParam = (searchParams.get('sort') || 'checkDate').toLowerCase();
+
+  const db = await getDb();
   const pageParam = searchParams.get('page');
   const pageSizeParam = searchParams.get('pageSize');
 
