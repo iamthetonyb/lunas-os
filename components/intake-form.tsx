@@ -358,8 +358,8 @@ export function IntakeForm() {
         body: JSON.stringify(data),
       });
       await mutate('/api/job-requests/recent');
-      // Force refresh any key starting with recent
-      await mutate((key) => typeof key === 'string' && key.startsWith('/api/job-requests/recent'));
+      // Force refresh using global matcher for any job request list
+      await mutate((key) => Array.isArray(key) || (typeof key === 'string' && key.includes('/api/job-requests')));
       await mutate('/api/schedule/blue-book');
       toast.success('Job request created successfully!');
       router.push('/intake');

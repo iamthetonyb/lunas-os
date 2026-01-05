@@ -1768,8 +1768,8 @@ export default function BlueBookPage() {
               </div>
               {formError && <p className="text-sm text-red-600">{formError}</p>}
               <div className="flex justify-between gap-3">
-                {/* Admin can ALWAYS see Delete, or if source is null/manual */}
-                {(isAdmin || !editingEntry?.source || editingEntry.source.toLowerCase() === 'manual') && (
+                {/* Admin can ALWAYS delete. Removed source checks per user request. */}
+                {isAdmin && (
                   <button
                     type="button"
                     className="rounded-lg border border-red-300 bg-red-50 px-4 py-2 text-sm font-semibold text-red-600 hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-50"

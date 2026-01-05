@@ -53,6 +53,20 @@ function getNextBusinessDay(fromDate: Date): Date {
   return next;
 }
 
+// Helper: Get next business day (skip weekends)
+const getNextDate = (current: string) => {
+  const date = new Date(current);
+  date.setDate(date.getDate() + 1);
+  // Optional: Skip weekends if needed, but simple next day is standard nav
+  return date.toISOString().split('T')[0];
+};
+
+const getPrevDate = (current: string) => {
+  const date = new Date(current);
+  date.setDate(date.getDate() - 1);
+  return date.toISOString().split('T')[0];
+};
+
 // Helper: Get service-based row color
 function getServiceRowColor(serviceName: string, isDispatched: boolean, isRescheduled: boolean, isComplete: boolean, isExtraWork?: boolean): string {
   if (isExtraWork) return 'bg-red-100 dark:bg-red-900/40 border-l-4 border-red-500'; // Extra work / duplicate
@@ -540,13 +554,30 @@ export default function SchedulePage() {
         title="Schedule"
         description="Manage job scheduling and crew assignments"
         action={
-          <div className="flex gap-2">
-            <input
-              type="date"
-              value={date}
-              onChange={(e) => setDate(e.target.value)}
-              className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-slate-700 text-gray-900 dark:text-white"
-            />
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setDate(getPrevDate(date))}
+              className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-slate-700 text-gray-600 dark:text-gray-300 transition-colors"
+              title="Previous Day"
+            >
+              ←
+            </button>
+            <div className="relative">
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none">📅</span>
+              <input
+                type="date"
+                value={date}
+                onChange={(e) => setDate(e.target.value)}
+                className="pl-9 pr-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-slate-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none"
+              />
+            </div>
+            <button
+              onClick={() => setDate(getNextDate(date))}
+              className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-slate-700 text-gray-600 dark:text-gray-300 transition-colors"
+              title="Next Day"
+            >
+              →
+            </button>
             {!isContractor && (
               <button
                 onClick={handleAutoDraft}
