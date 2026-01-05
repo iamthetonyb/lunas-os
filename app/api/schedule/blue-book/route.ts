@@ -1,5 +1,5 @@
 import { getDb } from '@/lib/db/get-db';
-import { blueBookEntries, jobRequests, jobRequestServices, builders, communities, modelPlans, services, assignments } from '@/db/schema';
+import { blueBookEntries, jobRequests, jobRequestServices, builders, communities, modelPlans, services, assignments, dispatchBatches } from '@/db/schema';
 import { and, gte, lte, isNotNull, eq, sql } from 'drizzle-orm';
 import { safe, ok } from '@/lib/api/http';
 import { requireMembership } from '@/lib/auth/guards';
@@ -82,6 +82,7 @@ export const GET = safe(async (req: Request) => {
       walkTime: jobRequestServices.walkTime,
       assignedForemanName: jobRequestServices.assignedForemanName,
       assignmentStatus: assignments.status,
+      assignmentForemanName: dispatchBatches.foremanName,
     })
     .from(jobRequests)
     .leftJoin(builders, eq(jobRequests.builderId, builders.id))
@@ -90,6 +91,7 @@ export const GET = safe(async (req: Request) => {
     .leftJoin(jobRequestServices, eq(jobRequests.id, jobRequestServices.jobRequestId))
     .leftJoin(services, eq(jobRequestServices.serviceId, services.id))
     .leftJoin(assignments, eq(jobRequestServices.id, assignments.jobRequestServiceId))
+    .leftJoin(dispatchBatches, eq(assignments.dispatchBatchId, dispatchBatches.id))
     .where(
       and(
         isNotNull(jobRequests.dueDate),
@@ -157,15 +159,30 @@ export const GET = safe(async (req: Request) => {
       });
     }
     const entry = jobRequestMap.get(row.id)!;
-    if (row.serviceId && row.serviceName) {
-      entry.services.push({
-        id: row.serviceId,
-        jobRequestServiceId: row.jobRequestServiceId,
-        name: row.serviceName,
-        walkTime: row.walkTime,
-        assignedForemanName: row.assignedForemanName,
-        assignmentStatus: row.assignmentStatus,
-      });
+    if (row.serviceId && row.serviceName && row.jobRequestServiceId) {
+      // Deduplicate services: Check if we already have this service recorded
+      const existingServiceIndex = entry.services.findIndex(s => s.jobRequestServiceId === row.jobRequestServiceId);
+
+      if (existingServiceIndex === -1) {
+        // New service, add it
+        entry.services.push({
+          id: row.serviceId,
+          jobRequestServiceId: row.jobRequestServiceId,
+          name: row.serviceName,
+          walkTime: row.walkTime,
+          assignedForemanName: row.assignedForemanName,
+          assignmentStatus: row.assignmentStatus,
+        });
+      } else {
+        // Service exists (likely due to multiple assignments). 
+        // Logic: specific status overrides null/pending? 
+        // For now, if current row has an assignment status and existing doesn't, allow overwrite?
+        // Actually, easiest is just to take the first one or ignore duplicates if they are effectively the same essential data for the schedule card.
+        // We'll prioritize rows that HAVE an assignment status.
+        if (row.assignmentStatus && !entry.services[existingServiceIndex].assignmentStatus) {
+          entry.services[existingServiceIndex].assignmentStatus = row.assignmentStatus;
+        }
+      }
     }
   });
 

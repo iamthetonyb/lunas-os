@@ -556,37 +556,40 @@ export default function SchedulePage() {
         description="Manage job scheduling and crew assignments"
         action={
           <div className="flex items-center gap-2">
-            <div className="relative flex items-center">
-              <input
-                type="date"
-                value={date}
-                onChange={(e) => setDate(e.target.value)}
-                className="pl-3 pr-9 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-slate-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none"
-              />
-              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none">📅</span>
-            </div>
-            <button
-              onClick={() => setDate(getPrevDate(date))}
-              className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-slate-700 text-gray-600 dark:text-gray-300 transition-colors border border-gray-200 dark:border-gray-600"
-              title="Previous Day"
-            >
-              ←
-            </button>
-            <button
-              onClick={() => setDate(getNextDate(date))}
-              className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-slate-700 text-gray-600 dark:text-gray-300 transition-colors border border-gray-200 dark:border-gray-600"
-              title="Next Day"
-            >
-              →
-            </button>
             {!isContractor && (
               <button
                 onClick={handleAutoDraft}
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 whitespace-nowrap text-sm font-medium transition-colors"
+                title="Auto-assign crews to unassigned jobs"
               >
                 Auto-Draft
               </button>
             )}
+            <div className="flex items-center bg-white dark:bg-slate-700 rounded-lg border border-gray-300 dark:border-slate-600 p-1">
+              <button
+                onClick={() => setDate(getPrevDate(date))}
+                className="p-1.5 hover:bg-gray-100 dark:hover:bg-slate-600 rounded text-gray-600 dark:text-gray-300"
+                title="Previous Day"
+              >
+                ←
+              </button>
+              <div className="relative">
+                <input
+                  type="date"
+                  value={date}
+                  onChange={(e) => setDate(e.target.value)}
+                  className="px-2 py-1 bg-transparent border-none focus:ring-0 text-sm font-medium text-gray-900 dark:text-white cursor-pointer [&::-webkit-calendar-picker-indicator]:opacity-0 [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:inset-0 [&::-webkit-calendar-picker-indicator]:w-full [&::-webkit-calendar-picker-indicator]:cursor-pointer"
+                />
+                <span className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-xs">📅</span>
+              </div>
+              <button
+                onClick={() => setDate(getNextDate(date))}
+                className="p-1.5 hover:bg-gray-100 dark:hover:bg-slate-600 rounded text-gray-600 dark:text-gray-300"
+                title="Next Day"
+              >
+                →
+              </button>
+            </div>
           </div>
         }
       />
