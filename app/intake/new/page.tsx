@@ -1,5 +1,7 @@
 'use client';
 
+export const dynamic = 'force-dynamic';
+
 import { PageHeader } from '@/components/page-header';
 import { IntakeForm } from '@/components/intake-form';
 import Link from 'next/link';
@@ -7,8 +9,8 @@ import Link from 'next/link';
 export default function NewIntakePage() {
   return (
     <>
-      <PageHeader 
-        title="New Intake" 
+      <PageHeader
+        title="New Intake"
         description="Create a new job intake request"
         action={
           <Link href="/intake" className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700">
