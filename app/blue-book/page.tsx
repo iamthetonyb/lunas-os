@@ -737,1275 +737,1274 @@ export default function BlueBookPage() {
         }
         return a.nextActivityDate - b.nextActivityDate;
       });
-  });
-}, [entries, phaseOverrides, communities, activeBuilderId, availableBuilders]);
+  }, [entries, phaseOverrides, communities, activeBuilderId, availableBuilders]);
 
-const [openCommunities, setOpenCommunities] = useState<Record<string, boolean>>({});
-const [openLots, setOpenLots] = useState<Record<string, boolean>>({});
+  const [openCommunities, setOpenCommunities] = useState<Record<string, boolean>>({});
+  const [openLots, setOpenLots] = useState<Record<string, boolean>>({});
 
-useEffect(() => {
-  setOpenCommunities(() => {
-    const initial: Record<string, boolean> = {};
-    communityGroups.slice(0, 3).forEach((group) => {
-      initial[group.key] = true;
+  useEffect(() => {
+    setOpenCommunities(() => {
+      const initial: Record<string, boolean> = {};
+      communityGroups.slice(0, 3).forEach((group) => {
+        initial[group.key] = true;
+      });
+      return initial;
     });
-    return initial;
-  });
-}, [communityGroups]);
+  }, [communityGroups]);
 
-useEffect(() => {
-  setOpenLots((prev) => {
+  useEffect(() => {
+    setOpenLots((prev) => {
+      const validKeys = new Set<string>();
+      communityGroups.forEach((group) => {
+        group.lots.forEach((lot) => validKeys.add(lot.key));
+      });
+      const next: Record<string, boolean> = {};
+      let changed = false;
+      Object.entries(prev).forEach(([key, value]) => {
+        if (validKeys.has(key)) {
+          next[key] = value;
+        } else {
+          changed = true;
+        }
+      });
+      return changed ? next : prev;
+    });
+  }, [communityGroups]);
+
+  useEffect(() => {
+    setPhaseOverrides((prev) => {
+      const validLotKeys = new Set<string>();
+      communityGroups.forEach((group) => {
+        group.lots.forEach((lot) => validLotKeys.add(lot.key));
+      });
+
+      let changed = false;
+      const next: PhaseOverrides = {};
+
+      Object.entries(prev).forEach(([lotKey, phases]) => {
+        if (!validLotKeys.has(lotKey)) {
+          changed = true;
+          return;
+        }
+
+        const nextPhases: Record<string, PhaseOverrideState> = {};
+        Object.entries(phases).forEach(([phaseCode, value]) => {
+          const normalized = normalizePhaseOverrideValue(value);
+          if (normalized) {
+            nextPhases[phaseCode] = normalized;
+            if (normalized !== value) {
+              changed = true;
+            }
+          } else {
+            changed = true;
+          }
+        });
+
+        if (Object.keys(nextPhases).length > 0) {
+          next[lotKey] = nextPhases;
+          if (nextPhases !== phases) {
+            changed = true;
+          }
+        } else if (Object.keys(phases).length > 0) {
+          changed = true;
+        }
+      });
+
+      const prevKeys = Object.keys(prev);
+      const nextKeys = Object.keys(next);
+      if (!changed) {
+        if (prevKeys.length !== nextKeys.length) {
+          changed = true;
+        } else {
+          for (const key of prevKeys) {
+            if (prev[key] !== next[key]) {
+              changed = true;
+              break;
+            }
+          }
+        }
+      }
+
+      return changed ? next : prev;
+    });
+  }, [communityGroups]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    try {
+      window.localStorage.setItem(LOT_PHASE_STORAGE_KEY, JSON.stringify(phaseOverrides));
+    } catch {
+      // ignore storage errors
+    }
+  }, [phaseOverrides]);
+
+  useEffect(() => {
     const validKeys = new Set<string>();
     communityGroups.forEach((group) => {
       group.lots.forEach((lot) => validKeys.add(lot.key));
     });
-    const next: Record<string, boolean> = {};
-    let changed = false;
-    Object.entries(prev).forEach(([key, value]) => {
-      if (validKeys.has(key)) {
-        next[key] = value;
-      } else {
-        changed = true;
-      }
-    });
-    return changed ? next : prev;
-  });
-}, [communityGroups]);
 
-useEffect(() => {
-  setPhaseOverrides((prev) => {
-    const validLotKeys = new Set<string>();
-    communityGroups.forEach((group) => {
-      group.lots.forEach((lot) => validLotKeys.add(lot.key));
+    setPendingPlanSelections((prev) => {
+      let changed = false;
+      const next: Record<string, string | null> = {};
+      Object.entries(prev).forEach(([key, value]) => {
+        if (validKeys.has(key)) {
+          next[key] = value;
+        } else {
+          changed = true;
+        }
+      });
+      return changed ? next : prev;
     });
 
-    let changed = false;
-    const next: PhaseOverrides = {};
+    setSavingPlanSelections((prev) => {
+      let changed = false;
+      const next: Record<string, boolean> = {};
+      Object.entries(prev).forEach(([key, value]) => {
+        if (validKeys.has(key)) {
+          next[key] = value;
+        } else {
+          changed = true;
+        }
+      });
+      return changed ? next : prev;
+    });
 
-    Object.entries(prev).forEach(([lotKey, phases]) => {
-      if (!validLotKeys.has(lotKey)) {
-        changed = true;
+    setPlanErrors((prev) => {
+      let changed = false;
+      const next: Record<string, string> = {};
+      Object.entries(prev).forEach(([key, value]) => {
+        if (validKeys.has(key)) {
+          next[key] = value;
+        } else {
+          changed = true;
+        }
+      });
+      return changed ? next : prev;
+    });
+  }, [communityGroups]);
+
+  useEffect(() => {
+    if (editingEntry) {
+      setFormState({
+        lot: editingEntry.lot || '',
+        startDate: editingEntry.startDate || '',
+        status: editingEntry.status,
+        invoiceNumber: editingEntry.invoiceNumber || '',
+        amount: editingEntry.amount ? String(editingEntry.amount) : '',
+        accountCategoryName: editingEntry.accountCategoryName || '',
+        accountCategoryCode: editingEntry.accountCategoryCode || '',
+        checkNumber: editingEntry.checkNumber || '',
+        checkDate: editingEntry.checkDate || '',
+        builderId: editingEntry.builderId || '',
+        communityId: editingEntry.communityId || '',
+        serviceId: editingEntry.serviceId || '',
+      });
+      setFormError(null);
+    }
+  }, [editingEntry]);
+
+  const toggleCommunity = (key: string) => {
+    setOpenCommunities((prev) => ({ ...prev, [key]: !prev[key] }));
+  };
+
+  const toggleLot = (key: string) => {
+    setOpenLots((prev) => ({ ...prev, [key]: !prev[key] }));
+  };
+
+  const handleTogglePhase = useCallback(
+    (
+      lotKey: string,
+      phaseCode: string,
+      baseComplete: boolean,
+      currentComplete: boolean
+    ) => {
+      setPhaseOverrides((prev) => {
+        const prevLot = prev[lotKey];
+        const prevPhase = prevLot?.[phaseCode];
+        const desired = !currentComplete;
+
+        const existingServices = prevPhase?.services;
+        const servicesClone = existingServices && Object.keys(existingServices).length > 0
+          ? { ...existingServices }
+          : undefined;
+
+        let nextPhase: PhaseOverrideState | undefined;
+        if (desired === baseComplete) {
+          nextPhase = servicesClone ? { services: servicesClone } : undefined;
+        } else {
+          nextPhase = {
+            phase: desired,
+            ...(servicesClone ? { services: servicesClone } : {}),
+          };
+        }
+
+        if (!nextPhase) {
+          if (!prevPhase) {
+            return prev;
+          }
+          const nextLot = { ...(prevLot ?? {}) };
+          delete nextLot[phaseCode];
+          if (Object.keys(nextLot).length === 0) {
+            const nextState = { ...prev };
+            delete nextState[lotKey];
+            return nextState;
+          }
+          return { ...prev, [lotKey]: nextLot };
+        }
+
+        if (
+          prevPhase &&
+          prevPhase.phase === nextPhase.phase &&
+          areServiceOverridesEqual(prevPhase.services, nextPhase.services)
+        ) {
+          return prev;
+        }
+
+        const nextLot = { ...(prevLot ?? {}) };
+        nextLot[phaseCode] = nextPhase;
+        return { ...prev, [lotKey]: nextLot };
+      });
+    },
+    []
+  );
+
+  const handleToggleServiceStatus = useCallback(
+    (
+      lotKey: string,
+      phaseCode: string,
+      serviceName: string,
+      baseLogged: boolean,
+      currentLogged: boolean
+    ) => {
+      setPhaseOverrides((prev) => {
+        const prevLot = prev[lotKey];
+        const prevPhase = prevLot?.[phaseCode];
+        const desired = !currentLogged;
+
+        const previousServices = prevPhase?.services ?? {};
+        const nextServices = { ...previousServices };
+
+        if (desired === baseLogged) {
+          if (serviceName in nextServices) {
+            delete nextServices[serviceName];
+          } else {
+            return prev;
+          }
+        } else if (nextServices[serviceName] !== desired) {
+          nextServices[serviceName] = desired;
+        } else {
+          return prev;
+        }
+
+        const hasServices = Object.keys(nextServices).length > 0;
+        const phaseOverrideValue = prevPhase?.phase;
+
+        if (!hasServices && phaseOverrideValue === undefined) {
+          if (!prevPhase) {
+            return prev;
+          }
+          const nextLot = { ...(prevLot ?? {}) };
+          delete nextLot[phaseCode];
+          if (Object.keys(nextLot).length === 0) {
+            const nextState = { ...prev };
+            delete nextState[lotKey];
+            return nextState;
+          }
+          return { ...prev, [lotKey]: nextLot };
+        }
+
+        const nextPhase: PhaseOverrideState = {
+          ...(phaseOverrideValue !== undefined ? { phase: phaseOverrideValue } : {}),
+          ...(hasServices ? { services: nextServices } : {}),
+        };
+
+        if (
+          prevPhase &&
+          prevPhase.phase === nextPhase.phase &&
+          areServiceOverridesEqual(prevPhase.services, nextPhase.services)
+        ) {
+          return prev;
+        }
+
+        const nextLot = { ...(prevLot ?? {}) };
+        nextLot[phaseCode] = nextPhase;
+        return { ...prev, [lotKey]: nextLot };
+      });
+    },
+    []
+  );
+
+  const handleLotPlanChange = useCallback(
+    async (lot: LotSummary, nextPlanId: string | null) => {
+      const normalizedNext = nextPlanId || null;
+
+      if ((lot.modelPlanId ?? null) === normalizedNext || lot.entries.length === 0) {
+        setPendingPlanSelections((prev) => {
+          if (!(lot.key in prev)) return prev;
+          const next = { ...prev };
+          delete next[lot.key];
+          return next;
+        });
         return;
       }
 
-      const nextPhases: Record<string, PhaseOverrideState> = {};
-      Object.entries(phases).forEach(([phaseCode, value]) => {
-        const normalized = normalizePhaseOverrideValue(value);
-        if (normalized) {
-          nextPhases[phaseCode] = normalized;
-          if (normalized !== value) {
-            changed = true;
-          }
-        } else {
-          changed = true;
-        }
+      setPlanErrors((prev) => {
+        if (!prev[lot.key]) return prev;
+        const next = { ...prev };
+        delete next[lot.key];
+        return next;
       });
+      setPendingPlanSelections((prev) => ({ ...prev, [lot.key]: normalizedNext }));
+      setSavingPlanSelections((prev) => ({ ...prev, [lot.key]: true }));
 
-      if (Object.keys(nextPhases).length > 0) {
-        next[lotKey] = nextPhases;
-        if (nextPhases !== phases) {
-          changed = true;
-        }
-      } else if (Object.keys(phases).length > 0) {
-        changed = true;
+      try {
+        await Promise.all(
+          lot.entries.map((entry) =>
+            fetchJSON(`/api/blue-book/${entry.id}`, {
+              method: 'PATCH',
+              headers: { 'content-type': 'application/json' },
+              body: JSON.stringify({ modelPlanId: normalizedNext }),
+            })
+          )
+        );
+        await mutate();
+      } catch (err) {
+        console.error('Failed to update model plan', err);
+        setPlanErrors((prev) => ({
+          ...prev,
+          [lot.key]:
+            err instanceof Error ? err.message : 'Failed to update model plan',
+        }));
+      } finally {
+        setSavingPlanSelections((prev) => {
+          if (!(lot.key in prev)) return prev;
+          const next = { ...prev };
+          delete next[lot.key];
+          return next;
+        });
+        setPendingPlanSelections((prev) => {
+          const next = { ...prev };
+          delete next[lot.key];
+          return next;
+        });
       }
-    });
+    },
+    [mutate]
+  );
 
-    const prevKeys = Object.keys(prev);
-    const nextKeys = Object.keys(next);
-    if (!changed) {
-      if (prevKeys.length !== nextKeys.length) {
-        changed = true;
-      } else {
-        for (const key of prevKeys) {
-          if (prev[key] !== next[key]) {
-            changed = true;
-            break;
-          }
-        }
-      }
-    }
-
-    return changed ? next : prev;
-  });
-}, [communityGroups]);
-
-useEffect(() => {
-  if (typeof window === 'undefined') return;
-  try {
-    window.localStorage.setItem(LOT_PHASE_STORAGE_KEY, JSON.stringify(phaseOverrides));
-  } catch {
-    // ignore storage errors
-  }
-}, [phaseOverrides]);
-
-useEffect(() => {
-  const validKeys = new Set<string>();
-  communityGroups.forEach((group) => {
-    group.lots.forEach((lot) => validKeys.add(lot.key));
-  });
-
-  setPendingPlanSelections((prev) => {
-    let changed = false;
-    const next: Record<string, string | null> = {};
-    Object.entries(prev).forEach(([key, value]) => {
-      if (validKeys.has(key)) {
-        next[key] = value;
-      } else {
-        changed = true;
-      }
-    });
-    return changed ? next : prev;
-  });
-
-  setSavingPlanSelections((prev) => {
-    let changed = false;
-    const next: Record<string, boolean> = {};
-    Object.entries(prev).forEach(([key, value]) => {
-      if (validKeys.has(key)) {
-        next[key] = value;
-      } else {
-        changed = true;
-      }
-    });
-    return changed ? next : prev;
-  });
-
-  setPlanErrors((prev) => {
-    let changed = false;
-    const next: Record<string, string> = {};
-    Object.entries(prev).forEach(([key, value]) => {
-      if (validKeys.has(key)) {
-        next[key] = value;
-      } else {
-        changed = true;
-      }
-    });
-    return changed ? next : prev;
-  });
-}, [communityGroups]);
-
-useEffect(() => {
-  if (editingEntry) {
-    setFormState({
-      lot: editingEntry.lot || '',
-      startDate: editingEntry.startDate || '',
-      status: editingEntry.status,
-      invoiceNumber: editingEntry.invoiceNumber || '',
-      amount: editingEntry.amount ? String(editingEntry.amount) : '',
-      accountCategoryName: editingEntry.accountCategoryName || '',
-      accountCategoryCode: editingEntry.accountCategoryCode || '',
-      checkNumber: editingEntry.checkNumber || '',
-      checkDate: editingEntry.checkDate || '',
-      builderId: editingEntry.builderId || '',
-      communityId: editingEntry.communityId || '',
-      serviceId: editingEntry.serviceId || '',
-    });
+  const handleSave = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    if (!editingEntry) return;
+    setSaving(true);
     setFormError(null);
-  }
-}, [editingEntry]);
-
-const toggleCommunity = (key: string) => {
-  setOpenCommunities((prev) => ({ ...prev, [key]: !prev[key] }));
-};
-
-const toggleLot = (key: string) => {
-  setOpenLots((prev) => ({ ...prev, [key]: !prev[key] }));
-};
-
-const handleTogglePhase = useCallback(
-  (
-    lotKey: string,
-    phaseCode: string,
-    baseComplete: boolean,
-    currentComplete: boolean
-  ) => {
-    setPhaseOverrides((prev) => {
-      const prevLot = prev[lotKey];
-      const prevPhase = prevLot?.[phaseCode];
-      const desired = !currentComplete;
-
-      const existingServices = prevPhase?.services;
-      const servicesClone = existingServices && Object.keys(existingServices).length > 0
-        ? { ...existingServices }
-        : undefined;
-
-      let nextPhase: PhaseOverrideState | undefined;
-      if (desired === baseComplete) {
-        nextPhase = servicesClone ? { services: servicesClone } : undefined;
-      } else {
-        nextPhase = {
-          phase: desired,
-          ...(servicesClone ? { services: servicesClone } : {}),
-        };
-      }
-
-      if (!nextPhase) {
-        if (!prevPhase) {
-          return prev;
-        }
-        const nextLot = { ...(prevLot ?? {}) };
-        delete nextLot[phaseCode];
-        if (Object.keys(nextLot).length === 0) {
-          const nextState = { ...prev };
-          delete nextState[lotKey];
-          return nextState;
-        }
-        return { ...prev, [lotKey]: nextLot };
-      }
-
-      if (
-        prevPhase &&
-        prevPhase.phase === nextPhase.phase &&
-        areServiceOverridesEqual(prevPhase.services, nextPhase.services)
-      ) {
-        return prev;
-      }
-
-      const nextLot = { ...(prevLot ?? {}) };
-      nextLot[phaseCode] = nextPhase;
-      return { ...prev, [lotKey]: nextLot };
-    });
-  },
-  []
-);
-
-const handleToggleServiceStatus = useCallback(
-  (
-    lotKey: string,
-    phaseCode: string,
-    serviceName: string,
-    baseLogged: boolean,
-    currentLogged: boolean
-  ) => {
-    setPhaseOverrides((prev) => {
-      const prevLot = prev[lotKey];
-      const prevPhase = prevLot?.[phaseCode];
-      const desired = !currentLogged;
-
-      const previousServices = prevPhase?.services ?? {};
-      const nextServices = { ...previousServices };
-
-      if (desired === baseLogged) {
-        if (serviceName in nextServices) {
-          delete nextServices[serviceName];
-        } else {
-          return prev;
-        }
-      } else if (nextServices[serviceName] !== desired) {
-        nextServices[serviceName] = desired;
-      } else {
-        return prev;
-      }
-
-      const hasServices = Object.keys(nextServices).length > 0;
-      const phaseOverrideValue = prevPhase?.phase;
-
-      if (!hasServices && phaseOverrideValue === undefined) {
-        if (!prevPhase) {
-          return prev;
-        }
-        const nextLot = { ...(prevLot ?? {}) };
-        delete nextLot[phaseCode];
-        if (Object.keys(nextLot).length === 0) {
-          const nextState = { ...prev };
-          delete nextState[lotKey];
-          return nextState;
-        }
-        return { ...prev, [lotKey]: nextLot };
-      }
-
-      const nextPhase: PhaseOverrideState = {
-        ...(phaseOverrideValue !== undefined ? { phase: phaseOverrideValue } : {}),
-        ...(hasServices ? { services: nextServices } : {}),
-      };
-
-      if (
-        prevPhase &&
-        prevPhase.phase === nextPhase.phase &&
-        areServiceOverridesEqual(prevPhase.services, nextPhase.services)
-      ) {
-        return prev;
-      }
-
-      const nextLot = { ...(prevLot ?? {}) };
-      nextLot[phaseCode] = nextPhase;
-      return { ...prev, [lotKey]: nextLot };
-    });
-  },
-  []
-);
-
-const handleLotPlanChange = useCallback(
-  async (lot: LotSummary, nextPlanId: string | null) => {
-    const normalizedNext = nextPlanId || null;
-
-    if ((lot.modelPlanId ?? null) === normalizedNext || lot.entries.length === 0) {
-      setPendingPlanSelections((prev) => {
-        if (!(lot.key in prev)) return prev;
-        const next = { ...prev };
-        delete next[lot.key];
-        return next;
-      });
-      return;
-    }
-
-    setPlanErrors((prev) => {
-      if (!prev[lot.key]) return prev;
-      const next = { ...prev };
-      delete next[lot.key];
-      return next;
-    });
-    setPendingPlanSelections((prev) => ({ ...prev, [lot.key]: normalizedNext }));
-    setSavingPlanSelections((prev) => ({ ...prev, [lot.key]: true }));
-
     try {
-      await Promise.all(
-        lot.entries.map((entry) =>
-          fetchJSON(`/api/blue-book/${entry.id}`, {
-            method: 'PATCH',
-            headers: { 'content-type': 'application/json' },
-            body: JSON.stringify({ modelPlanId: normalizedNext }),
-          })
-        )
-      );
+      await fetchJSON(`/api/blue-book/${editingEntry.id}`, {
+        method: 'PATCH',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          lot: formState.lot || null,
+          startDate: formState.startDate || null,
+          status: formState.status,
+          invoiceNumber: formState.invoiceNumber || null,
+          amount: formState.amount ? Number(formState.amount) : null,
+          accountCategoryName: formState.accountCategoryName || null,
+          accountCategoryCode: formState.accountCategoryCode || null,
+          checkNumber: formState.checkNumber || null,
+          checkDate: formState.checkDate || null,
+        }),
+      });
       await mutate();
+      setEditingEntry(null);
     } catch (err) {
-      console.error('Failed to update model plan', err);
-      setPlanErrors((prev) => ({
-        ...prev,
-        [lot.key]:
-          err instanceof Error ? err.message : 'Failed to update model plan',
-      }));
+      const message =
+        err instanceof Error ? err.message : typeof err === 'string' ? err : 'Unexpected error';
+      setFormError(message);
     } finally {
-      setSavingPlanSelections((prev) => {
-        if (!(lot.key in prev)) return prev;
-        const next = { ...prev };
-        delete next[lot.key];
-        return next;
-      });
-      setPendingPlanSelections((prev) => {
-        const next = { ...prev };
-        delete next[lot.key];
-        return next;
-      });
+      setSaving(false);
     }
-  },
-  [mutate]
-);
+  };
 
-const handleSave = async (e: React.FormEvent<HTMLFormElement>) => {
-  e.preventDefault();
-  if (!editingEntry) return;
-  setSaving(true);
-  setFormError(null);
-  try {
-    await fetchJSON(`/api/blue-book/${editingEntry.id}`, {
-      method: 'PATCH',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({
-        lot: formState.lot || null,
-        startDate: formState.startDate || null,
-        status: formState.status,
-        invoiceNumber: formState.invoiceNumber || null,
-        amount: formState.amount ? Number(formState.amount) : null,
-        accountCategoryName: formState.accountCategoryName || null,
-        accountCategoryCode: formState.accountCategoryCode || null,
-        checkNumber: formState.checkNumber || null,
-        checkDate: formState.checkDate || null,
-      }),
-    });
-    await mutate();
-    setEditingEntry(null);
-  } catch (err) {
-    const message =
-      err instanceof Error ? err.message : typeof err === 'string' ? err : 'Unexpected error';
-    setFormError(message);
-  } finally {
-    setSaving(false);
-  }
-};
+  const handleCreateManual = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    setSaving(true);
+    setFormError(null);
+    try {
+      await fetchJSON('/api/blue-book', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          builderId: formState.builderId,
+          communityId: formState.communityId,
+          serviceId: formState.serviceId || null,
+          lot: formState.lot || null,
+          startDate: formState.startDate || null,
+          status: formState.status || 'PENDING',
+          invoiceNumber: formState.invoiceNumber || null,
+          amount: formState.amount ? Number(formState.amount) : null,
+          accountCategoryName: formState.accountCategoryName || null,
+          accountCategoryCode: formState.accountCategoryCode || null,
+          checkNumber: formState.checkNumber || null,
+          checkDate: formState.checkDate || null,
+        }),
+      });
+      await mutate();
+      setIsCreatingManual(false);
+      setFormState({
+        lot: '',
+        startDate: '',
+        status: 'PENDING',
+        invoiceNumber: '',
+        amount: '',
+        accountCategoryName: '',
+        accountCategoryCode: '',
+        checkNumber: '',
+        checkDate: '',
+        builderId: '',
+        communityId: '',
+        serviceId: '',
+      });
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : typeof err === 'string' ? err : 'Unexpected error';
+      setFormError(message);
+    } finally {
+      setSaving(false);
+    }
+  };
 
-const handleCreateManual = async (e: React.FormEvent<HTMLFormElement>) => {
-  e.preventDefault();
-  setSaving(true);
-  setFormError(null);
-  try {
-    await fetchJSON('/api/blue-book', {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({
-        builderId: formState.builderId,
-        communityId: formState.communityId,
-        serviceId: formState.serviceId || null,
-        lot: formState.lot || null,
-        startDate: formState.startDate || null,
-        status: formState.status || 'PENDING',
-        invoiceNumber: formState.invoiceNumber || null,
-        amount: formState.amount ? Number(formState.amount) : null,
-        accountCategoryName: formState.accountCategoryName || null,
-        accountCategoryCode: formState.accountCategoryCode || null,
-        checkNumber: formState.checkNumber || null,
-        checkDate: formState.checkDate || null,
-      }),
-    });
-    await mutate();
-    setIsCreatingManual(false);
-    setFormState({
-      lot: '',
-      startDate: '',
-      status: 'PENDING',
-      invoiceNumber: '',
-      amount: '',
-      accountCategoryName: '',
-      accountCategoryCode: '',
-      checkNumber: '',
-      checkDate: '',
-      builderId: '',
-      communityId: '',
-      serviceId: '',
-    });
-  } catch (err) {
-    const message =
-      err instanceof Error ? err.message : typeof err === 'string' ? err : 'Unexpected error';
-    setFormError(message);
-  } finally {
-    setSaving(false);
-  }
-};
+  const handleDelete = async () => {
+    if (!editingEntry) return;
 
-const handleDelete = async () => {
-  if (!editingEntry) return;
+    // Fix: Allow if Admin OR if Manual (Admins must always see button)
+    const isManual = editingEntry.source === 'manual';
+    if (!isAdmin && !isManual) return;
 
-  // Fix: Allow if Admin OR if Manual (Admins must always see button)
-  const isManual = editingEntry.source === 'manual';
-  if (!isAdmin && !isManual) return;
+    if (!confirm('Are you sure you want to delete this entry?')) return;
 
-  if (!confirm('Are you sure you want to delete this entry?')) return;
+    setSaving(true);
+    setFormError(null);
+    try {
+      await fetchJSON(`/api/blue-book/${editingEntry.id}`, {
+        method: 'DELETE',
+      });
+      await mutate();
+      setEditingEntry(null);
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : typeof err === 'string' ? err : 'Unexpected error';
+      setFormError(message);
+    } finally {
+      setSaving(false);
+    }
+  };
 
-  setSaving(true);
-  setFormError(null);
-  try {
-    await fetchJSON(`/api/blue-book/${editingEntry.id}`, {
-      method: 'DELETE',
-    });
-    await mutate();
-    setEditingEntry(null);
-  } catch (err) {
-    const message =
-      err instanceof Error ? err.message : typeof err === 'string' ? err : 'Unexpected error';
-    setFormError(message);
-  } finally {
-    setSaving(false);
-  }
-};
-
-if (error) return (
-  <>
-    <PageHeader title="Blue Book" description="Project tracking and management" />
-    <main className="px-6 py-6">
-      <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4">
-        <p className="text-red-600 dark:text-red-400">Failed to load data</p>
-      </div>
-    </main>
-  </>
-);
-
-return (
-  <>
-    <PageHeader title="Blue Book" description="Project tracking and management" />
-    <main className="px-6 py-6">
-      <div className="mb-6 flex flex-wrap items-center gap-3">
-        <button
-          className={`rounded-full border px-4 py-2 text-sm transition ${activeBuilderId === 'all'
-            ? 'border-blue-500 bg-blue-500 text-white'
-            : 'border-gray-300 bg-white text-gray-700 hover:border-blue-400'
-            }`}
-          onClick={() => setActiveBuilderId('all')}
-        >
-          All Builders
-        </button>
-        {tabBuilderIds.map((builderId) => {
-          const builder = availableBuilders.find((b) => b.id === builderId);
-          if (!builder) return null;
-          const isActive = activeBuilderId === builder.id;
-          return (
-            <button
-              key={builder.id}
-              className={`rounded-full border px-4 py-2 text-sm transition ${isActive
-                ? 'border-blue-500 bg-blue-500 text-white'
-                : 'border-gray-300 bg-white text-gray-700 hover:border-blue-400'
-                }`}
-              onClick={() => setActiveBuilderId(builder.id)}
-            >
-              {builder.name}
-            </button>
-          );
-        })}
-      </div>
-
-      <div className="mb-6 flex flex-col gap-4 lg:flex-row">
-        <input
-          type="search"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder="Search by lot, invoice, category, or check #"
-          className="flex-1 rounded-lg border border-gray-300 px-4 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:bg-slate-900 dark:text-white"
-        />
-        <select
-          value={sort}
-          onChange={(e) => setSort(e.target.value as 'checkDate' | 'startDate')}
-          className="rounded-lg border border-gray-300 px-4 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:bg-slate-900 dark:text-white"
-        >
-          <option value="checkDate">Sort by Check Date</option>
-          <option value="startDate">Sort by Start Date</option>
-        </select>
-      </div>
-
-      {/* Manual Entry Button */}
-      <div className="mb-6 flex justify-end">
-        <button
-          type="button"
-          onClick={() => setIsCreatingManual(true)}
-          className="rounded-lg bg-green-600 px-4 py-2 font-semibold text-white hover:bg-green-700 whitespace-nowrap"
-        >
-          + Manual Entry
-        </button>
-      </div>
-
-      {isLoading && (
-        <div className="bg-white dark:bg-slate-800 rounded-lg border border-gray-200 dark:border-slate-700 p-6 shadow-sm">
-          <p className="text-gray-600 dark:text-gray-400">Loading entries…</p>
+  if (error) return (
+    <>
+      <PageHeader title="Blue Book" description="Project tracking and management" />
+      <main className="px-6 py-6">
+        <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4">
+          <p className="text-red-600 dark:text-red-400">Failed to load data</p>
         </div>
-      )}
+      </main>
+    </>
+  );
 
-      {!isLoading && communityGroups.length === 0 && (
-        <div className="bg-white dark:bg-slate-800 rounded-lg border border-gray-200 dark:border-slate-700 p-6 shadow-sm">
-          <p className="text-gray-600 dark:text-gray-400">No entries match your criteria.</p>
-        </div>
-      )}
-
-      <div className="space-y-4">
-        {communityGroups.map((group) => {
-          const communityOpen = openCommunities[group.key];
-          const totalLots = group.lots.length;
-          const totalChecks = group.checkNumbers.length;
-          const phaseCounts = group.lots.reduce(
-            (acc, lot) => {
-              acc.total += lot.phases.length;
-              acc.complete += lot.phases.filter((phase) => phase.isComplete).length;
-              return acc;
-            },
-            { total: 0, complete: 0 }
-          );
-          const phaseSummary =
-            phaseCounts.total > 0
-              ? ` · ${phaseCounts.complete}/${phaseCounts.total} phase${phaseCounts.total === 1 ? '' : 's'
-              } logged`
-              : '';
-
-          return (
-            <div
-              key={group.key}
-              className="rounded-lg border border-gray-200 bg-white shadow-sm transition dark:border-slate-700 dark:bg-slate-800"
-            >
+  return (
+    <>
+      <PageHeader title="Blue Book" description="Project tracking and management" />
+      <main className="px-6 py-6">
+        <div className="mb-6 flex flex-wrap items-center gap-3">
+          <button
+            className={`rounded-full border px-4 py-2 text-sm transition ${activeBuilderId === 'all'
+              ? 'border-blue-500 bg-blue-500 text-white'
+              : 'border-gray-300 bg-white text-gray-700 hover:border-blue-400'
+              }`}
+            onClick={() => setActiveBuilderId('all')}
+          >
+            All Builders
+          </button>
+          {tabBuilderIds.map((builderId) => {
+            const builder = availableBuilders.find((b) => b.id === builderId);
+            if (!builder) return null;
+            const isActive = activeBuilderId === builder.id;
+            return (
               <button
-                className="flex w-full items-center justify-between px-4 py-3 text-left"
-                onClick={() => toggleCommunity(group.key)}
+                key={builder.id}
+                className={`rounded-full border px-4 py-2 text-sm transition ${isActive
+                  ? 'border-blue-500 bg-blue-500 text-white'
+                  : 'border-gray-300 bg-white text-gray-700 hover:border-blue-400'
+                  }`}
+                onClick={() => setActiveBuilderId(builder.id)}
               >
-                <div>
-                  <p className="text-sm font-semibold text-gray-900 dark:text-white">
-                    {group.communityName || 'Unknown Community'}
-                  </p>
-                  <p className="text-xs text-gray-500 dark:text-gray-400">
-                    {`${group.builderName || 'Unknown Builder'} · ${totalLots} lot${totalLots === 1 ? '' : 's'
-                      } · ${totalChecks} check${totalChecks === 1 ? '' : 's'}${phaseSummary}`}
-                  </p>
-                </div>
-                <div className="flex items-center gap-4 text-sm text-gray-600 dark:text-gray-300">
-                  <span>{formatNumberAmount(group.totalAmount)}</span>
-                  <span>{communityOpen ? '▲' : '▼'}</span>
-                </div>
+                {builder.name}
               </button>
-              {communityOpen && (
-                <div className="divide-y divide-gray-200 dark:divide-slate-700">
-                  {group.lots.map((lot) => {
-                    const lotOpen = openLots[lot.key];
-                    const hasNextActivity =
-                      Number.isFinite(lot.nextActivityDate) &&
-                      lot.nextActivityDate !== Number.MAX_SAFE_INTEGER;
-                    const nextActivityLabel = hasNextActivity
-                      ? new Date(lot.nextActivityDate).toLocaleDateString('en-US', { timeZone: 'UTC' })
-                      : 'No activity scheduled';
-                    const lotTotalAmount = lot.entries.reduce((sum, entry) => {
-                      if (!entry.amount) return sum;
-                      const numeric = Number(entry.amount);
-                      return sum + (Number.isFinite(numeric) ? numeric : 0);
-                    }, 0);
-                    const planOptionsCandidates = lot.builderId
-                      ? plansByBuilder[lot.builderId] ?? []
-                      : [];
-                    const planOptions =
-                      planOptionsCandidates.length > 0 ? planOptionsCandidates : modelPlans;
-                    const pendingPlanId = pendingPlanSelections[lot.key] ?? null;
-                    const effectivePlanId =
-                      pendingPlanId ?? lot.modelPlanId ?? null;
-                    const selectedPlan =
-                      effectivePlanId && planOptions.length
-                        ? planOptions.find((plan) => plan.id === effectivePlanId) ??
-                        modelPlans.find((plan) => plan.id === effectivePlanId) ??
-                        null
-                        : null;
-                    const planName = selectedPlan?.name ?? lot.modelPlanName ?? '—';
-                    const planCode = selectedPlan?.code ?? lot.modelPlanCode ?? '—';
-                    const planSqft = selectedPlan?.sqft ?? lot.modelPlanSqft ?? '—';
-                    const isSavingPlan = Boolean(savingPlanSelections[lot.key]);
-                    const planError = planErrors[lot.key];
-                    const phaseStatusText = lot.phases.length
-                      ? `${lot.phases.filter((phase) => phase.isComplete).length}/${lot.phases.length
-                      } phase${lot.phases.length === 1 ? '' : 's'} logged`
-                      : 'No phases mapped yet';
+            );
+          })}
+        </div>
 
-                    return (
-                      <div key={lot.key} className="bg-white dark:bg-slate-800">
-                        <button
-                          className="flex w-full items-center justify-between px-4 py-3 text-left transition hover:bg-blue-50/40 dark:hover:bg-slate-700/40"
-                          onClick={() => toggleLot(lot.key)}
-                        >
-                          <div>
-                            <p className="text-sm font-semibold text-gray-900 dark:text-white">
-                              Lot {lot.lotLabel}
-                            </p>
-                            <p className="text-xs text-gray-500 dark:text-gray-400">
-                              {`Next activity: ${nextActivityLabel} · ${phaseStatusText}`}
-                            </p>
-                          </div>
-                          <div className="flex items-center gap-4 text-xs text-gray-500 dark:text-gray-300">
-                            <span>{formatNumberAmount(lotTotalAmount)}</span>
-                            <span>{lotOpen ? '▲' : '▼'}</span>
-                          </div>
-                        </button>
-                        {lotOpen && (
-                          <div className="space-y-4 border-t border-gray-200 px-4 py-4 dark:border-slate-700">
-                            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-                              <div className="rounded-lg border border-gray-200 p-4 dark:border-slate-700">
-                                <div className="flex items-center justify-between">
-                                  <div className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
-                                    Model Plan
+        <div className="mb-6 flex flex-col gap-4 lg:flex-row">
+          <input
+            type="search"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search by lot, invoice, category, or check #"
+            className="flex-1 rounded-lg border border-gray-300 px-4 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:bg-slate-900 dark:text-white"
+          />
+          <select
+            value={sort}
+            onChange={(e) => setSort(e.target.value as 'checkDate' | 'startDate')}
+            className="rounded-lg border border-gray-300 px-4 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:bg-slate-900 dark:text-white"
+          >
+            <option value="checkDate">Sort by Check Date</option>
+            <option value="startDate">Sort by Start Date</option>
+          </select>
+        </div>
+
+        {/* Manual Entry Button */}
+        <div className="mb-6 flex justify-end">
+          <button
+            type="button"
+            onClick={() => setIsCreatingManual(true)}
+            className="rounded-lg bg-green-600 px-4 py-2 font-semibold text-white hover:bg-green-700 whitespace-nowrap"
+          >
+            + Manual Entry
+          </button>
+        </div>
+
+        {isLoading && (
+          <div className="bg-white dark:bg-slate-800 rounded-lg border border-gray-200 dark:border-slate-700 p-6 shadow-sm">
+            <p className="text-gray-600 dark:text-gray-400">Loading entries…</p>
+          </div>
+        )}
+
+        {!isLoading && communityGroups.length === 0 && (
+          <div className="bg-white dark:bg-slate-800 rounded-lg border border-gray-200 dark:border-slate-700 p-6 shadow-sm">
+            <p className="text-gray-600 dark:text-gray-400">No entries match your criteria.</p>
+          </div>
+        )}
+
+        <div className="space-y-4">
+          {communityGroups.map((group) => {
+            const communityOpen = openCommunities[group.key];
+            const totalLots = group.lots.length;
+            const totalChecks = group.checkNumbers.length;
+            const phaseCounts = group.lots.reduce(
+              (acc, lot) => {
+                acc.total += lot.phases.length;
+                acc.complete += lot.phases.filter((phase) => phase.isComplete).length;
+                return acc;
+              },
+              { total: 0, complete: 0 }
+            );
+            const phaseSummary =
+              phaseCounts.total > 0
+                ? ` · ${phaseCounts.complete}/${phaseCounts.total} phase${phaseCounts.total === 1 ? '' : 's'
+                } logged`
+                : '';
+
+            return (
+              <div
+                key={group.key}
+                className="rounded-lg border border-gray-200 bg-white shadow-sm transition dark:border-slate-700 dark:bg-slate-800"
+              >
+                <button
+                  className="flex w-full items-center justify-between px-4 py-3 text-left"
+                  onClick={() => toggleCommunity(group.key)}
+                >
+                  <div>
+                    <p className="text-sm font-semibold text-gray-900 dark:text-white">
+                      {group.communityName || 'Unknown Community'}
+                    </p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">
+                      {`${group.builderName || 'Unknown Builder'} · ${totalLots} lot${totalLots === 1 ? '' : 's'
+                        } · ${totalChecks} check${totalChecks === 1 ? '' : 's'}${phaseSummary}`}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-4 text-sm text-gray-600 dark:text-gray-300">
+                    <span>{formatNumberAmount(group.totalAmount)}</span>
+                    <span>{communityOpen ? '▲' : '▼'}</span>
+                  </div>
+                </button>
+                {communityOpen && (
+                  <div className="divide-y divide-gray-200 dark:divide-slate-700">
+                    {group.lots.map((lot) => {
+                      const lotOpen = openLots[lot.key];
+                      const hasNextActivity =
+                        Number.isFinite(lot.nextActivityDate) &&
+                        lot.nextActivityDate !== Number.MAX_SAFE_INTEGER;
+                      const nextActivityLabel = hasNextActivity
+                        ? new Date(lot.nextActivityDate).toLocaleDateString('en-US', { timeZone: 'UTC' })
+                        : 'No activity scheduled';
+                      const lotTotalAmount = lot.entries.reduce((sum, entry) => {
+                        if (!entry.amount) return sum;
+                        const numeric = Number(entry.amount);
+                        return sum + (Number.isFinite(numeric) ? numeric : 0);
+                      }, 0);
+                      const planOptionsCandidates = lot.builderId
+                        ? plansByBuilder[lot.builderId] ?? []
+                        : [];
+                      const planOptions =
+                        planOptionsCandidates.length > 0 ? planOptionsCandidates : modelPlans;
+                      const pendingPlanId = pendingPlanSelections[lot.key] ?? null;
+                      const effectivePlanId =
+                        pendingPlanId ?? lot.modelPlanId ?? null;
+                      const selectedPlan =
+                        effectivePlanId && planOptions.length
+                          ? planOptions.find((plan) => plan.id === effectivePlanId) ??
+                          modelPlans.find((plan) => plan.id === effectivePlanId) ??
+                          null
+                          : null;
+                      const planName = selectedPlan?.name ?? lot.modelPlanName ?? '—';
+                      const planCode = selectedPlan?.code ?? lot.modelPlanCode ?? '—';
+                      const planSqft = selectedPlan?.sqft ?? lot.modelPlanSqft ?? '—';
+                      const isSavingPlan = Boolean(savingPlanSelections[lot.key]);
+                      const planError = planErrors[lot.key];
+                      const phaseStatusText = lot.phases.length
+                        ? `${lot.phases.filter((phase) => phase.isComplete).length}/${lot.phases.length
+                        } phase${lot.phases.length === 1 ? '' : 's'} logged`
+                        : 'No phases mapped yet';
+
+                      return (
+                        <div key={lot.key} className="bg-white dark:bg-slate-800">
+                          <button
+                            className="flex w-full items-center justify-between px-4 py-3 text-left transition hover:bg-blue-50/40 dark:hover:bg-slate-700/40"
+                            onClick={() => toggleLot(lot.key)}
+                          >
+                            <div>
+                              <p className="text-sm font-semibold text-gray-900 dark:text-white">
+                                Lot {lot.lotLabel}
+                              </p>
+                              <p className="text-xs text-gray-500 dark:text-gray-400">
+                                {`Next activity: ${nextActivityLabel} · ${phaseStatusText}`}
+                              </p>
+                            </div>
+                            <div className="flex items-center gap-4 text-xs text-gray-500 dark:text-gray-300">
+                              <span>{formatNumberAmount(lotTotalAmount)}</span>
+                              <span>{lotOpen ? '▲' : '▼'}</span>
+                            </div>
+                          </button>
+                          {lotOpen && (
+                            <div className="space-y-4 border-t border-gray-200 px-4 py-4 dark:border-slate-700">
+                              <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+                                <div className="rounded-lg border border-gray-200 p-4 dark:border-slate-700">
+                                  <div className="flex items-center justify-between">
+                                    <div className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
+                                      Model Plan
+                                    </div>
+                                    {isSavingPlan && (
+                                      <span className="text-xs text-blue-600 dark:text-blue-300">
+                                        Saving…
+                                      </span>
+                                    )}
                                   </div>
-                                  {isSavingPlan && (
-                                    <span className="text-xs text-blue-600 dark:text-blue-300">
-                                      Saving…
-                                    </span>
-                                  )}
-                                </div>
-                                <div className="mt-3">
-                                  <label className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
-                                    Select Plan
-                                    <select
-                                      className="mt-2 w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:border-slate-700 dark:bg-slate-900 dark:text-white"
-                                      value={effectivePlanId ?? ''}
-                                      onChange={(e) =>
-                                        handleLotPlanChange(lot, e.target.value || null)
-                                      }
-                                      disabled={isSavingPlan || planOptions.length === 0}
-                                    >
-                                      <option value="">Unassigned</option>
-                                      {planOptions.map((plan) => (
-                                        <option key={plan.id} value={plan.id}>
-                                          {plan.code
-                                            ? `${plan.name} (${plan.code})`
-                                            : plan.name}
-                                        </option>
-                                      ))}
-                                    </select>
-                                  </label>
-                                  {planOptions.length === 0 && (
-                                    <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
-                                      No model plans available for this builder.
+                                  <div className="mt-3">
+                                    <label className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
+                                      Select Plan
+                                      <select
+                                        className="mt-2 w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:border-slate-700 dark:bg-slate-900 dark:text-white"
+                                        value={effectivePlanId ?? ''}
+                                        onChange={(e) =>
+                                          handleLotPlanChange(lot, e.target.value || null)
+                                        }
+                                        disabled={isSavingPlan || planOptions.length === 0}
+                                      >
+                                        <option value="">Unassigned</option>
+                                        {planOptions.map((plan) => (
+                                          <option key={plan.id} value={plan.id}>
+                                            {plan.code
+                                              ? `${plan.name} (${plan.code})`
+                                              : plan.name}
+                                          </option>
+                                        ))}
+                                      </select>
+                                    </label>
+                                    {planOptions.length === 0 && (
+                                      <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
+                                        No model plans available for this builder.
+                                      </p>
+                                    )}
+                                    {planError && (
+                                      <p className="mt-2 text-xs text-red-600 dark:text-red-400">
+                                        {planError}
+                                      </p>
+                                    )}
+                                  </div>
+                                  <div className="mt-4 space-y-1">
+                                    <p className="text-sm font-medium text-gray-900 dark:text-white">
+                                      {planName}
                                     </p>
-                                  )}
-                                  {planError && (
-                                    <p className="mt-2 text-xs text-red-600 dark:text-red-400">
-                                      {planError}
+                                    <p className="text-xs text-gray-500 dark:text-gray-400">
+                                      Code: {planCode || '—'}
                                     </p>
-                                  )}
+                                    <p className="text-xs text-gray-500 dark:text-gray-400">
+                                      Sq Ft: {planSqft || '—'}
+                                    </p>
+                                  </div>
                                 </div>
-                                <div className="mt-4 space-y-1">
-                                  <p className="text-sm font-medium text-gray-900 dark:text-white">
-                                    {planName}
-                                  </p>
-                                  <p className="text-xs text-gray-500 dark:text-gray-400">
-                                    Code: {planCode || '—'}
-                                  </p>
-                                  <p className="text-xs text-gray-500 dark:text-gray-400">
-                                    Sq Ft: {planSqft || '—'}
-                                  </p>
-                                </div>
-                              </div>
 
-                              <div className="rounded-lg border border-gray-200 p-4 dark:border-slate-700 md:col-span-1 xl:col-span-2">
-                                <div className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
-                                  Phases
-                                </div>
-                                <div className="mt-3 space-y-2">
-                                  {lot.phases.length === 0 ? (
-                                    <p className="rounded-md border border-dashed border-gray-300 px-3 py-2 text-xs italic text-gray-500 dark:border-slate-600 dark:text-gray-400">
-                                      No phases configured for this lot.
-                                    </p>
-                                  ) : (
-                                    lot.phases.map((phase) => {
-                                      const helperText =
-                                        phase.overrideStatus !== undefined
-                                          ? `Manually marked as ${phase.isComplete ? 'logged' : 'pending'
-                                          }`
-                                          : phase.baseComplete
-                                            ? 'Logged from ingested data'
-                                            : 'Pending';
-                                      return (
-                                        <label
-                                          key={`${phase.code}-${phase.title}`}
-                                          className="flex items-start gap-3 rounded-md border border-gray-100 bg-white px-3 py-2 shadow-sm dark:border-slate-700 dark:bg-slate-900"
-                                        >
-                                          <input
-                                            type="checkbox"
-                                            className="mt-1 h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                                            checked={phase.isComplete}
-                                            onChange={() =>
-                                              handleTogglePhase(
-                                                lot.key,
-                                                phase.code,
-                                                phase.baseComplete,
-                                                phase.isComplete
-                                              )
-                                            }
-                                          />
-                                          <div className="flex flex-1 flex-col gap-2">
-                                            <div className="flex items-center gap-2">
-                                              <span className="text-sm font-medium text-gray-900 dark:text-white">
-                                                {phase.title}
-                                              </span>
-                                              {phase.overrideStatus !== undefined && (
-                                                <span className="rounded-full bg-blue-100 px-2 py-0.5 text-xs font-semibold text-blue-700 dark:bg-blue-900/40 dark:text-blue-200">
-                                                  Manual
+                                <div className="rounded-lg border border-gray-200 p-4 dark:border-slate-700 md:col-span-1 xl:col-span-2">
+                                  <div className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
+                                    Phases
+                                  </div>
+                                  <div className="mt-3 space-y-2">
+                                    {lot.phases.length === 0 ? (
+                                      <p className="rounded-md border border-dashed border-gray-300 px-3 py-2 text-xs italic text-gray-500 dark:border-slate-600 dark:text-gray-400">
+                                        No phases configured for this lot.
+                                      </p>
+                                    ) : (
+                                      lot.phases.map((phase) => {
+                                        const helperText =
+                                          phase.overrideStatus !== undefined
+                                            ? `Manually marked as ${phase.isComplete ? 'logged' : 'pending'
+                                            }`
+                                            : phase.baseComplete
+                                              ? 'Logged from ingested data'
+                                              : 'Pending';
+                                        return (
+                                          <label
+                                            key={`${phase.code}-${phase.title}`}
+                                            className="flex items-start gap-3 rounded-md border border-gray-100 bg-white px-3 py-2 shadow-sm dark:border-slate-700 dark:bg-slate-900"
+                                          >
+                                            <input
+                                              type="checkbox"
+                                              className="mt-1 h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                                              checked={phase.isComplete}
+                                              onChange={() =>
+                                                handleTogglePhase(
+                                                  lot.key,
+                                                  phase.code,
+                                                  phase.baseComplete,
+                                                  phase.isComplete
+                                                )
+                                              }
+                                            />
+                                            <div className="flex flex-1 flex-col gap-2">
+                                              <div className="flex items-center gap-2">
+                                                <span className="text-sm font-medium text-gray-900 dark:text-white">
+                                                  {phase.title}
                                                 </span>
-                                              )}
-                                            </div>
-                                            <p className="text-xs text-gray-500 dark:text-gray-400">
-                                              {helperText}
-                                            </p>
-                                            <div className="space-y-1 border-l border-dashed border-gray-200 pl-3 dark:border-slate-600">
-                                              {phase.services.length === 0 ? (
-                                                <p className="text-xs italic text-gray-400">
-                                                  No services tracked for this phase.
-                                                </p>
-                                              ) : (
-                                                phase.services.map((service) => {
-                                                  const linkedChecks = service.entries
-                                                    .map(
-                                                      (entry) =>
-                                                        entry.checkNumber || entry.invoiceNumber
-                                                    )
-                                                    .filter(Boolean)
-                                                    .join(', ');
-                                                  const serviceHelperText =
-                                                    service.overrideStatus !== undefined
-                                                      ? `Manually marked as ${service.isLogged ? 'logged' : 'pending'
-                                                      }`
-                                                      : service.baseLogged
-                                                        ? 'Logged from ingested data'
-                                                        : 'Pending';
-                                                  const statusClasses = service.isLogged
-                                                    ? 'bg-green-100 text-green-700 hover:bg-green-200 dark:bg-green-900 dark:text-green-200 dark:hover:bg-green-800'
-                                                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-slate-700 dark:text-slate-200 dark:hover:bg-slate-600';
+                                                {phase.overrideStatus !== undefined && (
+                                                  <span className="rounded-full bg-blue-100 px-2 py-0.5 text-xs font-semibold text-blue-700 dark:bg-blue-900/40 dark:text-blue-200">
+                                                    Manual
+                                                  </span>
+                                                )}
+                                              </div>
+                                              <p className="text-xs text-gray-500 dark:text-gray-400">
+                                                {helperText}
+                                              </p>
+                                              <div className="space-y-1 border-l border-dashed border-gray-200 pl-3 dark:border-slate-600">
+                                                {phase.services.length === 0 ? (
+                                                  <p className="text-xs italic text-gray-400">
+                                                    No services tracked for this phase.
+                                                  </p>
+                                                ) : (
+                                                  phase.services.map((service) => {
+                                                    const linkedChecks = service.entries
+                                                      .map(
+                                                        (entry) =>
+                                                          entry.checkNumber || entry.invoiceNumber
+                                                      )
+                                                      .filter(Boolean)
+                                                      .join(', ');
+                                                    const serviceHelperText =
+                                                      service.overrideStatus !== undefined
+                                                        ? `Manually marked as ${service.isLogged ? 'logged' : 'pending'
+                                                        }`
+                                                        : service.baseLogged
+                                                          ? 'Logged from ingested data'
+                                                          : 'Pending';
+                                                    const statusClasses = service.isLogged
+                                                      ? 'bg-green-100 text-green-700 hover:bg-green-200 dark:bg-green-900 dark:text-green-200 dark:hover:bg-green-800'
+                                                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-slate-700 dark:text-slate-200 dark:hover:bg-slate-600';
 
-                                                  return (
-                                                    <div
-                                                      key={`${phase.code}-${service.name}`}
-                                                      className="flex items-start justify-between gap-3"
-                                                    >
-                                                      <div className="space-y-1">
-                                                        <div className="flex items-center gap-2">
-                                                          <p className="text-xs font-semibold text-gray-700 dark:text-gray-200">
-                                                            {service.name || 'Service'}
+                                                    return (
+                                                      <div
+                                                        key={`${phase.code}-${service.name}`}
+                                                        className="flex items-start justify-between gap-3"
+                                                      >
+                                                        <div className="space-y-1">
+                                                          <div className="flex items-center gap-2">
+                                                            <p className="text-xs font-semibold text-gray-700 dark:text-gray-200">
+                                                              {service.name || 'Service'}
+                                                            </p>
+                                                            {service.overrideStatus !== undefined && (
+                                                              <span className="rounded-full bg-blue-50 px-2 py-0.5 text-[10px] font-semibold text-blue-600 dark:bg-blue-900/40 dark:text-blue-200">
+                                                                Manual
+                                                              </span>
+                                                            )}
+                                                          </div>
+                                                          <p className="text-[11px] text-gray-500 dark:text-gray-400">
+                                                            {serviceHelperText}
                                                           </p>
-                                                          {service.overrideStatus !== undefined && (
-                                                            <span className="rounded-full bg-blue-50 px-2 py-0.5 text-[10px] font-semibold text-blue-600 dark:bg-blue-900/40 dark:text-blue-200">
-                                                              Manual
-                                                            </span>
+                                                          {linkedChecks ? (
+                                                            <p className="text-[11px] text-gray-500 dark:text-gray-400">
+                                                              Linked: {linkedChecks}
+                                                            </p>
+                                                          ) : (
+                                                            <p className="text-[11px] italic text-gray-400">
+                                                              Pending
+                                                            </p>
                                                           )}
                                                         </div>
-                                                        <p className="text-[11px] text-gray-500 dark:text-gray-400">
-                                                          {serviceHelperText}
-                                                        </p>
-                                                        {linkedChecks ? (
-                                                          <p className="text-[11px] text-gray-500 dark:text-gray-400">
-                                                            Linked: {linkedChecks}
-                                                          </p>
-                                                        ) : (
-                                                          <p className="text-[11px] italic text-gray-400">
-                                                            Pending
-                                                          </p>
-                                                        )}
+                                                        <button
+                                                          type="button"
+                                                          aria-pressed={service.isLogged}
+                                                          onClick={() =>
+                                                            handleToggleServiceStatus(
+                                                              lot.key,
+                                                              phase.code,
+                                                              service.name,
+                                                              service.baseLogged,
+                                                              service.isLogged
+                                                            )
+                                                          }
+                                                          className={`mt-0.5 inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-semibold transition ${statusClasses}`}
+                                                        >
+                                                          {service.isLogged ? 'Logged' : 'Pending'}
+                                                        </button>
                                                       </div>
-                                                      <button
-                                                        type="button"
-                                                        aria-pressed={service.isLogged}
-                                                        onClick={() =>
-                                                          handleToggleServiceStatus(
-                                                            lot.key,
-                                                            phase.code,
-                                                            service.name,
-                                                            service.baseLogged,
-                                                            service.isLogged
-                                                          )
-                                                        }
-                                                        className={`mt-0.5 inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-semibold transition ${statusClasses}`}
-                                                      >
-                                                        {service.isLogged ? 'Logged' : 'Pending'}
-                                                      </button>
-                                                    </div>
-                                                  );
-                                                })
-                                              )}
+                                                    );
+                                                  })
+                                                )}
+                                              </div>
                                             </div>
-                                          </div>
-                                        </label>
-                                      );
-                                    })
-                                  )}
+                                          </label>
+                                        );
+                                      })
+                                    )}
+                                  </div>
                                 </div>
-                              </div>
-                              <div className="mt-6 rounded-lg border border-gray-200 dark:border-slate-700 col-span-full">
-                                <div className="flex items-center justify-between border-b border-gray-200 px-4 py-2 text-xs font-semibold uppercase tracking-wide text-gray-500 dark:border-slate-700 dark:text-gray-400">
-                                  <span>Invoices &amp; Checks</span>
-                                  <span>{lot.entries.length} item{lot.entries.length === 1 ? '' : 's'}</span>
-                                </div>
-                                <div className="overflow-x-auto">
-                                  <table className="min-w-full divide-y divide-gray-200 text-sm dark:divide-slate-700">
-                                    <thead className="bg-gray-50 text-left text-xs font-semibold uppercase tracking-wide text-gray-500 dark:bg-slate-900 dark:text-gray-400">
-                                      <tr>
-                                        <th className="px-4 py-2">Check #</th>
-                                        <th className="px-4 py-2">Check Date</th>
-                                        <th className="px-4 py-2">Category</th>
-                                        <th className="px-4 py-2">Foreman</th>
-                                        <th className="px-4 py-2">Invoice</th>
-                                        <th className="px-4 py-2">Amount</th>
-                                        <th className="px-4 py-2">Status</th>
-                                        <th className="px-4 py-2 text-right">Actions</th>
-                                      </tr>
-                                    </thead>
-                                    <tbody className="divide-y divide-gray-200 dark:divide-slate-700">
-                                      {lot.entries.map((entry) => (
-                                        <tr key={entry.id} className="bg-white dark:bg-slate-900">
-                                          <td className="px-4 py-3 text-gray-900 dark:text-white">
-                                            {entry.checkNumber || '—'}
-                                          </td>
-                                          <td className="px-4 py-3 text-gray-900 dark:text-white">
-                                            {entry.checkDate
-                                              ? new Date(entry.checkDate).toLocaleDateString()
-                                              : '—'}
-                                          </td>
-                                          <td className="px-4 py-3 text-gray-900 dark:text-white">
-                                            {entry.accountCategoryCode
-                                              ? `${entry.accountCategoryCode} – ${entry.accountCategoryName || ''}`.trim()
-                                              : entry.serviceName || '—'}
-                                          </td>
-                                          <td className="px-4 py-3 text-gray-900 dark:text-white">
-                                            {entry.assignedForemanName || '—'}
-                                          </td>
-                                          <td className="px-4 py-3 text-gray-900 dark:text-white">
-                                            {entry.invoiceNumber || '—'}
-                                          </td>
-                                          <td className="px-4 py-3 text-gray-900 dark:text-white">
-                                            {formatAmount(entry.amount)}
-                                          </td>
-                                          <td className="px-4 py-3">
-                                            <div className="flex items-center gap-2">
-                                              <span
-                                                className={`inline-flex rounded-full px-2 py-1 text-xs font-semibold ${entry.status === 'COMPLETE'
-                                                  ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
-                                                  : 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200'
-                                                  }`}
-                                              >
-                                                {entry.status}
-                                              </span>
-                                              {entry.source === 'manual' && (
-                                                <span className="inline-flex items-center gap-1 rounded-full bg-purple-100 px-2 py-1 text-xs font-semibold text-purple-800 dark:bg-purple-900 dark:text-purple-200">
-                                                  ✏️ Manual
-                                                </span>
-                                              )}
-                                            </div>
-                                          </td>
-                                          <td className="px-4 py-3 text-right">
-                                            <button
-                                              className="text-sm font-semibold text-blue-600 hover:text-blue-700 dark:text-blue-400"
-                                              onClick={() => setEditingEntry(entry)}
-                                            >
-                                              Edit
-                                            </button>
-                                          </td>
+                                <div className="mt-6 rounded-lg border border-gray-200 dark:border-slate-700 col-span-full">
+                                  <div className="flex items-center justify-between border-b border-gray-200 px-4 py-2 text-xs font-semibold uppercase tracking-wide text-gray-500 dark:border-slate-700 dark:text-gray-400">
+                                    <span>Invoices &amp; Checks</span>
+                                    <span>{lot.entries.length} item{lot.entries.length === 1 ? '' : 's'}</span>
+                                  </div>
+                                  <div className="overflow-x-auto">
+                                    <table className="min-w-full divide-y divide-gray-200 text-sm dark:divide-slate-700">
+                                      <thead className="bg-gray-50 text-left text-xs font-semibold uppercase tracking-wide text-gray-500 dark:bg-slate-900 dark:text-gray-400">
+                                        <tr>
+                                          <th className="px-4 py-2">Check #</th>
+                                          <th className="px-4 py-2">Check Date</th>
+                                          <th className="px-4 py-2">Category</th>
+                                          <th className="px-4 py-2">Foreman</th>
+                                          <th className="px-4 py-2">Invoice</th>
+                                          <th className="px-4 py-2">Amount</th>
+                                          <th className="px-4 py-2">Status</th>
+                                          <th className="px-4 py-2 text-right">Actions</th>
                                         </tr>
-                                      ))}
-                                    </tbody>
-                                  </table>
+                                      </thead>
+                                      <tbody className="divide-y divide-gray-200 dark:divide-slate-700">
+                                        {lot.entries.map((entry) => (
+                                          <tr key={entry.id} className="bg-white dark:bg-slate-900">
+                                            <td className="px-4 py-3 text-gray-900 dark:text-white">
+                                              {entry.checkNumber || '—'}
+                                            </td>
+                                            <td className="px-4 py-3 text-gray-900 dark:text-white">
+                                              {entry.checkDate
+                                                ? new Date(entry.checkDate).toLocaleDateString()
+                                                : '—'}
+                                            </td>
+                                            <td className="px-4 py-3 text-gray-900 dark:text-white">
+                                              {entry.accountCategoryCode
+                                                ? `${entry.accountCategoryCode} – ${entry.accountCategoryName || ''}`.trim()
+                                                : entry.serviceName || '—'}
+                                            </td>
+                                            <td className="px-4 py-3 text-gray-900 dark:text-white">
+                                              {entry.assignedForemanName || '—'}
+                                            </td>
+                                            <td className="px-4 py-3 text-gray-900 dark:text-white">
+                                              {entry.invoiceNumber || '—'}
+                                            </td>
+                                            <td className="px-4 py-3 text-gray-900 dark:text-white">
+                                              {formatAmount(entry.amount)}
+                                            </td>
+                                            <td className="px-4 py-3">
+                                              <div className="flex items-center gap-2">
+                                                <span
+                                                  className={`inline-flex rounded-full px-2 py-1 text-xs font-semibold ${entry.status === 'COMPLETE'
+                                                    ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
+                                                    : 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200'
+                                                    }`}
+                                                >
+                                                  {entry.status}
+                                                </span>
+                                                {entry.source === 'manual' && (
+                                                  <span className="inline-flex items-center gap-1 rounded-full bg-purple-100 px-2 py-1 text-xs font-semibold text-purple-800 dark:bg-purple-900 dark:text-purple-200">
+                                                    ✏️ Manual
+                                                  </span>
+                                                )}
+                                              </div>
+                                            </td>
+                                            <td className="px-4 py-3 text-right">
+                                              <button
+                                                className="text-sm font-semibold text-blue-600 hover:text-blue-700 dark:text-blue-400"
+                                                onClick={() => setEditingEntry(entry)}
+                                              >
+                                                Edit
+                                              </button>
+                                            </td>
+                                          </tr>
+                                        ))}
+                                      </tbody>
+                                    </table>
+                                  </div>
                                 </div>
                               </div>
                             </div>
-                          </div>
-                        )
-                        }
-                      </div>
-                    );
-                  })}
-                </div>
-              )
-              }
-            </div>
-          );
-        })}
-      </div>
-
-      <div className="mt-6 flex items-center justify-between rounded-lg border border-gray-200 bg-white p-4 text-sm shadow-sm dark:border-slate-700 dark:bg-slate-800 dark:text-gray-200">
-        <span>
-          Page {page} of {totalPages} · {total} total entries
-        </span>
-        <div className="flex gap-2">
-          <button
-            onClick={() => setPage((p) => Math.max(1, p - 1))}
-            disabled={!canPrev}
-            className="rounded-lg border border-gray-300 px-4 py-2 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-600"
-          >
-            Previous
-          </button>
-          <button
-            onClick={() => setPage((p) => (canNext ? p + 1 : p))}
-            disabled={!canNext}
-            className="rounded-lg border border-gray-300 px-4 py-2 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-600"
-          >
-            Next
-          </button>
+                          )
+                          }
+                        </div>
+                      );
+                    })}
+                  </div>
+                )
+                }
+              </div>
+            );
+          })}
         </div>
-      </div>
-    </main >
 
-    {/* Edit Entry Modal */}
-    {
-      editingEntry && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4 py-10">
-          <div className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-2xl dark:bg-slate-900">
-            <div className="mb-4 flex items-center justify-between">
-              <div>
-                <div className="flex items-center gap-2">
-                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Edit Entry</h3>
-                  {editingEntry.source === 'manual' && (
-                    <span className="inline-flex items-center gap-1 rounded-full bg-purple-100 px-2 py-1 text-xs font-semibold text-purple-800 dark:bg-purple-900 dark:text-purple-200">
-                      ✏️ Manual Entry
-                    </span>
-                  )}
+        <div className="mt-6 flex items-center justify-between rounded-lg border border-gray-200 bg-white p-4 text-sm shadow-sm dark:border-slate-700 dark:bg-slate-800 dark:text-gray-200">
+          <span>
+            Page {page} of {totalPages} · {total} total entries
+          </span>
+          <div className="flex gap-2">
+            <button
+              onClick={() => setPage((p) => Math.max(1, p - 1))}
+              disabled={!canPrev}
+              className="rounded-lg border border-gray-300 px-4 py-2 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-600"
+            >
+              Previous
+            </button>
+            <button
+              onClick={() => setPage((p) => (canNext ? p + 1 : p))}
+              disabled={!canNext}
+              className="rounded-lg border border-gray-300 px-4 py-2 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-600"
+            >
+              Next
+            </button>
+          </div>
+        </div>
+      </main >
+
+      {/* Edit Entry Modal */}
+      {
+        editingEntry && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4 py-10">
+            <div className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-2xl dark:bg-slate-900">
+              <div className="mb-4 flex items-center justify-between">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Edit Entry</h3>
+                    {editingEntry.source === 'manual' && (
+                      <span className="inline-flex items-center gap-1 rounded-full bg-purple-100 px-2 py-1 text-xs font-semibold text-purple-800 dark:bg-purple-900 dark:text-purple-200">
+                        ✏️ Manual Entry
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">
+                    Check {editingEntry.checkNumber || 'N/A'} · Invoice {editingEntry.invoiceNumber || 'N/A'}
+                  </p>
                 </div>
-                <p className="text-sm text-gray-500 dark:text-gray-400">
-                  Check {editingEntry.checkNumber || 'N/A'} · Invoice {editingEntry.invoiceNumber || 'N/A'}
-                </p>
+                <button
+                  onClick={() => setEditingEntry(null)}
+                  className="text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400"
+                >
+                  Close
+                </button>
               </div>
-              <button
-                onClick={() => setEditingEntry(null)}
-                className="text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400"
-              >
-                Close
-              </button>
+              <form className="space-y-4 text-sm" onSubmit={handleSave}>
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                  <label className="flex flex-col gap-1">
+                    <span className="text-gray-600 dark:text-gray-300">Lot</span>
+                    <input
+                      className="rounded-lg border border-gray-300 px-3 py-2 dark:bg-slate-800 dark:text-white"
+                      value={formState.lot}
+                      onChange={(e) => setFormState((prev) => ({ ...prev, lot: e.target.value }))}
+                    />
+                  </label>
+                  <label className="flex flex-col gap-1">
+                    <span className="text-gray-600 dark:text-gray-300">Start Date</span>
+                    <input
+                      type="date"
+                      className="rounded-lg border border-gray-300 px-3 py-2 dark:bg-slate-800 dark:text-white"
+                      value={formState.startDate}
+                      onChange={(e) => setFormState((prev) => ({ ...prev, startDate: e.target.value }))}
+                    />
+                  </label>
+                  <label className="flex flex-col gap-1">
+                    <span className="text-gray-600 dark:text-gray-300">Status</span>
+                    <select
+                      className="rounded-lg border border-gray-300 px-3 py-2 dark:bg-slate-800 dark:text-white"
+                      value={formState.status}
+                      onChange={(e) => setFormState((prev) => ({ ...prev, status: e.target.value }))}
+                    >
+                      <option value="PENDING">Pending</option>
+                      <option value="COMPLETE">Complete</option>
+                    </select>
+                  </label>
+                  <label className="flex flex-col gap-1">
+                    <span className="text-gray-600 dark:text-gray-300">Amount</span>
+                    <input
+                      type="number"
+                      step="0.01"
+                      className="rounded-lg border border-gray-300 px-3 py-2 dark:bg-slate-800 dark:text-white"
+                      value={formState.amount}
+                      onChange={(e) => setFormState((prev) => ({ ...prev, amount: e.target.value }))}
+                    />
+                  </label>
+                  <label className="flex flex-col gap-1">
+                    <span className="text-gray-600 dark:text-gray-300">Invoice #</span>
+                    <input
+                      className="rounded-lg border border-gray-300 px-3 py-2 dark:bg-slate-800 dark:text-white"
+                      value={formState.invoiceNumber}
+                      onChange={(e) => setFormState((prev) => ({ ...prev, invoiceNumber: e.target.value }))}
+                    />
+                  </label>
+                  <label className="flex flex-col gap-1">
+                    <span className="text-gray-600 dark:text-gray-300">Check #</span>
+                    <input
+                      className="rounded-lg border border-gray-300 px-3 py-2 dark:bg-slate-800 dark:text-white"
+                      value={formState.checkNumber}
+                      onChange={(e) => setFormState((prev) => ({ ...prev, checkNumber: e.target.value }))}
+                    />
+                  </label>
+                  <label className="flex flex-col gap-1">
+                    <span className="text-gray-600 dark:text-gray-300">Check Date</span>
+                    <input
+                      type="date"
+                      className="rounded-lg border border-gray-300 px-3 py-2 dark:bg-slate-800 dark:text-white"
+                      value={formState.checkDate}
+                      onChange={(e) => setFormState((prev) => ({ ...prev, checkDate: e.target.value }))}
+                    />
+                  </label>
+                  <label className="flex flex-col gap-1">
+                    <span className="text-gray-600 dark:text-gray-300">Account Category</span>
+                    <input
+                      className="rounded-lg border border-gray-300 px-3 py-2 dark:bg-slate-800 dark:text-white"
+                      value={formState.accountCategoryName}
+                      onChange={(e) =>
+                        setFormState((prev) => ({ ...prev, accountCategoryName: e.target.value }))
+                      }
+                    />
+                  </label>
+                  <label className="flex flex-col gap-1">
+                    <span className="text-gray-600 dark:text-gray-300">Category Code</span>
+                    <input
+                      className="rounded-lg border border-gray-300 px-3 py-2 dark:bg-slate-800 dark:text-white"
+                      value={formState.accountCategoryCode}
+                      onChange={(e) =>
+                        setFormState((prev) => ({ ...prev, accountCategoryCode: e.target.value }))
+                      }
+                    />
+                  </label>
+                </div>
+                {formError && <p className="text-sm text-red-600">{formError}</p>}
+                <div className="flex justify-between gap-3">
+                  {/* Admin can ALWAYS delete. */}
+                  {isAdmin && (
+                    <button
+                      type="button"
+                      className="rounded-lg border border-red-300 bg-red-50 px-4 py-2 text-sm font-semibold text-red-600 hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-50"
+                      onClick={handleDelete}
+                      disabled={saving}
+                    >
+                      {saving ? 'Deleting…' : 'Delete Entry'}
+                    </button>
+                  )}
+                  <div className="flex gap-3 ml-auto">
+                    <button
+                      type="button"
+                      className="rounded-lg border border-gray-300 px-4 py-2 text-sm dark:border-slate-600"
+                      onClick={() => setEditingEntry(null)}
+                      disabled={saving}
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+                      disabled={saving}
+                    >
+                      {saving ? 'Saving…' : 'Save Changes'}
+                    </button>
+                  </div>
+                </div>
+              </form>
             </div>
-            <form className="space-y-4 text-sm" onSubmit={handleSave}>
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                <label className="flex flex-col gap-1">
-                  <span className="text-gray-600 dark:text-gray-300">Lot</span>
-                  <input
-                    className="rounded-lg border border-gray-300 px-3 py-2 dark:bg-slate-800 dark:text-white"
-                    value={formState.lot}
-                    onChange={(e) => setFormState((prev) => ({ ...prev, lot: e.target.value }))}
-                  />
-                </label>
-                <label className="flex flex-col gap-1">
-                  <span className="text-gray-600 dark:text-gray-300">Start Date</span>
-                  <input
-                    type="date"
-                    className="rounded-lg border border-gray-300 px-3 py-2 dark:bg-slate-800 dark:text-white"
-                    value={formState.startDate}
-                    onChange={(e) => setFormState((prev) => ({ ...prev, startDate: e.target.value }))}
-                  />
-                </label>
-                <label className="flex flex-col gap-1">
-                  <span className="text-gray-600 dark:text-gray-300">Status</span>
-                  <select
-                    className="rounded-lg border border-gray-300 px-3 py-2 dark:bg-slate-800 dark:text-white"
-                    value={formState.status}
-                    onChange={(e) => setFormState((prev) => ({ ...prev, status: e.target.value }))}
-                  >
-                    <option value="PENDING">Pending</option>
-                    <option value="COMPLETE">Complete</option>
-                  </select>
-                </label>
-                <label className="flex flex-col gap-1">
-                  <span className="text-gray-600 dark:text-gray-300">Amount</span>
-                  <input
-                    type="number"
-                    step="0.01"
-                    className="rounded-lg border border-gray-300 px-3 py-2 dark:bg-slate-800 dark:text-white"
-                    value={formState.amount}
-                    onChange={(e) => setFormState((prev) => ({ ...prev, amount: e.target.value }))}
-                  />
-                </label>
-                <label className="flex flex-col gap-1">
-                  <span className="text-gray-600 dark:text-gray-300">Invoice #</span>
-                  <input
-                    className="rounded-lg border border-gray-300 px-3 py-2 dark:bg-slate-800 dark:text-white"
-                    value={formState.invoiceNumber}
-                    onChange={(e) => setFormState((prev) => ({ ...prev, invoiceNumber: e.target.value }))}
-                  />
-                </label>
-                <label className="flex flex-col gap-1">
-                  <span className="text-gray-600 dark:text-gray-300">Check #</span>
-                  <input
-                    className="rounded-lg border border-gray-300 px-3 py-2 dark:bg-slate-800 dark:text-white"
-                    value={formState.checkNumber}
-                    onChange={(e) => setFormState((prev) => ({ ...prev, checkNumber: e.target.value }))}
-                  />
-                </label>
-                <label className="flex flex-col gap-1">
-                  <span className="text-gray-600 dark:text-gray-300">Check Date</span>
-                  <input
-                    type="date"
-                    className="rounded-lg border border-gray-300 px-3 py-2 dark:bg-slate-800 dark:text-white"
-                    value={formState.checkDate}
-                    onChange={(e) => setFormState((prev) => ({ ...prev, checkDate: e.target.value }))}
-                  />
-                </label>
-                <label className="flex flex-col gap-1">
-                  <span className="text-gray-600 dark:text-gray-300">Account Category</span>
-                  <input
-                    className="rounded-lg border border-gray-300 px-3 py-2 dark:bg-slate-800 dark:text-white"
-                    value={formState.accountCategoryName}
-                    onChange={(e) =>
-                      setFormState((prev) => ({ ...prev, accountCategoryName: e.target.value }))
-                    }
-                  />
-                </label>
-                <label className="flex flex-col gap-1">
-                  <span className="text-gray-600 dark:text-gray-300">Category Code</span>
-                  <input
-                    className="rounded-lg border border-gray-300 px-3 py-2 dark:bg-slate-800 dark:text-white"
-                    value={formState.accountCategoryCode}
-                    onChange={(e) =>
-                      setFormState((prev) => ({ ...prev, accountCategoryCode: e.target.value }))
-                    }
-                  />
-                </label>
+          </div>
+        )
+      }
+
+      {
+        isCreatingManual && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4 py-10">
+            <div className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-2xl dark:bg-slate-900 max-h-[90vh] overflow-y-auto">
+              <div className="mb-4 flex items-center justify-between">
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Create Manual Entry</h3>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">
+                    Add a new Blue Book entry manually
+                  </p>
+                </div>
+                <button
+                  onClick={() => setIsCreatingManual(false)}
+                  className="text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400"
+                >
+                  Close
+                </button>
               </div>
-              {formError && <p className="text-sm text-red-600">{formError}</p>}
-              <div className="flex justify-between gap-3">
-                {/* Admin can ALWAYS delete. */}
-                {isAdmin && (
-                  <button
-                    type="button"
-                    className="rounded-lg border border-red-300 bg-red-50 px-4 py-2 text-sm font-semibold text-red-600 hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-50"
-                    onClick={handleDelete}
-                    disabled={saving}
-                  >
-                    {saving ? 'Deleting…' : 'Delete Entry'}
-                  </button>
-                )}
-                <div className="flex gap-3 ml-auto">
+              <form className="space-y-4 text-sm" onSubmit={handleCreateManual}>
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                  <label className="flex flex-col gap-1 md:col-span-2">
+                    <span className="text-gray-600 dark:text-gray-300">Builder *</span>
+                    <select
+                      required
+                      className="rounded-lg border border-gray-300 px-3 py-2 dark:bg-slate-800 dark:text-white"
+                      value={formState.builderId}
+                      onChange={(e) => setFormState((prev) => ({ ...prev, builderId: e.target.value, communityId: '' }))}
+                    >
+                      <option value="">Select Builder</option>
+                      {availableBuilders.map((b) => (
+                        <option key={b.id} value={b.id}>{b.name}</option>
+                      ))}
+                    </select>
+                  </label>
+                  <label className="flex flex-col gap-1 md:col-span-2">
+                    <span className="text-gray-600 dark:text-gray-300">Community *</span>
+                    <select
+                      required
+                      className="rounded-lg border border-gray-300 px-3 py-2 dark:bg-slate-800 dark:text-white"
+                      value={formState.communityId}
+                      onChange={(e) => setFormState((prev) => ({ ...prev, communityId: e.target.value }))}
+                    >
+                      <option value="">Select Community</option>
+                      {communities.filter(c => !formState.builderId || c.builderId === formState.builderId).map((c) => (
+                        <option key={c.id} value={c.id}>{c.name}</option>
+                      ))}
+                    </select>
+                  </label>
+                  <label className="flex flex-col gap-1 md:col-span-2">
+                    <span className="text-gray-600 dark:text-gray-300">Service (Optional)</span>
+                    <select
+                      className="rounded-lg border border-gray-300 px-3 py-2 dark:bg-slate-800 dark:text-white"
+                      value={formState.serviceId}
+                      onChange={(e) => setFormState((prev) => ({ ...prev, serviceId: e.target.value }))}
+                    >
+                      <option value="">Select Service</option>
+                      {services.map((s) => (
+                        <option key={s.id} value={s.id}>{s.name} {s.code ? `(${s.code})` : ''}</option>
+                      ))}
+                    </select>
+                  </label>
+                  <label className="flex flex-col gap-1">
+                    <span className="text-gray-600 dark:text-gray-300">Lot</span>
+                    <input
+                      className="rounded-lg border border-gray-300 px-3 py-2 dark:bg-slate-800 dark:text-white"
+                      value={formState.lot}
+                      onChange={(e) => setFormState((prev) => ({ ...prev, lot: e.target.value }))}
+                    />
+                  </label>
+                  <label className="flex flex-col gap-1">
+                    <span className="text-gray-600 dark:text-gray-300">Start Date</span>
+                    <input
+                      type="date"
+                      className="rounded-lg border border-gray-300 px-3 py-2 dark:bg-slate-800 dark:text-white"
+                      value={formState.startDate}
+                      onChange={(e) => setFormState((prev) => ({ ...prev, startDate: e.target.value }))}
+                    />
+                  </label>
+                  <label className="flex flex-col gap-1">
+                    <span className="text-gray-600 dark:text-gray-300">Status</span>
+                    <select
+                      className="rounded-lg border border-gray-300 px-3 py-2 dark:bg-slate-800 dark:text-white"
+                      value={formState.status}
+                      onChange={(e) => setFormState((prev) => ({ ...prev, status: e.target.value }))}
+                    >
+                      <option value="PENDING">Pending</option>
+                      <option value="COMPLETE">Complete</option>
+                    </select>
+                  </label>
+                  <label className="flex flex-col gap-1">
+                    <span className="text-gray-600 dark:text-gray-300">Amount</span>
+                    <input
+                      type="number"
+                      step="0.01"
+                      className="rounded-lg border border-gray-300 px-3 py-2 dark:bg-slate-800 dark:text-white"
+                      value={formState.amount}
+                      onChange={(e) => setFormState((prev) => ({ ...prev, amount: e.target.value }))}
+                    />
+                  </label>
+                  <label className="flex flex-col gap-1">
+                    <span className="text-gray-600 dark:text-gray-300">Invoice #</span>
+                    <input
+                      className="rounded-lg border border-gray-300 px-3 py-2 dark:bg-slate-800 dark:text-white"
+                      value={formState.invoiceNumber}
+                      onChange={(e) => setFormState((prev) => ({ ...prev, invoiceNumber: e.target.value }))}
+                    />
+                  </label>
+                  <label className="flex flex-col gap-1">
+                    <span className="text-gray-600 dark:text-gray-300">Check #</span>
+                    <input
+                      className="rounded-lg border border-gray-300 px-3 py-2 dark:bg-slate-800 dark:text-white"
+                      value={formState.checkNumber}
+                      onChange={(e) => setFormState((prev) => ({ ...prev, checkNumber: e.target.value }))}
+                    />
+                  </label>
+                  <label className="flex flex-col gap-1">
+                    <span className="text-gray-600 dark:text-gray-300">Check Date</span>
+                    <input
+                      type="date"
+                      className="rounded-lg border border-gray-300 px-3 py-2 dark:bg-slate-800 dark:text-white"
+                      value={formState.checkDate}
+                      onChange={(e) => setFormState((prev) => ({ ...prev, checkDate: e.target.value }))}
+                    />
+                  </label>
+                  <label className="flex flex-col gap-1">
+                    <span className="text-gray-600 dark:text-gray-300">Account Category</span>
+                    <input
+                      className="rounded-lg border border-gray-300 px-3 py-2 dark:bg-slate-800 dark:text-white"
+                      value={formState.accountCategoryName}
+                      onChange={(e) =>
+                        setFormState((prev) => ({ ...prev, accountCategoryName: e.target.value }))
+                      }
+                    />
+                  </label>
+                  <label className="flex flex-col gap-1">
+                    <span className="text-gray-600 dark:text-gray-300">Category Code</span>
+                    <input
+                      className="rounded-lg border border-gray-300 px-3 py-2 dark:bg-slate-800 dark:text-white"
+                      value={formState.accountCategoryCode}
+                      onChange={(e) =>
+                        setFormState((prev) => ({ ...prev, accountCategoryCode: e.target.value }))
+                      }
+                    />
+                  </label>
+                </div>
+                {formError && <p className="text-sm text-red-600">{formError}</p>}
+                <div className="flex justify-end gap-3">
                   <button
                     type="button"
                     className="rounded-lg border border-gray-300 px-4 py-2 text-sm dark:border-slate-600"
-                    onClick={() => setEditingEntry(null)}
+                    onClick={() => setIsCreatingManual(false)}
                     disabled={saving}
                   >
                     Cancel
                   </button>
                   <button
                     type="submit"
-                    className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+                    className="rounded-lg bg-green-600 px-4 py-2 text-sm font-semibold text-white hover:bg-green-700 disabled:cursor-not-allowed disabled:opacity-50"
                     disabled={saving}
                   >
-                    {saving ? 'Saving…' : 'Save Changes'}
+                    {saving ? 'Creating…' : 'Create Entry'}
                   </button>
                 </div>
-              </div>
-            </form>
-          </div>
-        </div>
-      )
-    }
-
-    {
-      isCreatingManual && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4 py-10">
-          <div className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-2xl dark:bg-slate-900 max-h-[90vh] overflow-y-auto">
-            <div className="mb-4 flex items-center justify-between">
-              <div>
-                <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Create Manual Entry</h3>
-                <p className="text-sm text-gray-500 dark:text-gray-400">
-                  Add a new Blue Book entry manually
-                </p>
-              </div>
-              <button
-                onClick={() => setIsCreatingManual(false)}
-                className="text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400"
-              >
-                Close
-              </button>
+              </form>
             </div>
-            <form className="space-y-4 text-sm" onSubmit={handleCreateManual}>
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                <label className="flex flex-col gap-1 md:col-span-2">
-                  <span className="text-gray-600 dark:text-gray-300">Builder *</span>
-                  <select
-                    required
-                    className="rounded-lg border border-gray-300 px-3 py-2 dark:bg-slate-800 dark:text-white"
-                    value={formState.builderId}
-                    onChange={(e) => setFormState((prev) => ({ ...prev, builderId: e.target.value, communityId: '' }))}
-                  >
-                    <option value="">Select Builder</option>
-                    {availableBuilders.map((b) => (
-                      <option key={b.id} value={b.id}>{b.name}</option>
-                    ))}
-                  </select>
-                </label>
-                <label className="flex flex-col gap-1 md:col-span-2">
-                  <span className="text-gray-600 dark:text-gray-300">Community *</span>
-                  <select
-                    required
-                    className="rounded-lg border border-gray-300 px-3 py-2 dark:bg-slate-800 dark:text-white"
-                    value={formState.communityId}
-                    onChange={(e) => setFormState((prev) => ({ ...prev, communityId: e.target.value }))}
-                  >
-                    <option value="">Select Community</option>
-                    {communities.filter(c => !formState.builderId || c.builderId === formState.builderId).map((c) => (
-                      <option key={c.id} value={c.id}>{c.name}</option>
-                    ))}
-                  </select>
-                </label>
-                <label className="flex flex-col gap-1 md:col-span-2">
-                  <span className="text-gray-600 dark:text-gray-300">Service (Optional)</span>
-                  <select
-                    className="rounded-lg border border-gray-300 px-3 py-2 dark:bg-slate-800 dark:text-white"
-                    value={formState.serviceId}
-                    onChange={(e) => setFormState((prev) => ({ ...prev, serviceId: e.target.value }))}
-                  >
-                    <option value="">Select Service</option>
-                    {services.map((s) => (
-                      <option key={s.id} value={s.id}>{s.name} {s.code ? `(${s.code})` : ''}</option>
-                    ))}
-                  </select>
-                </label>
-                <label className="flex flex-col gap-1">
-                  <span className="text-gray-600 dark:text-gray-300">Lot</span>
-                  <input
-                    className="rounded-lg border border-gray-300 px-3 py-2 dark:bg-slate-800 dark:text-white"
-                    value={formState.lot}
-                    onChange={(e) => setFormState((prev) => ({ ...prev, lot: e.target.value }))}
-                  />
-                </label>
-                <label className="flex flex-col gap-1">
-                  <span className="text-gray-600 dark:text-gray-300">Start Date</span>
-                  <input
-                    type="date"
-                    className="rounded-lg border border-gray-300 px-3 py-2 dark:bg-slate-800 dark:text-white"
-                    value={formState.startDate}
-                    onChange={(e) => setFormState((prev) => ({ ...prev, startDate: e.target.value }))}
-                  />
-                </label>
-                <label className="flex flex-col gap-1">
-                  <span className="text-gray-600 dark:text-gray-300">Status</span>
-                  <select
-                    className="rounded-lg border border-gray-300 px-3 py-2 dark:bg-slate-800 dark:text-white"
-                    value={formState.status}
-                    onChange={(e) => setFormState((prev) => ({ ...prev, status: e.target.value }))}
-                  >
-                    <option value="PENDING">Pending</option>
-                    <option value="COMPLETE">Complete</option>
-                  </select>
-                </label>
-                <label className="flex flex-col gap-1">
-                  <span className="text-gray-600 dark:text-gray-300">Amount</span>
-                  <input
-                    type="number"
-                    step="0.01"
-                    className="rounded-lg border border-gray-300 px-3 py-2 dark:bg-slate-800 dark:text-white"
-                    value={formState.amount}
-                    onChange={(e) => setFormState((prev) => ({ ...prev, amount: e.target.value }))}
-                  />
-                </label>
-                <label className="flex flex-col gap-1">
-                  <span className="text-gray-600 dark:text-gray-300">Invoice #</span>
-                  <input
-                    className="rounded-lg border border-gray-300 px-3 py-2 dark:bg-slate-800 dark:text-white"
-                    value={formState.invoiceNumber}
-                    onChange={(e) => setFormState((prev) => ({ ...prev, invoiceNumber: e.target.value }))}
-                  />
-                </label>
-                <label className="flex flex-col gap-1">
-                  <span className="text-gray-600 dark:text-gray-300">Check #</span>
-                  <input
-                    className="rounded-lg border border-gray-300 px-3 py-2 dark:bg-slate-800 dark:text-white"
-                    value={formState.checkNumber}
-                    onChange={(e) => setFormState((prev) => ({ ...prev, checkNumber: e.target.value }))}
-                  />
-                </label>
-                <label className="flex flex-col gap-1">
-                  <span className="text-gray-600 dark:text-gray-300">Check Date</span>
-                  <input
-                    type="date"
-                    className="rounded-lg border border-gray-300 px-3 py-2 dark:bg-slate-800 dark:text-white"
-                    value={formState.checkDate}
-                    onChange={(e) => setFormState((prev) => ({ ...prev, checkDate: e.target.value }))}
-                  />
-                </label>
-                <label className="flex flex-col gap-1">
-                  <span className="text-gray-600 dark:text-gray-300">Account Category</span>
-                  <input
-                    className="rounded-lg border border-gray-300 px-3 py-2 dark:bg-slate-800 dark:text-white"
-                    value={formState.accountCategoryName}
-                    onChange={(e) =>
-                      setFormState((prev) => ({ ...prev, accountCategoryName: e.target.value }))
-                    }
-                  />
-                </label>
-                <label className="flex flex-col gap-1">
-                  <span className="text-gray-600 dark:text-gray-300">Category Code</span>
-                  <input
-                    className="rounded-lg border border-gray-300 px-3 py-2 dark:bg-slate-800 dark:text-white"
-                    value={formState.accountCategoryCode}
-                    onChange={(e) =>
-                      setFormState((prev) => ({ ...prev, accountCategoryCode: e.target.value }))
-                    }
-                  />
-                </label>
-              </div>
-              {formError && <p className="text-sm text-red-600">{formError}</p>}
-              <div className="flex justify-end gap-3">
-                <button
-                  type="button"
-                  className="rounded-lg border border-gray-300 px-4 py-2 text-sm dark:border-slate-600"
-                  onClick={() => setIsCreatingManual(false)}
-                  disabled={saving}
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="rounded-lg bg-green-600 px-4 py-2 text-sm font-semibold text-white hover:bg-green-700 disabled:cursor-not-allowed disabled:opacity-50"
-                  disabled={saving}
-                >
-                  {saving ? 'Creating…' : 'Create Entry'}
-                </button>
-              </div>
-            </form>
           </div>
-        </div>
-      )
-    }
-  </>
-);
+        )
+      }
+    </>
+  );
 }
