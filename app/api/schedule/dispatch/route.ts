@@ -101,23 +101,24 @@ export async function POST(request: NextRequest) {
         let assignmentId = '';
 
         if (existingDraft) {
-            // Update existing DRAFT assignment
+            // Update existing DRAFT assignment directly to DISPATCHED
+            // We do this to reuse the ID and prevent ghost duplicates
             await db.update(assignments)
                 .set({
                     dispatchBatchId: batchId,
                     crewId: crew.id,
-                    status: 'SENT'
+                    status: 'DISPATCHED' // Directly set to dispatched
                 })
                 .where(eq(assignments.id, existingDraft.id));
             assignmentId = existingDraft.id;
         } else {
-            // Create new assignment
+            // Create new assignment as DISPATCHED
             const [newAssignment] = await db.insert(assignments).values({
                 jobRequestServiceId: jrs ? jobId : null,
                 blueBookEntryId: bbe ? jobId : null,
                 dispatchBatchId: batchId,
                 crewId: crew.id,
-                status: 'SENT',
+                status: 'DISPATCHED', // Directly set to dispatched
             }).returning();
             assignmentId = newAssignment.id;
         }
@@ -180,9 +181,7 @@ export async function POST(request: NextRequest) {
         }
 
         // CRITICAL FIX: Update assignment status explicitly
-        await db.update(assignments)
-            .set({ status: 'DISPATCHED' })
-            .where(eq(assignments.id, assignmentId));
+        // Assignment status already updated above to DISPATCHED
 
         // Update blue book entry status if applicable
         try {

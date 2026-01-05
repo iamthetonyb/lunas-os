@@ -98,3 +98,54 @@ export const GET = safe(async (req, context) => {
 
     return ok(formatted);
 });
+
+export const POST = safe(async (req) => {
+    const membership = await requireMembership(['admin', 'backoffice', 'contractor']);
+    const db = await getDb();
+    const body = await req.json();
+
+    if (!body.communityId || !body.builderId) {
+        return ok({ error: "Missing required fields" }, { status: 400 });
+    }
+
+    const [newRequest] = await db.insert(jobRequests).values({
+        communityId: body.communityId,
+        builderId: body.builderId,
+        lot: body.lot,
+        address: body.address,
+        modelPlanId: body.modelPlanId || null,
+        dueDate: body.dueDate,
+        notes: body.notes,
+        requestedBy: body.requestedBy,
+        contactPhone: body.contactPhone,
+        contactEmail: body.contactEmail,
+        poNumber: body.poNumber,
+        isExtraWork: !!(body.serviceIds && body.serviceIds.length > 0),
+        createdById: membership.userId,
+    }).returning();
+
+    if (body.serviceIds && body.serviceIds.length > 0) {
+        for (const sId of body.serviceIds) {
+            await db.insert(jobRequestServices).values({
+                jobRequestId: newRequest.id,
+                serviceId: sId,
+                walkTime: body.walkTime || null
+            });
+        }
+    }
+
+    // CRITICAL FIX: Insert Blue Book Entry (Pending)
+    await db.insert(blueBookEntries).values({
+        builderId: body.builderId,
+        communityId: body.communityId,
+        lot: body.lot,
+        modelPlanId: body.modelPlanId || null,
+        startDate: body.dueDate,
+        status: 'PENDING',
+        source: 'intake',
+        poNumber: body.poNumber,
+        serviceId: body.serviceIds?.[0] || null,
+    });
+
+    return ok({ id: newRequest.id });
+});

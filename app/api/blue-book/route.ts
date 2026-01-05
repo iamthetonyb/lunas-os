@@ -34,34 +34,46 @@ export const GET = safe(async (req: Request) => {
   }
   if (searchTerm) {
     const pattern = `%${searchTerm}%`;
+
+    // Find matching builders and communities first
+    // This allows us to "search" them without complex joins in the findMany where clause
+    const matchedBuilders = await db.select({ id: builders.id }).from(builders).where(ilike(builders.name, pattern));
+    const matchedCommunities = await db.select({ id: communities.id }).from(communities).where(ilike(communities.name, pattern));
+
+    const builderIds = matchedBuilders.map(b => b.id);
+    const communityIds = matchedCommunities.map(c => c.id);
+
     conditions.push(
       or(
         like(blueBookEntries.lot, pattern),
         like(blueBookEntries.poNumber, pattern),
         like(blueBookEntries.accountCategoryName, pattern),
         like(blueBookEntries.accountCategoryCode, pattern),
-        like(blueBookEntries.checkNumber, pattern)
+        like(blueBookEntries.checkNumber, pattern),
+        // Add new name-based searches
+        builderIds.length > 0 ? inArray(blueBookEntries.builderId, builderIds) : undefined,
+        communityIds.length > 0 ? inArray(blueBookEntries.communityId, communityIds) : undefined
       )
     );
   }
 
   const where = conditions.length > 0 ? and(...conditions) : undefined;
-  
+
   // Default sort: community name, then start date, then check date
   const orderByClauses =
     sortParam === 'checkdate'
       ? [
-          asc(blueBookEntries.checkDate),
-          asc(blueBookEntries.startDate),
-          asc(blueBookEntries.createdAt),
-        ]
+        asc(blueBookEntries.checkDate),
+        asc(blueBookEntries.startDate),
+        asc(blueBookEntries.createdAt),
+      ]
       : [
-          // Default to startDate sorting with community grouping
-          asc(blueBookEntries.communityId),
-          asc(blueBookEntries.startDate),
-          asc(blueBookEntries.checkDate),
-          asc(blueBookEntries.createdAt),
-        ];
+        // Default to startDate sorting with community grouping
+        asc(blueBookEntries.communityId),
+        asc(blueBookEntries.startDate),
+        asc(blueBookEntries.checkDate),
+        asc(blueBookEntries.createdAt),
+      ];
 
   await requireMembership(['admin', 'backoffice']);
   const db = await getDb();
@@ -78,32 +90,32 @@ export const GET = safe(async (req: Request) => {
   });
 
   const formatted = (entries || []).map((entry) => ({
-      id: entry.id,
-      builderId: entry.builderId,
-      builderName: entry.builder?.name ?? null,
-      communityId: entry.communityId,
-      communityName: entry.community?.name ?? null,
-      lot: entry.lot,
-      serviceId: entry.serviceId,
-      serviceName: entry.service?.name ?? entry.accountCategoryName ?? null,
-      status: entry.status,
-      amount: entry.amount,
-      invoiceNumber: entry.poNumber,
-      checkNumber: entry.checkNumber,
-      checkDate: entry.checkDate,
-      checkTotal: entry.checkTotal,
-      isAch: entry.isAch,
-      accountCategoryCode: entry.accountCategoryCode,
-      accountCategoryName: entry.accountCategoryName,
-      startDate: entry.startDate,
-      modelPlanId: entry.modelPlanId,
-      modelPlanCode: entry.modelPlan?.code ?? null,
-      modelPlanName: entry.modelPlan?.name ?? null,
-      modelPlanSqft: entry.modelPlan?.sqft ?? null,
-      source: entry.source ?? 'scraped',
-      createdAt: entry.createdAt,
-      updatedAt: entry.updatedAt,
-    }));
+    id: entry.id,
+    builderId: entry.builderId,
+    builderName: entry.builder?.name ?? null,
+    communityId: entry.communityId,
+    communityName: entry.community?.name ?? null,
+    lot: entry.lot,
+    serviceId: entry.serviceId,
+    serviceName: entry.service?.name ?? entry.accountCategoryName ?? null,
+    status: entry.status,
+    amount: entry.amount,
+    invoiceNumber: entry.poNumber,
+    checkNumber: entry.checkNumber,
+    checkDate: entry.checkDate,
+    checkTotal: entry.checkTotal,
+    isAch: entry.isAch,
+    accountCategoryCode: entry.accountCategoryCode,
+    accountCategoryName: entry.accountCategoryName,
+    startDate: entry.startDate,
+    modelPlanId: entry.modelPlanId,
+    modelPlanCode: entry.modelPlan?.code ?? null,
+    modelPlanName: entry.modelPlan?.name ?? null,
+    modelPlanSqft: entry.modelPlan?.sqft ?? null,
+    source: entry.source ?? 'scraped',
+    createdAt: entry.createdAt,
+    updatedAt: entry.updatedAt,
+  }));
 
   if (isPaginated) {
     const totalQuery = db.select({ value: count() }).from(blueBookEntries);
@@ -124,7 +136,7 @@ export const GET = safe(async (req: Request) => {
 export const POST = safe(async (req: Request) => {
   await requireMembership(['admin', 'backoffice']);
   const db = await getDb();
-  
+
   const body = await req.json();
   const {
     builderId,

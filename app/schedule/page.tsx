@@ -352,14 +352,15 @@ export default function SchedulePage() {
     // Filter by selected foreman tab
     if (activeForemanId !== 'all') {
       const selectedName = FOREMEN_DIRECTORY.find(f => f.id === activeForemanId)?.name;
-      // Strict check: Must match assigned name OR foremanName. Unassigned = neither assigned.
+      // Strict check: Must match assigned name. Unassigned = neither assigned.
+      // NOTE: Using current 'selectedName' from directory to ensure correct ID mapping
       jobs = jobs.filter(job => {
         const assigned = selectedForemenMap.get(job.id) || job.assignedForemanName;
         if (activeForemanId === 'unassigned') {
           // Unassigned: no assigned foreman AND no foremanName
           return !assigned && !job.foremanName;
         }
-        return assigned === selectedName || job.foremanName === selectedName;
+        return assigned === selectedName;
       });
     }
 
@@ -555,25 +556,25 @@ export default function SchedulePage() {
         description="Manage job scheduling and crew assignments"
         action={
           <div className="flex items-center gap-2">
-            <button
-              onClick={() => setDate(getPrevDate(date))}
-              className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-slate-700 text-gray-600 dark:text-gray-300 transition-colors"
-              title="Previous Day"
-            >
-              ←
-            </button>
-            <div className="relative">
-              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none">📅</span>
+            <div className="relative flex items-center">
               <input
                 type="date"
                 value={date}
                 onChange={(e) => setDate(e.target.value)}
-                className="pl-9 pr-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-slate-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none"
+                className="pl-3 pr-9 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-slate-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none"
               />
+              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none">📅</span>
             </div>
             <button
+              onClick={() => setDate(getPrevDate(date))}
+              className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-slate-700 text-gray-600 dark:text-gray-300 transition-colors border border-gray-200 dark:border-gray-600"
+              title="Previous Day"
+            >
+              ←
+            </button>
+            <button
               onClick={() => setDate(getNextDate(date))}
-              className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-slate-700 text-gray-600 dark:text-gray-300 transition-colors"
+              className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-slate-700 text-gray-600 dark:text-gray-300 transition-colors border border-gray-200 dark:border-gray-600"
               title="Next Day"
             >
               →
