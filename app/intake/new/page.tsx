@@ -1,9 +1,14 @@
 'use client';
-export const dynamic = 'force-dynamic';
 
 import { PageHeader } from '@/components/page-header';
-import { IntakeForm } from '@/components/intake-form';
 import Link from 'next/link';
+import dynamic from 'next/dynamic';
+
+// Lazy load the form and disable Server-Side Rendering (SSR) for it
+const IntakeForm = dynamic(
+  () => import('@/components/intake-form').then((mod) => mod.IntakeForm),
+  { ssr: false }
+);
 
 export default function NewIntakePage() {
   return (
