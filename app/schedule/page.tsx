@@ -338,11 +338,14 @@ export default function SchedulePage() {
     // Filter by selected foreman tab
     if (activeForemanId !== 'all') {
       const selectedName = FOREMEN_DIRECTORY.find(f => f.id === activeForemanId)?.name;
-      // Strict check: Must match assigned name. If unassigned, must be truly unassigned.
+      // Strict check: Must match assigned name OR foremanName. Unassigned = neither assigned.
       jobs = jobs.filter(job => {
         const assigned = selectedForemenMap.get(job.id) || job.assignedForemanName;
-        if (activeForemanId === 'unassigned') return !assigned;
-        return assigned === selectedName;
+        if (activeForemanId === 'unassigned') {
+          // Unassigned: no assigned foreman AND no foremanName
+          return !assigned && !job.foremanName;
+        }
+        return assigned === selectedName || job.foremanName === selectedName;
       });
     }
 

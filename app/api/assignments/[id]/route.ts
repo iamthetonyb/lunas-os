@@ -48,26 +48,17 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
     }
 
     await db.transaction(async (tx) => {
-      // 1. Find Blue Book Entry IDs to clean up Invoice Lines
-      const bbeRows = await tx
-        .select({ id: blueBookEntries.id })
-        .from(blueBookEntries)
+      // 1. UNLINK Blue Book Entries: SET assignment_id = NULL, status = 'PENDING'
+      // This preserves the Blue Book entry data while removing the assignment link
+      await tx
+        .update(blueBookEntries)
+        .set({ assignmentId: null, status: 'PENDING' })
         .where(eq(blueBookEntries.assignmentId, id));
 
-      const bbeIds = bbeRows.map(r => r.id);
-
-      // 2. DELETE FROM invoice_lines WHERE blue_book_id IN (...)
-      if (bbeIds.length > 0) {
-        await tx.delete(invoiceLines).where(inArray(invoiceLines.blueBookId, bbeIds));
-      }
-
-      // 3. DELETE FROM blue_book_entries WHERE assignment_id = [id]
-      await tx.delete(blueBookEntries).where(eq(blueBookEntries.assignmentId, id));
-
-      // 4. DELETE FROM field_tickets WHERE assignment_id = [id]
+      // 2. DELETE FROM field_tickets WHERE assignment_id = [id]
       await tx.delete(fieldTickets).where(eq(fieldTickets.assignmentId, id));
 
-      // 5. Delete Assignment
+      // 3. Delete Assignment
       await tx.delete(assignments).where(eq(assignments.id, id));
 
       // 6. Zombie Batch Check: If no assignments remain for this batch, delete it
