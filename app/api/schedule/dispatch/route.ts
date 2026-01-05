@@ -181,12 +181,13 @@ export async function POST(request: NextRequest) {
                 status: 'DISPATCHED'
             });
         }
-
+        // Simplified response to prevent 500 errors from complex joins
         return json({
             ok: true,
             message: `Job dispatched to ${foremanName} / ${crewName}`,
             crewId: crew.id,
             batchId,
+            assignmentId: assignment.id,
         });
     } catch (error) {
         console.error('Error dispatching job:', error);
