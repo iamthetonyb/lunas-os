@@ -1,5 +1,7 @@
 'use client';
 
+export const dynamic = 'force-dynamic';
+
 import { PageHeader } from '@/components/page-header';
 import { useState, useEffect } from 'react';
 import useSWR, { mutate } from 'swr';

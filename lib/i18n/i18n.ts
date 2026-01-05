@@ -35,6 +35,9 @@ if (typeof window !== 'undefined') {
       interpolation: {
         escapeValue: false,
       },
+      react: {
+        useSuspense: false,
+      },
     });
 }
 
