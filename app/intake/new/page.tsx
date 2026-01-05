@@ -1,6 +1,6 @@
-'use client';
-
 export const dynamic = 'force-dynamic';
+
+'use client';
 
 import { PageHeader } from '@/components/page-header';
 import { IntakeForm } from '@/components/intake-form';
