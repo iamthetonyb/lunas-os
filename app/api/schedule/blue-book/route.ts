@@ -1,6 +1,6 @@
 import { getDb } from '@/lib/db/get-db';
 import { blueBookEntries, jobRequests, jobRequestServices, builders, communities, modelPlans, services, assignments, dispatchBatches } from '@/db/schema';
-import { and, gte, lte, isNotNull, eq, sql } from 'drizzle-orm';
+import { and, gte, lte, isNotNull, eq, sql, ne } from 'drizzle-orm';
 import { safe, ok } from '@/lib/api/http';
 import { requireMembership } from '@/lib/auth/guards';
 
@@ -35,7 +35,8 @@ export const GET = safe(async (req: Request) => {
     where: and(
       isNotNull(blueBookEntries.startDate),
       gte(blueBookEntries.startDate, startIso),
-      lte(blueBookEntries.startDate, endIso)
+      lte(blueBookEntries.startDate, endIso),
+      ne(blueBookEntries.source, 'intake')
     ),
     columns: {
       id: true,
