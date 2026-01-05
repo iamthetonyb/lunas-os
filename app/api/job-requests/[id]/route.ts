@@ -104,17 +104,24 @@ export const PUT = safe(async (req, { params: paramsPromise }: { params: Promise
     }
 
     // B. Services to Remove (in DB but not in payload)
+    // Wrap in try/catch so FK constraint errors don't crash the whole save
     const servicesToRemove = currentServices.filter((s) => !incomingServiceIds.includes(s.serviceId as string));
     for (const s of servicesToRemove) {
-      // Check for assignments
-      const [assignment] = await tx
-        .select({ id: assignments.id })
-        .from(assignments)
-        .where(eq(assignments.jobRequestServiceId, s.id))
-        .limit(1);
+      try {
+        // Check for assignments
+        const [assignment] = await tx
+          .select({ id: assignments.id })
+          .from(assignments)
+          .where(eq(assignments.jobRequestServiceId, s.id))
+          .limit(1);
 
-      if (!assignment) {
-        await tx.delete(jobRequestServices).where(eq(jobRequestServices.id, s.id));
+        if (!assignment) {
+          await tx.delete(jobRequestServices).where(eq(jobRequestServices.id, s.id));
+        }
+        // If assigned, just skip - don't crash
+      } catch (deleteError) {
+        // Ignore FK constraint errors - let the service stay
+        console.warn(`[PUT /job-requests] Could not remove service ${s.id}, likely FK constraint. Skipping.`);
       }
     }
 

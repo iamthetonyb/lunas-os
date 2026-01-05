@@ -4,6 +4,7 @@ import { PageHeader } from '@/components/page-header';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import useSWR from 'swr';
 import { fetchJSON } from '@/lib/utils/fetch-json';
+import { useSession } from 'next-auth/react';
 
 const PAGE_SIZE = 25;
 
@@ -233,6 +234,10 @@ export default function BlueBookPage() {
   const [formError, setFormError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [newTabBuilderId, setNewTabBuilderId] = useState('');
+
+  // Session for admin check - admins can always see delete button
+  const { data: session } = useSession();
+  const isAdmin = (session?.user as any)?.role === 'admin' || (session?.user as any)?.role === 'backoffice';
 
   // Populate form state when editing or creating
   useEffect(() => {
@@ -1144,9 +1149,10 @@ export default function BlueBookPage() {
   const handleDelete = async () => {
     if (!editingEntry) return;
 
-    // Correct Logic: Allow deleting if source is null/undefined or 'MANUAL'
+    // Allow deletion: Admin can ALWAYS try, or if source is null/manual
+    // Let the API decide if it's safe to delete
     const isManual = !editingEntry.source || editingEntry.source.toLowerCase() === 'manual';
-    if (!isManual) return;
+    if (!isAdmin && !isManual) return;
 
     if (!confirm('Are you sure you want to delete this entry?')) return;
 
@@ -1763,7 +1769,8 @@ export default function BlueBookPage() {
               </div>
               {formError && <p className="text-sm text-red-600">{formError}</p>}
               <div className="flex justify-between gap-3">
-                {(!editingEntry?.source || editingEntry.source.toLowerCase() === 'manual') && (
+                {/* Admin can ALWAYS see Delete, or if source is null/manual */}
+                {(isAdmin || !editingEntry?.source || editingEntry.source.toLowerCase() === 'manual') && (
                   <button
                     type="button"
                     className="rounded-lg border border-red-300 bg-red-50 px-4 py-2 text-sm font-semibold text-red-600 hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-50"
