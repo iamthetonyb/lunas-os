@@ -4,6 +4,7 @@ import { PageHeader } from '@/components/page-header';
 import { useState, useEffect } from 'react';
 import useSWR, { mutate } from 'swr';
 import { fetchJSON } from '@/lib/utils/fetch-json';
+import { useTranslation } from 'react-i18next';
 
 type UserProfile = {
   id: string;
@@ -15,6 +16,7 @@ type UserProfile = {
 };
 
 export default function SettingsPage() {
+  const { i18n } = useTranslation();
   const { data: profile, isLoading } = useSWR<UserProfile>('/api/users/profile', (url: string) => fetchJSON<UserProfile>(url));
   const [busy, setBusy] = useState(false);
   const [success, setSuccess] = useState('');
@@ -33,8 +35,13 @@ export default function SettingsPage() {
         preferredLang: profile.preferredLang || 'EN',
         preferredContactMethod: profile.preferredContactMethod || 'email',
       });
+      // Sync language on load
+      const targetLang = profile.preferredLang === 'ES_MX' ? 'es' : 'en';
+      if (i18n.language !== targetLang) {
+        i18n.changeLanguage(targetLang);
+      }
     }
-  }, [profile]);
+  }, [profile, i18n]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -50,6 +57,10 @@ export default function SettingsPage() {
       });
       setSuccess('Settings saved successfully');
       await mutate('/api/users/profile');
+
+      // Update language immediately
+      const newLang = formData.preferredLang === 'ES_MX' ? 'es' : 'en';
+      await i18n.changeLanguage(newLang);
     } catch (err: any) {
       setError(err.message || 'Failed to save settings');
     } finally {
