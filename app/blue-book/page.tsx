@@ -1149,8 +1149,8 @@ export default function BlueBookPage() {
   const handleDelete = async () => {
     if (!editingEntry) return;
 
-    // Allow deletion: Admin can ALWAYS try, or if source is null/manual
-    // Let the API decide if it's safe to delete
+    // Fix: Allow if Admin OR if Manual
+    // Admins can always try to delete; API will block if unsafe
     const isManual = !editingEntry.source || editingEntry.source.toLowerCase() === 'manual';
     if (!isAdmin && !isManual) return;
 

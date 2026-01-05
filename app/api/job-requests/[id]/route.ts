@@ -103,8 +103,8 @@ export const PUT = safe(async (req, { params: paramsPromise }: { params: Promise
       );
     }
 
-    // B. Services to Remove (in DB but not in payload)
-    // Wrap in try/catch so FK constraint errors don't crash the whole save
+    // Services to Remove (in DB but not in payload)
+    // Safe Diffing: Only delete if not assigned
     const servicesToRemove = currentServices.filter((s) => !incomingServiceIds.includes(s.serviceId as string));
     for (const s of servicesToRemove) {
       try {
