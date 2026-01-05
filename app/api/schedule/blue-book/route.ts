@@ -157,15 +157,30 @@ export const GET = safe(async (req: Request) => {
       });
     }
     const entry = jobRequestMap.get(row.id)!;
-    if (row.serviceId && row.serviceName) {
-      entry.services.push({
-        id: row.serviceId,
-        jobRequestServiceId: row.jobRequestServiceId,
-        name: row.serviceName,
-        walkTime: row.walkTime,
-        assignedForemanName: row.assignedForemanName,
-        assignmentStatus: row.assignmentStatus,
-      });
+    if (row.serviceId && row.serviceName && row.jobRequestServiceId) {
+      // Deduplicate services: Check if we already have this service recorded
+      const existingServiceIndex = entry.services.findIndex(s => s.jobRequestServiceId === row.jobRequestServiceId);
+
+      if (existingServiceIndex === -1) {
+        // New service, add it
+        entry.services.push({
+          id: row.serviceId,
+          jobRequestServiceId: row.jobRequestServiceId,
+          name: row.serviceName,
+          walkTime: row.walkTime,
+          assignedForemanName: row.assignedForemanName,
+          assignmentStatus: row.assignmentStatus,
+        });
+      } else {
+        // Service exists (likely due to multiple assignments). 
+        // Logic: specific status overrides null/pending? 
+        // For now, if current row has an assignment status and existing doesn't, allow overwrite?
+        // Actually, easiest is just to take the first one or ignore duplicates if they are effectively the same essential data for the schedule card.
+        // We'll prioritize rows that HAVE an assignment status.
+        if (row.assignmentStatus && !entry.services[existingServiceIndex].assignmentStatus) {
+          entry.services[existingServiceIndex].assignmentStatus = row.assignmentStatus;
+        }
+      }
     }
   });
 
