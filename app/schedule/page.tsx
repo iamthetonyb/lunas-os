@@ -337,14 +337,13 @@ export default function SchedulePage() {
 
     // Filter by selected foreman tab
     if (activeForemanId !== 'all') {
-      if (activeForemanId === UNASSIGNED_FOREMAN.id) {
-        // Show jobs that haven't been manually assigned
-        jobs = jobs.filter(job => !selectedForemenMap.get(job.id));
-      } else {
-        // Show jobs assigned to the selected foreman
-        const selectedForemanName = FOREMEN_DIRECTORY.find(f => f.id === activeForemanId)?.name;
-        jobs = jobs.filter(job => selectedForemenMap.get(job.id) === selectedForemanName);
-      }
+      const selectedName = FOREMEN_DIRECTORY.find(f => f.id === activeForemanId)?.name;
+      // Strict check: Must match assigned name. If unassigned, must be truly unassigned.
+      jobs = jobs.filter(job => {
+        const assigned = selectedForemenMap.get(job.id) || job.assignedForemanName;
+        if (activeForemanId === 'unassigned') return !assigned;
+        return assigned === selectedName;
+      });
     }
 
     // For contractors, filter to only show jobs assigned to them

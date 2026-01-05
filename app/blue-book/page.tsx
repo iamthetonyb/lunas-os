@@ -1149,8 +1149,7 @@ export default function BlueBookPage() {
   const handleDelete = async () => {
     if (!editingEntry) return;
 
-    // Fix: Allow if Admin OR if Manual
-    // Admins can always try to delete; API will block if unsafe
+    // Fix: Allow if Admin OR if Manual (Admins must always see button)
     const isManual = !editingEntry.source || editingEntry.source.toLowerCase() === 'manual';
     if (!isAdmin && !isManual) return;
 

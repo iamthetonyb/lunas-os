@@ -128,7 +128,7 @@ export default function DispatchDetailPage({ params }: { params: Promise<{ id: s
     }
 
     const dateStr = dispatch.serviceDate
-        ? new Date(dispatch.serviceDate).toLocaleDateString()
+        ? new Date(dispatch.serviceDate + 'T12:00:00').toLocaleDateString()
         : 'Not scheduled';
 
     return (
