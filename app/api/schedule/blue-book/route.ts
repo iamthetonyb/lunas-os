@@ -79,9 +79,11 @@ export const GET = safe(async (req: Request) => {
       jobRequestServiceId: jobRequestServices.id,
       serviceId: jobRequestServices.serviceId,
       serviceName: services.name,
+      workOrderNumber: jobRequestServices.workOrderNumber,
       walkTime: jobRequestServices.walkTime,
       assignedForemanName: jobRequestServices.assignedForemanName,
       assignmentStatus: assignments.status,
+      assignmentForemanName: assignments.foremanName,
     })
     .from(jobRequests)
     .leftJoin(builders, eq(jobRequests.builderId, builders.id))
