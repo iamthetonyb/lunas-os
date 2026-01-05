@@ -1,6 +1,7 @@
 /** @type {import('next').NextConfig} */
 module.exports = {
   reactStrictMode: true,
+  staticPageGenerationTimeout: 300,
   // Empty turbopack config to silence webpack warning
   turbopack: {},
   // Moved from experimental (deprecated in Next.js 16+)
