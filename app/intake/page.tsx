@@ -348,7 +348,8 @@ export default function IntakePage() {
 
   async function handleEditSuccess() {
     setEditModalOpen(false);
-    await mutate('/api/job-requests/recent');
+    // Force refresh any key starting with recent
+    await mutate((key) => typeof key === 'string' && key.startsWith('/api/job-requests/recent'));
   }
 
   async function handleDelete(intakeId: string) {
@@ -364,7 +365,8 @@ export default function IntakePage() {
     try {
       await fetchJSON(`/api/job-requests/${intakeId}`, { method: 'DELETE' });
       console.log('[intake] Successfully deleted:', intakeId);
-      await mutate('/api/job-requests/recent');
+      // Force refresh any key starting with recent
+      await mutate((key) => typeof key === 'string' && key.startsWith('/api/job-requests/recent'));
       setDetailModalOpen(false); // Close modal if open
       toast.success('Intake deleted successfully!');
     } catch (error) {

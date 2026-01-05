@@ -88,7 +88,8 @@ export function BuildersCrud() {
                 }),
             });
             setNewCommunityName('');
-            mutate('/api/communities');
+            // Force refresh all community caches (for Blue Book and Intake dropdowns)
+            await mutate((key) => typeof key === 'string' && key.includes('/api/communities'));
             toast.success(`Community "${newCommunityName}" added!`);
         } catch (error) {
             toast.error('Failed to add community');
