@@ -34,6 +34,8 @@ type BlueBookEntry = {
   source?: string | null; // 'scraped' or 'manual'
   createdAt: string;
   updatedAt: string;
+  assignedForemanName?: string | null;
+  crewName?: string | null;
 };
 
 type BlueBookResponse = {
