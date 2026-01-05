@@ -1,5 +1,5 @@
 import { getDb } from '@/lib/db/get-db';
-import { blueBookEntries, builders, communities } from '@/db/schema';
+import { blueBookEntries, builders, communities, assignments, crews, dispatchBatches } from '@/db/schema';
 import { and, eq, isNull, count, like, or, asc, ilike, inArray } from 'drizzle-orm';
 import { safe, ok } from '@/lib/api/http';
 import { requireMembership } from '@/lib/auth/guards';
@@ -91,6 +91,33 @@ export const GET = safe(async (req: Request) => {
     ...(isPaginated ? { limit: pageSize, offset } : {}),
   });
 
+  // Fetch assignment details (Crew & Foreman)
+  const assignmentIds = entries
+    .map(e => e.assignmentId)
+    .filter((id): id is string => Boolean(id));
+
+  const assignmentMap = new Map<string, { crewName: string | null; foremanName: string | null }>();
+
+  if (assignmentIds.length > 0) {
+    const assignmentDetails = await db
+      .select({
+        id: assignments.id,
+        crewName: crews.name,
+        foremanName: dispatchBatches.foremanName,
+      })
+      .from(assignments)
+      .leftJoin(crews, eq(assignments.crewId, crews.id))
+      .leftJoin(dispatchBatches, eq(assignments.dispatchBatchId, dispatchBatches.id))
+      .where(inArray(assignments.id, assignmentIds));
+
+    assignmentDetails.forEach(d => {
+      assignmentMap.set(d.id, {
+        crewName: d.crewName,
+        foremanName: d.foremanName,
+      });
+    });
+  }
+
   const formatted = (entries || []).map((entry) => ({
     id: entry.id,
     builderId: entry.builderId,
@@ -117,6 +144,10 @@ export const GET = safe(async (req: Request) => {
     source: entry.source ?? 'scraped',
     createdAt: entry.createdAt,
     updatedAt: entry.updatedAt,
+    assignedForemanName: entry.assignmentId && assignmentMap.has(entry.assignmentId)
+      ? assignmentMap.get(entry.assignmentId)?.foremanName ?? entry.assignedForemanName
+      : entry.assignedForemanName,
+    crewName: entry.assignmentId ? assignmentMap.get(entry.assignmentId)?.crewName ?? null : null,
   }));
 
   if (isPaginated) {

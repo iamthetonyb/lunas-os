@@ -133,12 +133,8 @@ export async function POST(request: NextRequest) {
                 })
                 .where(eq(jobRequestServices.id, jobId));
 
-            // AUTO-CREATE BLUE BOOK ENTRY if not exists
-            const existingBBE = await db.query.blueBookEntries.findFirst({
-                where: eq(blueBookEntries.assignmentId, assignmentId)
-            });
-
-            if (!existingBBE && jrs.jobRequestId) {
+            // Fetch Job Request details to match Blue Book Entry
+            if (jrs.jobRequestId) {
                 const [jobReq] = await db.select({
                     id: jobRequests.id,
                     builderId: jobRequests.builderId,
@@ -153,19 +149,44 @@ export async function POST(request: NextRequest) {
                     .limit(1);
 
                 if (jobReq) {
-                    await db.insert(blueBookEntries).values({
-                        builderId: jobReq.builderId,
-                        communityId: jobReq.communityId,
-                        lot: jobReq.lot,
-                        modelPlanId: jobReq.modelPlanId,
-                        serviceId: jrs.serviceId,
-                        poNumber: jobReq.poNumber,
-                        startDate: jobReq.dueDate,
-                        status: 'PENDING',
-                        assignmentId: assignmentId,
-                        assignedForemanName: foremanName,
-                        source: 'dispatch',
+                    // Try to find an existing pending Blue Book entry from intake
+                    const existingPendingBBE = await db.query.blueBookEntries.findFirst({
+                        where: and(
+                            eq(blueBookEntries.builderId, jobReq.builderId),
+                            eq(blueBookEntries.communityId, jobReq.communityId),
+                            eq(blueBookEntries.lot, jobReq.lot),
+                            eq(blueBookEntries.serviceId, jrs.serviceId),
+                            eq(blueBookEntries.status, 'PENDING')
+                            // We don't strictly check source='intake' to allow linking imported/manual ones too if they match exactly
+                        )
                     });
+
+                    if (existingPendingBBE) {
+                        // Link existing entry
+                        await db.update(blueBookEntries)
+                            .set({
+                                assignmentId: assignmentId,
+                                assignedForemanName: foremanName,
+                                status: 'PENDING', // Keep pending until completed? Or 'DISPATCHED'? User request implies sync.
+                                updatedAt: new Date(),
+                            })
+                            .where(eq(blueBookEntries.id, existingPendingBBE.id));
+                    } else {
+                        // Create new entry if none exists
+                        await db.insert(blueBookEntries).values({
+                            builderId: jobReq.builderId,
+                            communityId: jobReq.communityId,
+                            lot: jobReq.lot,
+                            modelPlanId: jobReq.modelPlanId,
+                            serviceId: jrs.serviceId,
+                            poNumber: jobReq.poNumber,
+                            startDate: jobReq.dueDate,
+                            status: 'PENDING',
+                            assignmentId: assignmentId,
+                            assignedForemanName: foremanName,
+                            source: 'dispatch',
+                        });
+                    }
                 }
             }
         } else if (bbe) {

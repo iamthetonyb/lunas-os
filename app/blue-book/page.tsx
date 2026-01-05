@@ -1589,7 +1589,7 @@ export default function BlueBookPage() {
                                           <th className="px-4 py-2">Check #</th>
                                           <th className="px-4 py-2">Check Date</th>
                                           <th className="px-4 py-2">Category</th>
-                                          <th className="px-4 py-2">Foreman</th>
+                                          <th className="px-4 py-2">Crew</th>
                                           <th className="px-4 py-2">Invoice</th>
                                           <th className="px-4 py-2">Amount</th>
                                           <th className="px-4 py-2">Status</th>
@@ -1614,6 +1614,7 @@ export default function BlueBookPage() {
                                             </td>
                                             <td className="px-4 py-3 text-gray-900 dark:text-white">
                                               {entry.assignedForemanName || '—'}
+                                              {entry.crewName ? ` / ${entry.crewName}` : ''}
                                             </td>
                                             <td className="px-4 py-3 text-gray-900 dark:text-white">
                                               {entry.invoiceNumber || '—'}
