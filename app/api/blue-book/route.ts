@@ -1,6 +1,6 @@
 import { getDb } from '@/lib/db/get-db';
-import { blueBookEntries } from '@/db/schema';
-import { and, eq, isNull, count, like, or, asc } from 'drizzle-orm';
+import { blueBookEntries, builders, communities } from '@/db/schema';
+import { and, eq, isNull, count, like, or, asc, ilike, inArray } from 'drizzle-orm';
 import { safe, ok } from '@/lib/api/http';
 import { requireMembership } from '@/lib/auth/guards';
 
@@ -14,6 +14,8 @@ export const GET = safe(async (req: Request) => {
   const invoiced = searchParams.get('invoiced');
   const searchTerm = searchParams.get('search')?.trim();
   const sortParam = (searchParams.get('sort') || 'checkDate').toLowerCase();
+
+  const db = await getDb();
   const pageParam = searchParams.get('page');
   const pageSizeParam = searchParams.get('pageSize');
 
@@ -76,7 +78,7 @@ export const GET = safe(async (req: Request) => {
       ];
 
   await requireMembership(['admin', 'backoffice']);
-  const db = await getDb();
+  // db initialized at top
   const entries = await db.query.blueBookEntries.findMany({
     where,
     with: {

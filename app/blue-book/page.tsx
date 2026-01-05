@@ -1150,7 +1150,7 @@ export default function BlueBookPage() {
     if (!editingEntry) return;
 
     // Fix: Allow if Admin OR if Manual (Admins must always see button)
-    const isManual = !editingEntry.source || editingEntry.source.toLowerCase() === 'manual';
+    const isManual = editingEntry.source === 'manual';
     if (!isAdmin && !isManual) return;
 
     if (!confirm('Are you sure you want to delete this entry?')) return;
@@ -1547,432 +1547,433 @@ export default function BlueBookPage() {
                                       })
                                     )}
                                   </div>
+                                    )}
                                 </div>
                               </div>
-
-                              <div className="rounded-lg border border-gray-200 dark:border-slate-700">
-                                <div className="flex items-center justify-between border-b border-gray-200 px-4 py-2 text-xs font-semibold uppercase tracking-wide text-gray-500 dark:border-slate-700 dark:text-gray-400">
-                                  <span>Invoices &amp; Checks</span>
-                                  <span>{lot.entries.length} item{lot.entries.length === 1 ? '' : 's'}</span>
-                                </div>
-                                <div className="overflow-x-auto">
-                                  <table className="min-w-full divide-y divide-gray-200 text-sm dark:divide-slate-700">
-                                    <thead className="bg-gray-50 text-left text-xs font-semibold uppercase tracking-wide text-gray-500 dark:bg-slate-900 dark:text-gray-400">
-                                      <tr>
-                                        <th className="px-4 py-2">Check #</th>
-                                        <th className="px-4 py-2">Check Date</th>
-                                        <th className="px-4 py-2">Category</th>
-                                        <th className="px-4 py-2">Invoice</th>
-                                        <th className="px-4 py-2">Amount</th>
-                                        <th className="px-4 py-2">Status</th>
-                                        <th className="px-4 py-2 text-right">Actions</th>
-                                      </tr>
-                                    </thead>
-                                    <tbody className="divide-y divide-gray-200 dark:divide-slate-700">
-                                      {lot.entries.map((entry) => (
-                                        <tr key={entry.id} className="bg-white dark:bg-slate-900">
-                                          <td className="px-4 py-3 text-gray-900 dark:text-white">
-                                            {entry.checkNumber || '—'}
-                                          </td>
-                                          <td className="px-4 py-3 text-gray-900 dark:text-white">
-                                            {entry.checkDate
-                                              ? new Date(entry.checkDate).toLocaleDateString()
-                                              : '—'}
-                                          </td>
-                                          <td className="px-4 py-3 text-gray-900 dark:text-white">
-                                            {entry.accountCategoryCode
-                                              ? `${entry.accountCategoryCode} – ${entry.accountCategoryName || ''}`.trim()
-                                              : entry.serviceName || '—'}
-                                          </td>
-                                          <td className="px-4 py-3 text-gray-900 dark:text-white">
-                                            {entry.invoiceNumber || '—'}
-                                          </td>
-                                          <td className="px-4 py-3 text-gray-900 dark:text-white">
-                                            {formatAmount(entry.amount)}
-                                          </td>
-                                          <td className="px-4 py-3">
-                                            <div className="flex items-center gap-2">
-                                              <span
-                                                className={`inline-flex rounded-full px-2 py-1 text-xs font-semibold ${entry.status === 'COMPLETE'
-                                                  ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
-                                                  : 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200'
-                                                  }`}
-                                              >
-                                                {entry.status}
-                                              </span>
-                                              {entry.source === 'manual' && (
-                                                <span className="inline-flex items-center gap-1 rounded-full bg-purple-100 px-2 py-1 text-xs font-semibold text-purple-800 dark:bg-purple-900 dark:text-purple-200">
-                                                  ✏️ Manual
-                                                </span>
-                                              )}
-                                            </div>
-                                          </td>
-                                          <td className="px-4 py-3 text-right">
-                                            <button
-                                              className="text-sm font-semibold text-blue-600 hover:text-blue-700 dark:text-blue-400"
-                                              onClick={() => setEditingEntry(entry)}
+                              <div className="flex items-center justify-between border-b border-gray-200 px-4 py-2 text-xs font-semibold uppercase tracking-wide text-gray-500 dark:border-slate-700 dark:text-gray-400">
+                                <span>Invoices &amp; Checks</span>
+                                <span>{lot.entries.length} item{lot.entries.length === 1 ? '' : 's'}</span>
+                              </div>
+                              <div className="overflow-x-auto">
+                                <table className="min-w-full divide-y divide-gray-200 text-sm dark:divide-slate-700">
+                                  <thead className="bg-gray-50 text-left text-xs font-semibold uppercase tracking-wide text-gray-500 dark:bg-slate-900 dark:text-gray-400">
+                                    <tr>
+                                      <th className="px-4 py-2">Check #</th>
+                                      <th className="px-4 py-2">Check Date</th>
+                                      <th className="px-4 py-2">Category</th>
+                                      <th className="px-4 py-2">Invoice</th>
+                                      <th className="px-4 py-2">Amount</th>
+                                      <th className="px-4 py-2">Status</th>
+                                      <th className="px-4 py-2 text-right">Actions</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody className="divide-y divide-gray-200 dark:divide-slate-700">
+                                    {lot.entries.map((entry) => (
+                                      <tr key={entry.id} className="bg-white dark:bg-slate-900">
+                                        <td className="px-4 py-3 text-gray-900 dark:text-white">
+                                          {entry.checkNumber || '—'}
+                                        </td>
+                                        <td className="px-4 py-3 text-gray-900 dark:text-white">
+                                          {entry.checkDate
+                                            ? new Date(entry.checkDate).toLocaleDateString()
+                                            : '—'}
+                                        </td>
+                                        <td className="px-4 py-3 text-gray-900 dark:text-white">
+                                          {entry.accountCategoryCode
+                                            ? `${entry.accountCategoryCode} – ${entry.accountCategoryName || ''}`.trim()
+                                            : entry.serviceName || '—'}
+                                        </td>
+                                        <td className="px-4 py-3 text-gray-900 dark:text-white">
+                                          {entry.invoiceNumber || '—'}
+                                        </td>
+                                        <td className="px-4 py-3 text-gray-900 dark:text-white">
+                                          {formatAmount(entry.amount)}
+                                        </td>
+                                        <td className="px-4 py-3">
+                                          <div className="flex items-center gap-2">
+                                            <span
+                                              className={`inline-flex rounded-full px-2 py-1 text-xs font-semibold ${entry.status === 'COMPLETE'
+                                                ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
+                                                : 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200'
+                                                }`}
                                             >
-                                              Edit
-                                            </button>
-                                          </td>
-                                        </tr>
-                                      ))}
-                                    </tbody>
-                                  </table>
-                                </div>
+                                              {entry.status}
+                                            </span>
+                                            {entry.source === 'manual' && (
+                                              <span className="inline-flex items-center gap-1 rounded-full bg-purple-100 px-2 py-1 text-xs font-semibold text-purple-800 dark:bg-purple-900 dark:text-purple-200">
+                                                ✏️ Manual
+                                              </span>
+                                            )}
+                                          </div>
+                                        </td>
+                                        <td className="px-4 py-3 text-right">
+                                          <button
+                                            className="text-sm font-semibold text-blue-600 hover:text-blue-700 dark:text-blue-400"
+                                            onClick={() => setEditingEntry(entry)}
+                                          >
+                                            Edit
+                                          </button>
+                                        </td>
+                                      </tr>
+                                    ))}
+                                  </tbody>
+                                </table>
                               </div>
                             </div>
-                          )
-                          }
+                            </div>
+                      )
+                    }
                         </div>
-                      );
+                );
                     })}
-                  </div>
-                )
-                }
               </div>
-            );
+            )
+          }
+              </div>
+        );
           })}
-        </div>
+      </div>
 
-        <div className="mt-6 flex items-center justify-between rounded-lg border border-gray-200 bg-white p-4 text-sm shadow-sm dark:border-slate-700 dark:bg-slate-800 dark:text-gray-200">
-          <span>
-            Page {page} of {totalPages} · {total} total entries
-          </span>
-          <div className="flex gap-2">
-            <button
-              onClick={() => setPage((p) => Math.max(1, p - 1))}
-              disabled={!canPrev}
-              className="rounded-lg border border-gray-300 px-4 py-2 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-600"
-            >
-              Previous
-            </button>
-            <button
-              onClick={() => setPage((p) => (canNext ? p + 1 : p))}
-              disabled={!canNext}
-              className="rounded-lg border border-gray-300 px-4 py-2 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-600"
-            >
-              Next
-            </button>
-          </div>
+      <div className="mt-6 flex items-center justify-between rounded-lg border border-gray-200 bg-white p-4 text-sm shadow-sm dark:border-slate-700 dark:bg-slate-800 dark:text-gray-200">
+        <span>
+          Page {page} of {totalPages} · {total} total entries
+        </span>
+        <div className="flex gap-2">
+          <button
+            onClick={() => setPage((p) => Math.max(1, p - 1))}
+            disabled={!canPrev}
+            className="rounded-lg border border-gray-300 px-4 py-2 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-600"
+          >
+            Previous
+          </button>
+          <button
+            onClick={() => setPage((p) => (canNext ? p + 1 : p))}
+            disabled={!canNext}
+            className="rounded-lg border border-gray-300 px-4 py-2 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-600"
+          >
+            Next
+          </button>
         </div>
-      </main >
+      </div>
+    </main >
 
-      {editingEntry && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4 py-10">
-          <div className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-2xl dark:bg-slate-900">
-            <div className="mb-4 flex items-center justify-between">
-              <div>
-                <div className="flex items-center gap-2">
-                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Edit Entry</h3>
-                  {editingEntry.source === 'manual' && (
-                    <span className="inline-flex items-center gap-1 rounded-full bg-purple-100 px-2 py-1 text-xs font-semibold text-purple-800 dark:bg-purple-900 dark:text-purple-200">
-                      ✏️ Manual Entry
-                    </span>
-                  )}
-                </div>
-                <p className="text-sm text-gray-500 dark:text-gray-400">
-                  Check {editingEntry.checkNumber || 'N/A'} · Invoice {editingEntry.invoiceNumber || 'N/A'}
-                </p>
-              </div>
-              <button
-                onClick={() => setEditingEntry(null)}
-                className="text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400"
-              >
-                Close
-              </button>
-            </div>
-            <form className="space-y-4 text-sm" onSubmit={handleSave}>
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                <label className="flex flex-col gap-1">
-                  <span className="text-gray-600 dark:text-gray-300">Lot</span>
-                  <input
-                    className="rounded-lg border border-gray-300 px-3 py-2 dark:bg-slate-800 dark:text-white"
-                    value={formState.lot}
-                    onChange={(e) => setFormState((prev) => ({ ...prev, lot: e.target.value }))}
-                  />
-                </label>
-                <label className="flex flex-col gap-1">
-                  <span className="text-gray-600 dark:text-gray-300">Start Date</span>
-                  <input
-                    type="date"
-                    className="rounded-lg border border-gray-300 px-3 py-2 dark:bg-slate-800 dark:text-white"
-                    value={formState.startDate}
-                    onChange={(e) => setFormState((prev) => ({ ...prev, startDate: e.target.value }))}
-                  />
-                </label>
-                <label className="flex flex-col gap-1">
-                  <span className="text-gray-600 dark:text-gray-300">Status</span>
-                  <select
-                    className="rounded-lg border border-gray-300 px-3 py-2 dark:bg-slate-800 dark:text-white"
-                    value={formState.status}
-                    onChange={(e) => setFormState((prev) => ({ ...prev, status: e.target.value }))}
-                  >
-                    <option value="PENDING">Pending</option>
-                    <option value="COMPLETE">Complete</option>
-                  </select>
-                </label>
-                <label className="flex flex-col gap-1">
-                  <span className="text-gray-600 dark:text-gray-300">Amount</span>
-                  <input
-                    type="number"
-                    step="0.01"
-                    className="rounded-lg border border-gray-300 px-3 py-2 dark:bg-slate-800 dark:text-white"
-                    value={formState.amount}
-                    onChange={(e) => setFormState((prev) => ({ ...prev, amount: e.target.value }))}
-                  />
-                </label>
-                <label className="flex flex-col gap-1">
-                  <span className="text-gray-600 dark:text-gray-300">Invoice #</span>
-                  <input
-                    className="rounded-lg border border-gray-300 px-3 py-2 dark:bg-slate-800 dark:text-white"
-                    value={formState.invoiceNumber}
-                    onChange={(e) => setFormState((prev) => ({ ...prev, invoiceNumber: e.target.value }))}
-                  />
-                </label>
-                <label className="flex flex-col gap-1">
-                  <span className="text-gray-600 dark:text-gray-300">Check #</span>
-                  <input
-                    className="rounded-lg border border-gray-300 px-3 py-2 dark:bg-slate-800 dark:text-white"
-                    value={formState.checkNumber}
-                    onChange={(e) => setFormState((prev) => ({ ...prev, checkNumber: e.target.value }))}
-                  />
-                </label>
-                <label className="flex flex-col gap-1">
-                  <span className="text-gray-600 dark:text-gray-300">Check Date</span>
-                  <input
-                    type="date"
-                    className="rounded-lg border border-gray-300 px-3 py-2 dark:bg-slate-800 dark:text-white"
-                    value={formState.checkDate}
-                    onChange={(e) => setFormState((prev) => ({ ...prev, checkDate: e.target.value }))}
-                  />
-                </label>
-                <label className="flex flex-col gap-1">
-                  <span className="text-gray-600 dark:text-gray-300">Account Category</span>
-                  <input
-                    className="rounded-lg border border-gray-300 px-3 py-2 dark:bg-slate-800 dark:text-white"
-                    value={formState.accountCategoryName}
-                    onChange={(e) =>
-                      setFormState((prev) => ({ ...prev, accountCategoryName: e.target.value }))
-                    }
-                  />
-                </label>
-                <label className="flex flex-col gap-1">
-                  <span className="text-gray-600 dark:text-gray-300">Category Code</span>
-                  <input
-                    className="rounded-lg border border-gray-300 px-3 py-2 dark:bg-slate-800 dark:text-white"
-                    value={formState.accountCategoryCode}
-                    onChange={(e) =>
-                      setFormState((prev) => ({ ...prev, accountCategoryCode: e.target.value }))
-                    }
-                  />
-                </label>
-              </div>
-              {formError && <p className="text-sm text-red-600">{formError}</p>}
-              <div className="flex justify-between gap-3">
-                {/* Admin can ALWAYS delete. */}
-                {isAdmin && (
-                  <button
-                    type="button"
-                    className="rounded-lg border border-red-300 bg-red-50 px-4 py-2 text-sm font-semibold text-red-600 hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-50"
-                    onClick={handleDelete}
-                    disabled={saving}
-                  >
-                    {saving ? 'Deleting…' : 'Delete Entry'}
-                  </button>
+      {/* Edit Entry Modal */ }
+  {
+    editingEntry && (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4 py-10">
+        <div className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-2xl dark:bg-slate-900">
+          <div className="mb-4 flex items-center justify-between">
+            <div>
+              <div className="flex items-center gap-2">
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Edit Entry</h3>
+                {editingEntry.source === 'manual' && (
+                  <span className="inline-flex items-center gap-1 rounded-full bg-purple-100 px-2 py-1 text-xs font-semibold text-purple-800 dark:bg-purple-900 dark:text-purple-200">
+                    ✏️ Manual Entry
+                  </span>
                 )}
-                <div className="flex gap-3 ml-auto">
-                  <button
-                    type="button"
-                    className="rounded-lg border border-gray-300 px-4 py-2 text-sm dark:border-slate-600"
-                    onClick={() => setEditingEntry(null)}
-                    disabled={saving}
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="submit"
-                    className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
-                    disabled={saving}
-                  >
-                    {saving ? 'Saving…' : 'Save Changes'}
-                  </button>
-                </div>
               </div>
-            </form>
+              <p className="text-sm text-gray-500 dark:text-gray-400">
+                Check {editingEntry.checkNumber || 'N/A'} · Invoice {editingEntry.invoiceNumber || 'N/A'}
+              </p>
+            </div>
+            <button
+              onClick={() => setEditingEntry(null)}
+              className="text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400"
+            >
+              Close
+            </button>
           </div>
-        </div>
-      )
-      }
-
-      {
-        isCreatingManual && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4 py-10">
-            <div className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-2xl dark:bg-slate-900 max-h-[90vh] overflow-y-auto">
-              <div className="mb-4 flex items-center justify-between">
-                <div>
-                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Create Manual Entry</h3>
-                  <p className="text-sm text-gray-500 dark:text-gray-400">
-                    Add a new Blue Book entry manually
-                  </p>
-                </div>
-                <button
-                  onClick={() => setIsCreatingManual(false)}
-                  className="text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400"
+          <form className="space-y-4 text-sm" onSubmit={handleSave}>
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              <label className="flex flex-col gap-1">
+                <span className="text-gray-600 dark:text-gray-300">Lot</span>
+                <input
+                  className="rounded-lg border border-gray-300 px-3 py-2 dark:bg-slate-800 dark:text-white"
+                  value={formState.lot}
+                  onChange={(e) => setFormState((prev) => ({ ...prev, lot: e.target.value }))}
+                />
+              </label>
+              <label className="flex flex-col gap-1">
+                <span className="text-gray-600 dark:text-gray-300">Start Date</span>
+                <input
+                  type="date"
+                  className="rounded-lg border border-gray-300 px-3 py-2 dark:bg-slate-800 dark:text-white"
+                  value={formState.startDate}
+                  onChange={(e) => setFormState((prev) => ({ ...prev, startDate: e.target.value }))}
+                />
+              </label>
+              <label className="flex flex-col gap-1">
+                <span className="text-gray-600 dark:text-gray-300">Status</span>
+                <select
+                  className="rounded-lg border border-gray-300 px-3 py-2 dark:bg-slate-800 dark:text-white"
+                  value={formState.status}
+                  onChange={(e) => setFormState((prev) => ({ ...prev, status: e.target.value }))}
                 >
-                  Close
+                  <option value="PENDING">Pending</option>
+                  <option value="COMPLETE">Complete</option>
+                </select>
+              </label>
+              <label className="flex flex-col gap-1">
+                <span className="text-gray-600 dark:text-gray-300">Amount</span>
+                <input
+                  type="number"
+                  step="0.01"
+                  className="rounded-lg border border-gray-300 px-3 py-2 dark:bg-slate-800 dark:text-white"
+                  value={formState.amount}
+                  onChange={(e) => setFormState((prev) => ({ ...prev, amount: e.target.value }))}
+                />
+              </label>
+              <label className="flex flex-col gap-1">
+                <span className="text-gray-600 dark:text-gray-300">Invoice #</span>
+                <input
+                  className="rounded-lg border border-gray-300 px-3 py-2 dark:bg-slate-800 dark:text-white"
+                  value={formState.invoiceNumber}
+                  onChange={(e) => setFormState((prev) => ({ ...prev, invoiceNumber: e.target.value }))}
+                />
+              </label>
+              <label className="flex flex-col gap-1">
+                <span className="text-gray-600 dark:text-gray-300">Check #</span>
+                <input
+                  className="rounded-lg border border-gray-300 px-3 py-2 dark:bg-slate-800 dark:text-white"
+                  value={formState.checkNumber}
+                  onChange={(e) => setFormState((prev) => ({ ...prev, checkNumber: e.target.value }))}
+                />
+              </label>
+              <label className="flex flex-col gap-1">
+                <span className="text-gray-600 dark:text-gray-300">Check Date</span>
+                <input
+                  type="date"
+                  className="rounded-lg border border-gray-300 px-3 py-2 dark:bg-slate-800 dark:text-white"
+                  value={formState.checkDate}
+                  onChange={(e) => setFormState((prev) => ({ ...prev, checkDate: e.target.value }))}
+                />
+              </label>
+              <label className="flex flex-col gap-1">
+                <span className="text-gray-600 dark:text-gray-300">Account Category</span>
+                <input
+                  className="rounded-lg border border-gray-300 px-3 py-2 dark:bg-slate-800 dark:text-white"
+                  value={formState.accountCategoryName}
+                  onChange={(e) =>
+                    setFormState((prev) => ({ ...prev, accountCategoryName: e.target.value }))
+                  }
+                />
+              </label>
+              <label className="flex flex-col gap-1">
+                <span className="text-gray-600 dark:text-gray-300">Category Code</span>
+                <input
+                  className="rounded-lg border border-gray-300 px-3 py-2 dark:bg-slate-800 dark:text-white"
+                  value={formState.accountCategoryCode}
+                  onChange={(e) =>
+                    setFormState((prev) => ({ ...prev, accountCategoryCode: e.target.value }))
+                  }
+                />
+              </label>
+            </div>
+            {formError && <p className="text-sm text-red-600">{formError}</p>}
+            <div className="flex justify-between gap-3">
+              {/* Admin can ALWAYS delete. */}
+              {isAdmin && (
+                <button
+                  type="button"
+                  className="rounded-lg border border-red-300 bg-red-50 px-4 py-2 text-sm font-semibold text-red-600 hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-50"
+                  onClick={handleDelete}
+                  disabled={saving}
+                >
+                  {saving ? 'Deleting…' : 'Delete Entry'}
+                </button>
+              )}
+              <div className="flex gap-3 ml-auto">
+                <button
+                  type="button"
+                  className="rounded-lg border border-gray-300 px-4 py-2 text-sm dark:border-slate-600"
+                  onClick={() => setEditingEntry(null)}
+                  disabled={saving}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+                  disabled={saving}
+                >
+                  {saving ? 'Saving…' : 'Save Changes'}
                 </button>
               </div>
-              <form className="space-y-4 text-sm" onSubmit={handleCreateManual}>
-                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                  <label className="flex flex-col gap-1 md:col-span-2">
-                    <span className="text-gray-600 dark:text-gray-300">Builder *</span>
-                    <select
-                      required
-                      className="rounded-lg border border-gray-300 px-3 py-2 dark:bg-slate-800 dark:text-white"
-                      value={formState.builderId}
-                      onChange={(e) => setFormState((prev) => ({ ...prev, builderId: e.target.value, communityId: '' }))}
-                    >
-                      <option value="">Select Builder</option>
-                      {availableBuilders.map((b) => (
-                        <option key={b.id} value={b.id}>{b.name}</option>
-                      ))}
-                    </select>
-                  </label>
-                  <label className="flex flex-col gap-1 md:col-span-2">
-                    <span className="text-gray-600 dark:text-gray-300">Community *</span>
-                    <select
-                      required
-                      className="rounded-lg border border-gray-300 px-3 py-2 dark:bg-slate-800 dark:text-white"
-                      value={formState.communityId}
-                      onChange={(e) => setFormState((prev) => ({ ...prev, communityId: e.target.value }))}
-                    >
-                      <option value="">Select Community</option>
-                      {communities.filter(c => !formState.builderId || c.builderId === formState.builderId).map((c) => (
-                        <option key={c.id} value={c.id}>{c.name}</option>
-                      ))}
-                    </select>
-                  </label>
-                  <label className="flex flex-col gap-1 md:col-span-2">
-                    <span className="text-gray-600 dark:text-gray-300">Service (Optional)</span>
-                    <select
-                      className="rounded-lg border border-gray-300 px-3 py-2 dark:bg-slate-800 dark:text-white"
-                      value={formState.serviceId}
-                      onChange={(e) => setFormState((prev) => ({ ...prev, serviceId: e.target.value }))}
-                    >
-                      <option value="">Select Service</option>
-                      {services.map((s) => (
-                        <option key={s.id} value={s.id}>{s.name} {s.code ? `(${s.code})` : ''}</option>
-                      ))}
-                    </select>
-                  </label>
-                  <label className="flex flex-col gap-1">
-                    <span className="text-gray-600 dark:text-gray-300">Lot</span>
-                    <input
-                      className="rounded-lg border border-gray-300 px-3 py-2 dark:bg-slate-800 dark:text-white"
-                      value={formState.lot}
-                      onChange={(e) => setFormState((prev) => ({ ...prev, lot: e.target.value }))}
-                    />
-                  </label>
-                  <label className="flex flex-col gap-1">
-                    <span className="text-gray-600 dark:text-gray-300">Start Date</span>
-                    <input
-                      type="date"
-                      className="rounded-lg border border-gray-300 px-3 py-2 dark:bg-slate-800 dark:text-white"
-                      value={formState.startDate}
-                      onChange={(e) => setFormState((prev) => ({ ...prev, startDate: e.target.value }))}
-                    />
-                  </label>
-                  <label className="flex flex-col gap-1">
-                    <span className="text-gray-600 dark:text-gray-300">Status</span>
-                    <select
-                      className="rounded-lg border border-gray-300 px-3 py-2 dark:bg-slate-800 dark:text-white"
-                      value={formState.status}
-                      onChange={(e) => setFormState((prev) => ({ ...prev, status: e.target.value }))}
-                    >
-                      <option value="PENDING">Pending</option>
-                      <option value="COMPLETE">Complete</option>
-                    </select>
-                  </label>
-                  <label className="flex flex-col gap-1">
-                    <span className="text-gray-600 dark:text-gray-300">Amount</span>
-                    <input
-                      type="number"
-                      step="0.01"
-                      className="rounded-lg border border-gray-300 px-3 py-2 dark:bg-slate-800 dark:text-white"
-                      value={formState.amount}
-                      onChange={(e) => setFormState((prev) => ({ ...prev, amount: e.target.value }))}
-                    />
-                  </label>
-                  <label className="flex flex-col gap-1">
-                    <span className="text-gray-600 dark:text-gray-300">Invoice #</span>
-                    <input
-                      className="rounded-lg border border-gray-300 px-3 py-2 dark:bg-slate-800 dark:text-white"
-                      value={formState.invoiceNumber}
-                      onChange={(e) => setFormState((prev) => ({ ...prev, invoiceNumber: e.target.value }))}
-                    />
-                  </label>
-                  <label className="flex flex-col gap-1">
-                    <span className="text-gray-600 dark:text-gray-300">Check #</span>
-                    <input
-                      className="rounded-lg border border-gray-300 px-3 py-2 dark:bg-slate-800 dark:text-white"
-                      value={formState.checkNumber}
-                      onChange={(e) => setFormState((prev) => ({ ...prev, checkNumber: e.target.value }))}
-                    />
-                  </label>
-                  <label className="flex flex-col gap-1">
-                    <span className="text-gray-600 dark:text-gray-300">Check Date</span>
-                    <input
-                      type="date"
-                      className="rounded-lg border border-gray-300 px-3 py-2 dark:bg-slate-800 dark:text-white"
-                      value={formState.checkDate}
-                      onChange={(e) => setFormState((prev) => ({ ...prev, checkDate: e.target.value }))}
-                    />
-                  </label>
-                  <label className="flex flex-col gap-1">
-                    <span className="text-gray-600 dark:text-gray-300">Account Category</span>
-                    <input
-                      className="rounded-lg border border-gray-300 px-3 py-2 dark:bg-slate-800 dark:text-white"
-                      value={formState.accountCategoryName}
-                      onChange={(e) =>
-                        setFormState((prev) => ({ ...prev, accountCategoryName: e.target.value }))
-                      }
-                    />
-                  </label>
-                  <label className="flex flex-col gap-1">
-                    <span className="text-gray-600 dark:text-gray-300">Category Code</span>
-                    <input
-                      className="rounded-lg border border-gray-300 px-3 py-2 dark:bg-slate-800 dark:text-white"
-                      value={formState.accountCategoryCode}
-                      onChange={(e) =>
-                        setFormState((prev) => ({ ...prev, accountCategoryCode: e.target.value }))
-                      }
-                    />
-                  </label>
-                </div>
-                {formError && <p className="text-sm text-red-600">{formError}</p>}
-                <div className="flex justify-end gap-3">
-                  <button
-                    type="button"
-                    className="rounded-lg border border-gray-300 px-4 py-2 text-sm dark:border-slate-600"
-                    onClick={() => setIsCreatingManual(false)}
-                    disabled={saving}
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="submit"
-                    className="rounded-lg bg-green-600 px-4 py-2 text-sm font-semibold text-white hover:bg-green-700 disabled:cursor-not-allowed disabled:opacity-50"
-                    disabled={saving}
-                  >
-                    {saving ? 'Creating…' : 'Create Entry'}
-                  </button>
-                </div>
-              </form>
             </div>
+          </form>
+        </div>
+      </div>
+    )
+  }
+
+  {
+    isCreatingManual && (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4 py-10">
+        <div className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-2xl dark:bg-slate-900 max-h-[90vh] overflow-y-auto">
+          <div className="mb-4 flex items-center justify-between">
+            <div>
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Create Manual Entry</h3>
+              <p className="text-sm text-gray-500 dark:text-gray-400">
+                Add a new Blue Book entry manually
+              </p>
+            </div>
+            <button
+              onClick={() => setIsCreatingManual(false)}
+              className="text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400"
+            >
+              Close
+            </button>
           </div>
-        )
-      }
-    </>
+          <form className="space-y-4 text-sm" onSubmit={handleCreateManual}>
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              <label className="flex flex-col gap-1 md:col-span-2">
+                <span className="text-gray-600 dark:text-gray-300">Builder *</span>
+                <select
+                  required
+                  className="rounded-lg border border-gray-300 px-3 py-2 dark:bg-slate-800 dark:text-white"
+                  value={formState.builderId}
+                  onChange={(e) => setFormState((prev) => ({ ...prev, builderId: e.target.value, communityId: '' }))}
+                >
+                  <option value="">Select Builder</option>
+                  {availableBuilders.map((b) => (
+                    <option key={b.id} value={b.id}>{b.name}</option>
+                  ))}
+                </select>
+              </label>
+              <label className="flex flex-col gap-1 md:col-span-2">
+                <span className="text-gray-600 dark:text-gray-300">Community *</span>
+                <select
+                  required
+                  className="rounded-lg border border-gray-300 px-3 py-2 dark:bg-slate-800 dark:text-white"
+                  value={formState.communityId}
+                  onChange={(e) => setFormState((prev) => ({ ...prev, communityId: e.target.value }))}
+                >
+                  <option value="">Select Community</option>
+                  {communities.filter(c => !formState.builderId || c.builderId === formState.builderId).map((c) => (
+                    <option key={c.id} value={c.id}>{c.name}</option>
+                  ))}
+                </select>
+              </label>
+              <label className="flex flex-col gap-1 md:col-span-2">
+                <span className="text-gray-600 dark:text-gray-300">Service (Optional)</span>
+                <select
+                  className="rounded-lg border border-gray-300 px-3 py-2 dark:bg-slate-800 dark:text-white"
+                  value={formState.serviceId}
+                  onChange={(e) => setFormState((prev) => ({ ...prev, serviceId: e.target.value }))}
+                >
+                  <option value="">Select Service</option>
+                  {services.map((s) => (
+                    <option key={s.id} value={s.id}>{s.name} {s.code ? `(${s.code})` : ''}</option>
+                  ))}
+                </select>
+              </label>
+              <label className="flex flex-col gap-1">
+                <span className="text-gray-600 dark:text-gray-300">Lot</span>
+                <input
+                  className="rounded-lg border border-gray-300 px-3 py-2 dark:bg-slate-800 dark:text-white"
+                  value={formState.lot}
+                  onChange={(e) => setFormState((prev) => ({ ...prev, lot: e.target.value }))}
+                />
+              </label>
+              <label className="flex flex-col gap-1">
+                <span className="text-gray-600 dark:text-gray-300">Start Date</span>
+                <input
+                  type="date"
+                  className="rounded-lg border border-gray-300 px-3 py-2 dark:bg-slate-800 dark:text-white"
+                  value={formState.startDate}
+                  onChange={(e) => setFormState((prev) => ({ ...prev, startDate: e.target.value }))}
+                />
+              </label>
+              <label className="flex flex-col gap-1">
+                <span className="text-gray-600 dark:text-gray-300">Status</span>
+                <select
+                  className="rounded-lg border border-gray-300 px-3 py-2 dark:bg-slate-800 dark:text-white"
+                  value={formState.status}
+                  onChange={(e) => setFormState((prev) => ({ ...prev, status: e.target.value }))}
+                >
+                  <option value="PENDING">Pending</option>
+                  <option value="COMPLETE">Complete</option>
+                </select>
+              </label>
+              <label className="flex flex-col gap-1">
+                <span className="text-gray-600 dark:text-gray-300">Amount</span>
+                <input
+                  type="number"
+                  step="0.01"
+                  className="rounded-lg border border-gray-300 px-3 py-2 dark:bg-slate-800 dark:text-white"
+                  value={formState.amount}
+                  onChange={(e) => setFormState((prev) => ({ ...prev, amount: e.target.value }))}
+                />
+              </label>
+              <label className="flex flex-col gap-1">
+                <span className="text-gray-600 dark:text-gray-300">Invoice #</span>
+                <input
+                  className="rounded-lg border border-gray-300 px-3 py-2 dark:bg-slate-800 dark:text-white"
+                  value={formState.invoiceNumber}
+                  onChange={(e) => setFormState((prev) => ({ ...prev, invoiceNumber: e.target.value }))}
+                />
+              </label>
+              <label className="flex flex-col gap-1">
+                <span className="text-gray-600 dark:text-gray-300">Check #</span>
+                <input
+                  className="rounded-lg border border-gray-300 px-3 py-2 dark:bg-slate-800 dark:text-white"
+                  value={formState.checkNumber}
+                  onChange={(e) => setFormState((prev) => ({ ...prev, checkNumber: e.target.value }))}
+                />
+              </label>
+              <label className="flex flex-col gap-1">
+                <span className="text-gray-600 dark:text-gray-300">Check Date</span>
+                <input
+                  type="date"
+                  className="rounded-lg border border-gray-300 px-3 py-2 dark:bg-slate-800 dark:text-white"
+                  value={formState.checkDate}
+                  onChange={(e) => setFormState((prev) => ({ ...prev, checkDate: e.target.value }))}
+                />
+              </label>
+              <label className="flex flex-col gap-1">
+                <span className="text-gray-600 dark:text-gray-300">Account Category</span>
+                <input
+                  className="rounded-lg border border-gray-300 px-3 py-2 dark:bg-slate-800 dark:text-white"
+                  value={formState.accountCategoryName}
+                  onChange={(e) =>
+                    setFormState((prev) => ({ ...prev, accountCategoryName: e.target.value }))
+                  }
+                />
+              </label>
+              <label className="flex flex-col gap-1">
+                <span className="text-gray-600 dark:text-gray-300">Category Code</span>
+                <input
+                  className="rounded-lg border border-gray-300 px-3 py-2 dark:bg-slate-800 dark:text-white"
+                  value={formState.accountCategoryCode}
+                  onChange={(e) =>
+                    setFormState((prev) => ({ ...prev, accountCategoryCode: e.target.value }))
+                  }
+                />
+              </label>
+            </div>
+            {formError && <p className="text-sm text-red-600">{formError}</p>}
+            <div className="flex justify-end gap-3">
+              <button
+                type="button"
+                className="rounded-lg border border-gray-300 px-4 py-2 text-sm dark:border-slate-600"
+                onClick={() => setIsCreatingManual(false)}
+                disabled={saving}
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                className="rounded-lg bg-green-600 px-4 py-2 text-sm font-semibold text-white hover:bg-green-700 disabled:cursor-not-allowed disabled:opacity-50"
+                disabled={saving}
+              >
+                {saving ? 'Creating…' : 'Create Entry'}
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    )
+  }
+  </>
   );
 }
