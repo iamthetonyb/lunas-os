@@ -1,5 +1,5 @@
 import { getDb } from '@/lib/db/get-db';
-import { blueBookEntries, jobRequests, jobRequestServices, builders, communities, modelPlans, services, assignments } from '@/db/schema';
+import { blueBookEntries, jobRequests, jobRequestServices, builders, communities, modelPlans, services, assignments, dispatchBatches } from '@/db/schema';
 import { and, gte, lte, isNotNull, eq, sql } from 'drizzle-orm';
 import { safe, ok } from '@/lib/api/http';
 import { requireMembership } from '@/lib/auth/guards';
@@ -79,11 +79,10 @@ export const GET = safe(async (req: Request) => {
       jobRequestServiceId: jobRequestServices.id,
       serviceId: jobRequestServices.serviceId,
       serviceName: services.name,
-      workOrderNumber: jobRequestServices.workOrderNumber,
       walkTime: jobRequestServices.walkTime,
       assignedForemanName: jobRequestServices.assignedForemanName,
       assignmentStatus: assignments.status,
-      assignmentForemanName: assignments.foremanName,
+      assignmentForemanName: dispatchBatches.foremanName,
     })
     .from(jobRequests)
     .leftJoin(builders, eq(jobRequests.builderId, builders.id))
@@ -92,6 +91,7 @@ export const GET = safe(async (req: Request) => {
     .leftJoin(jobRequestServices, eq(jobRequests.id, jobRequestServices.jobRequestId))
     .leftJoin(services, eq(jobRequestServices.serviceId, services.id))
     .leftJoin(assignments, eq(jobRequestServices.id, assignments.jobRequestServiceId))
+    .leftJoin(dispatchBatches, eq(assignments.dispatchBatchId, dispatchBatches.id))
     .where(
       and(
         isNotNull(jobRequests.dueDate),
