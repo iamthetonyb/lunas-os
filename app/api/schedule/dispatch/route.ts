@@ -87,13 +87,40 @@ export async function POST(request: NextRequest) {
             return json({ ok: false, error: 'Job not found in either system' }, 404);
         }
 
-        const [assignment] = await db.insert(assignments).values({
-            jobRequestServiceId: jrs ? jobId : null,
-            blueBookEntryId: bbe ? jobId : null,
-            dispatchBatchId: batchId,
-            crewId: crew.id,
-            status: 'SENT',
-        }).returning();
+        // Check if an existing assignment for this job is in DRAFT status
+        const [existingDraft] = await db.select()
+            .from(assignments)
+            .where(
+                and(
+                    jrs ? eq(assignments.jobRequestServiceId, jobId) : eq(assignments.blueBookEntryId, jobId),
+                    eq(assignments.status, 'DRAFT') // Only overwrite DRAFTS, not SENT/DISPATCHED
+                )
+            )
+            .limit(1);
+
+        let assignmentId = '';
+
+        if (existingDraft) {
+            // Update existing DRAFT assignment
+            await db.update(assignments)
+                .set({
+                    dispatchBatchId: batchId,
+                    crewId: crew.id,
+                    status: 'SENT'
+                })
+                .where(eq(assignments.id, existingDraft.id));
+            assignmentId = existingDraft.id;
+        } else {
+            // Create new assignment
+            const [newAssignment] = await db.insert(assignments).values({
+                jobRequestServiceId: jrs ? jobId : null,
+                blueBookEntryId: bbe ? jobId : null,
+                dispatchBatchId: batchId,
+                crewId: crew.id,
+                status: 'SENT',
+            }).returning();
+            assignmentId = newAssignment.id;
+        }
 
         // Update status and foreman name in the source table
         if (jrs) {
@@ -107,7 +134,7 @@ export async function POST(request: NextRequest) {
 
             // AUTO-CREATE BLUE BOOK ENTRY if not exists
             const existingBBE = await db.query.blueBookEntries.findFirst({
-                where: eq(blueBookEntries.assignmentId, assignment.id)
+                where: eq(blueBookEntries.assignmentId, assignmentId)
             });
 
             if (!existingBBE && jrs.jobRequestId) {
@@ -134,7 +161,7 @@ export async function POST(request: NextRequest) {
                         poNumber: jobReq.poNumber,
                         startDate: jobReq.dueDate,
                         status: 'PENDING',
-                        assignmentId: assignment.id,
+                        assignmentId: assignmentId,
                         assignedForemanName: foremanName,
                         source: 'dispatch',
                     });
@@ -146,7 +173,7 @@ export async function POST(request: NextRequest) {
                 .set({
                     assignedForemanName: foremanName,
                     status: 'PENDING',
-                    assignmentId: assignment.id,
+                    assignmentId: assignmentId,
                     updatedAt: new Date(),
                 })
                 .where(eq(blueBookEntries.id, jobId));
@@ -155,7 +182,7 @@ export async function POST(request: NextRequest) {
         // CRITICAL FIX: Update assignment status explicitly
         await db.update(assignments)
             .set({ status: 'DISPATCHED' })
-            .where(eq(assignments.id, assignment.id));
+            .where(eq(assignments.id, assignmentId));
 
         // Update blue book entry status if applicable
         try {
@@ -187,7 +214,7 @@ export async function POST(request: NextRequest) {
             message: `Job dispatched to ${foremanName} / ${crewName}`,
             crewId: crew.id,
             batchId,
-            assignmentId: assignment.id,
+            assignmentId: assignmentId,
         });
     } catch (error) {
         console.error('Error dispatching job:', error);

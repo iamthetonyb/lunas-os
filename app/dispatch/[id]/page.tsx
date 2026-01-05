@@ -205,57 +205,59 @@ export default function DispatchDetailPage({ params }: { params: Promise<{ id: s
                                     </tr>
                                 </thead>
                                 <tbody className="bg-white divide-y divide-gray-200">
-                                    {dispatch.jobs.map((job) => (
-                                        <tr key={job.id} className="hover:bg-gray-50">
-                                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                                                {getFriendlyName(job.communityName || '—')}
-                                            </td>
-                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                                {job.builderName || '—'}
-                                            </td>
-                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                                {job.lot || '—'}
-                                            </td>
-                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                                {job.serviceName || '—'}
-                                            </td>
-                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                                {job.assignedForeman || '—'}
-                                            </td>
-                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                                {job.walkTime || '—'}
-                                            </td>
-                                            <td className="px-6 py-4 whitespace-nowrap text-sm">
-                                                <span className={`px-2 py-1 rounded-full text-xs font-semibold ${job.status === 'COMPLETE'
-                                                    ? 'bg-green-100 text-green-800'
-                                                    : 'bg-yellow-100 text-yellow-800'
-                                                    }`}>
-                                                    {job.status || 'PENDING'}
-                                                </span>
-                                            </td>
-                                            <td className="px-6 py-4 whitespace-nowrap text-sm flex gap-2">
-                                                {isContractor && job.status !== 'COMPLETE' && (
-                                                    <button
-                                                        onClick={() => openCompleteModal(job.id)}
-                                                        className="px-3 py-1 bg-green-500 text-white text-xs rounded hover:bg-green-600"
-                                                        title="Mark Complete"
-                                                    >
-                                                        ✓
-                                                    </button>
-                                                )}
-                                                {/* Visible to contractors OR explicitly allowed for admins/backoffice */}
-                                                {(isAdmin || !isContractor) && (
-                                                    <button
-                                                        onClick={() => openDeleteModal(job.id)}
-                                                        className="px-3 py-1 bg-red-50 text-red-600 text-xs rounded hover:bg-red-100 transition-colors"
-                                                        title="Remove Job"
-                                                    >
-                                                        ✕
-                                                    </button>
-                                                )}
-                                            </td>
-                                        </tr>
-                                    ))}
+                                    {(dispatch.jobs || [])
+                                        .sort((a, b) => (a.walkTime || '').localeCompare(b.walkTime || ''))
+                                        .map((job) => (
+                                            <tr key={job.id} className="hover:bg-gray-50">
+                                                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                                                    {getFriendlyName(job.communityName || '—')}
+                                                </td>
+                                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                                    {job.builderName || '—'}
+                                                </td>
+                                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                                    {job.lot || '—'}
+                                                </td>
+                                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                                    {job.serviceName || '—'}
+                                                </td>
+                                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                                    {job.assignedForeman || '—'}
+                                                </td>
+                                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                                    {job.walkTime || '—'}
+                                                </td>
+                                                <td className="px-6 py-4 whitespace-nowrap text-sm">
+                                                    <span className={`px-2 py-1 rounded-full text-xs font-semibold ${job.status === 'COMPLETE'
+                                                        ? 'bg-green-100 text-green-800'
+                                                        : 'bg-yellow-100 text-yellow-800'
+                                                        }`}>
+                                                        {job.status || 'PENDING'}
+                                                    </span>
+                                                </td>
+                                                <td className="px-6 py-4 whitespace-nowrap text-sm flex gap-2">
+                                                    {isContractor && job.status !== 'COMPLETE' && (
+                                                        <button
+                                                            onClick={() => openCompleteModal(job.id)}
+                                                            className="px-3 py-1 bg-green-500 text-white text-xs rounded hover:bg-green-600"
+                                                            title="Mark Complete"
+                                                        >
+                                                            ✓
+                                                        </button>
+                                                    )}
+                                                    {/* Visible to contractors OR explicitly allowed for admins/backoffice */}
+                                                    {(isAdmin || !isContractor) && (
+                                                        <button
+                                                            onClick={() => openDeleteModal(job.id)}
+                                                            className="px-3 py-1 bg-red-50 text-red-600 text-xs rounded hover:bg-red-100 transition-colors"
+                                                            title="Remove Job"
+                                                        >
+                                                            ✕
+                                                        </button>
+                                                    )}
+                                                </td>
+                                            </tr>
+                                        ))}
                                 </tbody>
                             </table>
                         </div>
