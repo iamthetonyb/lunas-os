@@ -165,9 +165,38 @@ export const PUT = safe(async (req, { params: paramsPromise }: { params: Promise
     };
   });
 
+  // 4. Sync Blue Book Entries (Post-Transaction)
+  // We want to update any Blue Book Entry linked to this job's services
+  try {
+    const serviceRows = await db
+      .select({ id: jobRequestServices.id, serviceId: jobRequestServices.serviceId })
+      .from(jobRequestServices)
+      .where(eq(jobRequestServices.jobRequestId, jobRequestId));
+
+    const serviceIds = serviceRows.map(s => s.serviceId!).filter(Boolean);
+
+    if (serviceIds.length > 0) {
+      await db.update(blueBookEntries)
+        .set({
+          startDate: dueDateISO,
+          lot: rest.lot,
+          poNumber: poNumber ?? null,
+          status: status as any ?? undefined, // Sync status if changed
+          modelPlanId: rest.modelPlanId ?? null,
+        })
+        .where(
+          and(
+            inArray(blueBookEntries.serviceId, serviceIds),
+            eq(blueBookEntries.source, 'intake') // Only sync intake-generated ones to avoid messing up manual/scraped
+          )
+        );
+    }
+  } catch (syncError) {
+    console.error('Failed to sync Blue Book Entry:', syncError);
+  }
+
   return ok(result);
 });
-
 
 
 export const DELETE = safe(async (req, { params: paramsPromise }: { params: Promise<{ id: string }> }) => {

@@ -361,6 +361,7 @@ export function IntakeForm() {
       // Force refresh using global matcher for any job request list
       await mutate((key) => Array.isArray(key) || (typeof key === 'string' && key.includes('/api/job-requests')));
       await mutate('/api/schedule/blue-book');
+      await mutate((key) => typeof key === 'string' && key.startsWith('/api/blue-book'));
       toast.success('Job request created successfully!');
       router.push('/intake');
     } catch (error) {

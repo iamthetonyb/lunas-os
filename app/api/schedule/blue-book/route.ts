@@ -246,5 +246,40 @@ export const GET = safe(async (req: Request) => {
 
   const combinedResults = [...formattedBlueBook, ...formattedJobRequests];
 
-  return ok(Array.isArray(combinedResults) ? combinedResults : []);
+  // Deduplicate combined results
+  // Key: community-lot-service
+  const uniqueItems = new Map<string, typeof combinedResults[0]>();
+
+  combinedResults.forEach(item => {
+    // specific unique key
+    const uniqueKey = `${item.communityName || ''}|${item.lot || ''}|${item.serviceName || ''}`.toLowerCase();
+
+    if (!uniqueItems.has(uniqueKey)) {
+      uniqueItems.set(uniqueKey, item);
+    } else {
+      const existing = uniqueItems.get(uniqueKey)!;
+
+      // prioritization logic:
+      // 1. prefer assigned foreman
+      // 2. prefer non-pending status
+      // 3. prefer blue book entry (has id that isn't from job request service potentially?)
+
+      const existingHasForeman = !!existing.assignedForemanName;
+      const currentHasForeman = !!item.assignedForemanName;
+
+      if (currentHasForeman && !existingHasForeman) {
+        uniqueItems.set(uniqueKey, item);
+      } else if (currentHasForeman === existingHasForeman) {
+        // if both have/don't have foreman, prefer non-pending
+        const existingActive = existing.status !== 'Pending';
+        const currentActive = item.status !== 'Pending';
+
+        if (currentActive && !existingActive) {
+          uniqueItems.set(uniqueKey, item);
+        }
+      }
+    }
+  });
+
+  return ok(Array.from(uniqueItems.values()));
 });

@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { getDb } from '@/lib/db/get-db';
-import { jobRequests, jobRequestServices, users, services } from '@/db/schema';
+import { jobRequests, jobRequestServices, users, services, blueBookEntries } from '@/db/schema';
 import { ok, err, safe } from '@/lib/api/http';
 import { requireMembership } from '@/lib/auth/guards';
 import { publishOrgEvent } from '@/lib/ably';
@@ -188,6 +188,27 @@ export const POST = safe(async (req, context) => {
               scheduledStart: dueDate ? new Date(dueDateISO) : null, // Tentative start date
             });
           }
+        }
+      }
+
+      // AUTO-CREATE BBE for syncing ("Instant Blue Book")
+      if (request && request.id) {
+        try {
+          const [newBbe] = await tx.insert(blueBookEntries).values({
+            builderId: rest.builderId,
+            communityId: rest.communityId,
+            lot: rest.lot,
+            modelPlanId: rest.modelPlanId ?? null,
+            startDate: dueDateISO,
+            status: 'PENDING',
+            source: 'intake',
+            poNumber: poNumber ?? null,
+            serviceId: serviceIds[0] ?? null,
+          }).returning();
+          console.log(`[intake] Created Blue Book Entry ${newBbe.id}`);
+        } catch (bbeError) {
+          console.error('[intake] Failed to create Blue Book Entry:', bbeError);
+          // Non-blocking
         }
       }
 
