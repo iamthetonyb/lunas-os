@@ -53,6 +53,9 @@ export const PUT = safe(async (req, { params: paramsPromise }: { params: Promise
   const { serviceIds, walkTime, contactPhone, contactEmail, dueDate, requestedBy, notes, poNumber, amount, status, ...rest } =
     parsed.data;
 
+  // Sanitize walkTime to HH:00 format (strip minutes)
+  const sanitizedWalkTime = walkTime ? walkTime.split(':')[0] + ':00' : null;
+
   const dueDateISO = dueDate.toISOString().split('T')[0];
 
   const result = await db.transaction(async (tx) => {
@@ -98,7 +101,7 @@ export const PUT = safe(async (req, { params: paramsPromise }: { params: Promise
         servicesToAdd.map((serviceId) => ({
           jobRequestId: jobRequestId,
           serviceId,
-          walkTime: walkTime ?? null,
+          walkTime: sanitizedWalkTime,
         }))
       );
     }
@@ -125,12 +128,12 @@ export const PUT = safe(async (req, { params: paramsPromise }: { params: Promise
       }
     }
 
-    // C. Services to Keep (update walkTime)
+    // C. Services to Keep (update walkTime with sanitized value)
     const servicesToKeep = incomingServiceIds.filter((id) => currentServiceIds.includes(id));
     if (servicesToKeep.length > 0) {
       await tx
         .update(jobRequestServices)
-        .set({ walkTime: walkTime ?? null })
+        .set({ walkTime: sanitizedWalkTime })
         .where(
           and(
             eq(jobRequestServices.jobRequestId, jobRequestId),
