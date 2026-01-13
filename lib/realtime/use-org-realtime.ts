@@ -26,7 +26,14 @@ export function useOrgRealtime(orgId?: string | null) {
         const Ably = await getAbly();
         if (disposed) return;
 
-        const client = new Ably.Realtime({ key, clientId: orgId || 'anon' });
+        const client = new Ably.Realtime({
+          key,
+          clientId: orgId || 'anon',
+          // Optimize for flaky connections / reduce log noise
+          transportParams: { heartbeatInterval: 10000 },
+          httpOpenTimeout: 5000,
+          httpRequestTimeout: 5000,
+        });
         const channel = client.channels.get(`org:${orgId}`);
 
         clientRef.current = client;

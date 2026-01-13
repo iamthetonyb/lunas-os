@@ -87,30 +87,50 @@ export async function POST(request: NextRequest) {
             return json({ ok: false, error: 'Job not found in either system' }, 404);
         }
 
-        // Check if an existing assignment for this job is in DRAFT status
-        const [existingDraft] = await db.select()
+        // Check if an existing assignment for this job is in DRAFT or DISPATCHED status
+        const [existingAssignment] = await db.select()
             .from(assignments)
             .where(
-                and(
-                    jrs ? eq(assignments.jobRequestServiceId, jobId) : eq(assignments.blueBookEntryId, jobId),
-                    eq(assignments.status, 'DRAFT') // Only overwrite DRAFTS, not SENT/DISPATCHED
-                )
+                jrs ? eq(assignments.jobRequestServiceId, jobId) : eq(assignments.blueBookEntryId, jobId)
             )
             .limit(1);
 
         let assignmentId = '';
 
-        if (existingDraft) {
-            // Update existing DRAFT assignment directly to DISPATCHED
-            // We do this to reuse the ID and prevent ghost duplicates
+        if (existingAssignment) {
+            // IDEMPOTENCY CHECK: If already dispatched to SAME crew/foreman (via batch check or crewId), skip
+            // Note: Dispatch batches store foremanName, crews store crewName/ID.
+            // If the assignment is already linked to a batch with today's date and same crew, we assume it's a re-click.
+
+            // Check if crew matches
+            const sameCrew = existingAssignment.crewId === crew.id;
+
+            // Check if batch date matches (if we want to allow re-dispatch on DIFFERENT days, we should check date)
+            // But usually "re-dispatch" implies correcting today's dispatch.
+            // Let's just check if crew matches. If user wants to re-send to same crew, it's a no-op visually but maybe they want to update notes?
+            // User requirement: "cant double the work load ... only if a new crew is pushed"
+
+            if (sameCrew && existingAssignment.status === 'DISPATCHED') {
+                return json({
+                    ok: true,
+                    message: `Job already dispatched to ${crewName}`,
+                    crewId: crew.id,
+                    batchId, // Use existing or new batch, doesn't matter much as we didn't touch assignment
+                    assignmentId: existingAssignment.id,
+                    skipped: true
+                });
+            }
+
+            // If different crew or DRAFT, update it
             await db.update(assignments)
                 .set({
                     dispatchBatchId: batchId,
                     crewId: crew.id,
-                    status: 'DISPATCHED' // Directly set to dispatched
+                    status: 'DISPATCHED',
+                    // updatedAt not in schema
                 })
-                .where(eq(assignments.id, existingDraft.id));
-            assignmentId = existingDraft.id;
+                .where(eq(assignments.id, existingAssignment.id));
+            assignmentId = existingAssignment.id;
         } else {
             // Create new assignment as DISPATCHED
             const [newAssignment] = await db.insert(assignments).values({
@@ -118,7 +138,7 @@ export async function POST(request: NextRequest) {
                 blueBookEntryId: bbe ? jobId : null,
                 dispatchBatchId: batchId,
                 crewId: crew.id,
-                status: 'DISPATCHED', // Directly set to dispatched
+                status: 'DISPATCHED',
             }).returning();
             assignmentId = newAssignment.id;
         }
