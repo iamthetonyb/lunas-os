@@ -1,1 +1,47 @@
-{}
+{
+    "navigation": {
+        "dashboard": "Tablero",
+        "schedule": "Horario",
+        "dispatch": "Despacho",
+        "intake": "Ingesta",
+        "blueBook": "Libro Azul",
+        "invoicing": "Facturación",
+        "settings": "Configuración",
+        "import": "Importar",
+        "logout": "Cerrar Sesión"
+    },
+    "common": {
+        "add": "Agregar",
+        "edit": "Editar",
+        "delete": "Eliminar",
+        "save": "Guardar",
+        "cancel": "Cancelar",
+        "search": "Buscar...",
+        "loading": "Cargando...",
+        "status": "Estado",
+        "actions": "Acciones",
+        "date": "Fecha",
+        "all": "Todos"
+    },
+    "intake": {
+        "title": "Formulario de Ingesta",
+        "community": "Comunidad",
+        "builder": "Constructor",
+        "modelPlan": "Plan Modelo",
+        "lot": "Lote",
+        "startDate": "Fecha de Inicio",
+        "dueDate": "Fecha de Vencimiento",
+        "services": "Servicios Requeridos",
+        "poNumber": "Número de Orden de Compra",
+        "notes": "Notas",
+        "requestedBy": "Solicitado Por",
+        "contact": "Contacto"
+    },
+    "status": {
+        "pending": "Pendiente",
+        "scheduled": "Programado",
+        "dispatched": "Despachado",
+        "completed": "Completado",
+        "cancelled": "Cancelado"
+    }
+}

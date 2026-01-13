@@ -162,7 +162,12 @@ export default function SchedulePage() {
   const orgId = (session?.user as any)?.orgId;
   useOrgRealtime(orgId);
 
-  const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
+  // Fix for Hydration Mismatch: Initialize with empty string or stable value, then update on mount
+  const [date, setDate] = useState('');
+  useEffect(() => {
+    // Set to local date on client side
+    setDate(new Date().toISOString().split('T')[0]);
+  }, []);
   const [dispatchModal, setDispatchModal] = useState<DispatchModalState>({
     isOpen: false,
     job: null,
@@ -226,6 +231,11 @@ export default function SchedulePage() {
   );
   const { data: crews } = useSWR<any[]>('/api/crews', fetcher);
   const scheduleRange = useMemo(() => {
+    // Guard: If date is empty (initial render before useEffect), use today as fallback
+    if (!date) {
+      const today = new Date().toISOString().split('T')[0];
+      return { start: today, end: today };
+    }
     // Single day filter - show only jobs for the selected date
     const selectedDate = new Date(date);
     const dateStr = selectedDate.toISOString().split('T')[0];

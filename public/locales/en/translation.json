@@ -1,1 +1,47 @@
-{}
+{
+    "navigation": {
+        "dashboard": "Dashboard",
+        "schedule": "Schedule",
+        "dispatch": "Dispatch",
+        "intake": "Intake",
+        "blueBook": "Blue Book",
+        "invoicing": "Invoicing",
+        "settings": "Settings",
+        "import": "Import",
+        "logout": "Logout"
+    },
+    "common": {
+        "add": "Add",
+        "edit": "Edit",
+        "delete": "Delete",
+        "save": "Save",
+        "cancel": "Cancel",
+        "search": "Search...",
+        "loading": "Loading...",
+        "status": "Status",
+        "actions": "Actions",
+        "date": "Date",
+        "all": "All"
+    },
+    "intake": {
+        "title": "Intake Form",
+        "community": "Community",
+        "builder": "Builder",
+        "modelPlan": "Model Plan",
+        "lot": "Lot",
+        "startDate": "Start Date",
+        "dueDate": "Due Date",
+        "services": "Services Required",
+        "poNumber": "PO Number",
+        "notes": "Notes",
+        "requestedBy": "Requested By",
+        "contact": "Contact"
+    },
+    "status": {
+        "pending": "Pending",
+        "scheduled": "Scheduled",
+        "dispatched": "Dispatched",
+        "completed": "Completed",
+        "cancelled": "Cancelled"
+    }
+}
