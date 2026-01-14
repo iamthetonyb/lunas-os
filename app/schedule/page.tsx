@@ -245,9 +245,14 @@ export default function SchedulePage() {
     };
   }, [date]);
 
-  const { data: upcomingJobs = [] } = useSWR<UpcomingJob[]>(
-    `/api/schedule/blue-book?start=${scheduleRange.start}&end=${scheduleRange.end}`,
-    fetcher
+  const { data: upcomingJobs = [], mutate: mutateUpcomingJobs } = useSWR<UpcomingJob[]>(
+    date ? `/api/schedule/blue-book?start=${scheduleRange.start}&end=${scheduleRange.end}` : null,
+    fetcher,
+    {
+      revalidateOnFocus: true,
+      revalidateOnReconnect: true,
+      dedupingInterval: 2000, // Cache for 2 seconds to prevent rapid re-fetches
+    }
   );
 
   // Initialize foreman map from saved data when jobs load
