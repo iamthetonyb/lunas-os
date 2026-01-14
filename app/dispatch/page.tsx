@@ -52,12 +52,14 @@ export default function DispatchPage() {
   });
 
   // Filter batches for contractors to only show their assigned jobs
-  const displayBatches = isContractor && currentUserName
+  // Also filter out batches with 0 jobs (empty batches after re-dispatch)
+  const displayBatches = (isContractor && currentUserName
     ? batches.filter(batch =>
       batch.foremanName?.toLowerCase() === currentUserName.toLowerCase() ||
       batch.crewName?.toLowerCase() === currentUserName.toLowerCase()
     )
-    : batches;
+    : batches
+  ).filter(batch => batch.jobCount > 0); // Auto-hide empty batches
 
   const openDeleteModal = (batchId: string) => {
     setDeleteModal({ isOpen: true, batchId });

@@ -35,8 +35,8 @@ export const GET = safe(async (req: Request) => {
     where: and(
       isNotNull(blueBookEntries.startDate),
       gte(blueBookEntries.startDate, startIso),
-      lte(blueBookEntries.startDate, endIso),
-      ne(blueBookEntries.source, 'intake')
+      lte(blueBookEntries.startDate, endIso)
+      // Removed: ne(blueBookEntries.source, 'intake') - intake entries should show on schedule
     ),
     columns: {
       id: true,
