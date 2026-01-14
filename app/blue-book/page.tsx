@@ -1649,15 +1649,14 @@ export default function BlueBookPage() {
                                               >
                                                 Edit
                                               </button>
-                                              {isAdmin && (
-                                                <button
-                                                  className="ml-3 text-red-500 hover:text-red-700 transition-transform hover:scale-110"
-                                                  onClick={() => handleDelete(entry.id)}
-                                                  title="Delete Entry"
-                                                >
-                                                  ❌
-                                                </button>
-                                              )}
+                                              {/* Delete button - available to all authorized users */}
+                                              <button
+                                                className="ml-3 text-red-500 hover:text-red-700 transition-transform hover:scale-110"
+                                                onClick={() => handleDelete(entry.id)}
+                                                title="Delete Entry"
+                                              >
+                                                ❌
+                                              </button>
                                             </td>
                                           </tr>
                                         ))}
@@ -1817,17 +1816,15 @@ export default function BlueBookPage() {
                 </div>
                 {formError && <p className="text-sm text-red-600">{formError}</p>}
                 <div className="flex justify-between gap-3">
-                  {/* Admin can ALWAYS delete. */}
-                  {isAdmin && (
-                    <button
-                      type="button"
-                      className="rounded-lg border border-red-300 bg-red-50 px-4 py-2 text-sm font-semibold text-red-600 hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-50"
-                      onClick={() => handleDelete()}
-                      disabled={saving}
-                    >
-                      {saving ? 'Deleting…' : 'Delete Entry'}
-                    </button>
-                  )}
+                  {/* Delete button - available to all authorized users */}
+                  <button
+                    type="button"
+                    className="rounded-lg border border-red-300 bg-red-50 px-4 py-2 text-sm font-semibold text-red-600 hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-50"
+                    onClick={() => handleDelete()}
+                    disabled={saving}
+                  >
+                    {saving ? 'Deleting…' : 'Delete Entry'}
+                  </button>
                   <div className="flex gap-3 ml-auto">
                     <button
                       type="button"

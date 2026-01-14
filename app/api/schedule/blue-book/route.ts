@@ -248,7 +248,7 @@ export const GET = safe(async (req: Request) => {
 
   // Deduplicate combined results
   // Key: community-lot-service
-  // IMPORTANT: Merge fields from both sources to preserve walkTime, requestedBy, etc.
+  // RULE: Assignment data (DISPATCHED status, assigned foreman) is SOURCE OF TRUTH
   const uniqueItems = new Map<string, typeof combinedResults[0]>();
 
   combinedResults.forEach(item => {
@@ -259,45 +259,41 @@ export const GET = safe(async (req: Request) => {
     } else {
       const existing = uniqueItems.get(uniqueKey)!;
 
-      // MERGE LOGIC: Combine best data from both items
-      const merged = { ...existing };
-
-      // Prefer DISPATCHED status over Pending
+      // RULE 1: DISPATCHED status ALWAYS wins
       const existingDispatched = existing.status?.toUpperCase() === 'DISPATCHED';
       const currentDispatched = item.status?.toUpperCase() === 'DISPATCHED';
 
+      // RULE 2: If current item has assignment (foreman assigned), it's the source of truth
+      const currentHasAssignment = currentDispatched || !!item.assignedForemanName;
+      const existingHasAssignment = existingDispatched || !!existing.assignedForemanName;
+
+      // If current item is dispatched or has assignment, use its core data
       if (currentDispatched && !existingDispatched) {
-        merged.status = item.status;
-      } else if (!existingDispatched && existing.status === 'Pending' && item.status !== 'Pending') {
-        merged.status = item.status;
+        // Current is dispatched, use it but preserve any missing fields from existing
+        const merged = {
+          ...existing,
+          ...item, // Current (dispatched) overwrites
+          // Preserve walkTime if current doesn't have it
+          walkTime: (item as any).walkTime || (existing as any).walkTime,
+        } as any;
+        uniqueItems.set(uniqueKey, merged);
+      } else if (currentHasAssignment && !existingHasAssignment) {
+        // Current has assignment, use it
+        const merged = {
+          ...existing,
+          ...item,
+          walkTime: (item as any).walkTime || (existing as any).walkTime,
+        } as any;
+        uniqueItems.set(uniqueKey, merged);
+      } else if (!currentHasAssignment && !existingHasAssignment) {
+        // Neither has assignment - merge fields, prefer non-null values
+        const merged = { ...existing } as any;
+        if (!(existing as any).walkTime && (item as any).walkTime) merged.walkTime = (item as any).walkTime;
+        if (!(existing as any).requestedBy && (item as any).requestedBy) merged.requestedBy = (item as any).requestedBy;
+        if (!existing.originalStartDate && item.originalStartDate) merged.originalStartDate = item.originalStartDate;
+        uniqueItems.set(uniqueKey, merged);
       }
-
-      // Prefer item with assigned foreman
-      if (item.assignedForemanName && !existing.assignedForemanName) {
-        merged.assignedForemanName = item.assignedForemanName;
-      }
-
-      // Preserve walkTime from whichever has it
-      if (!existing.walkTime && item.walkTime) {
-        merged.walkTime = item.walkTime;
-      }
-
-      // Preserve requestedBy from whichever has it
-      if (!existing.requestedBy && item.requestedBy) {
-        merged.requestedBy = item.requestedBy;
-      }
-
-      // Preserve originalStartDate if available
-      if (!existing.originalStartDate && item.originalStartDate) {
-        merged.originalStartDate = item.originalStartDate;
-      }
-
-      // Use ID from job request service if available (for dispatch targeting)
-      if (item.id && !existing.id?.includes('-')) {
-        merged.id = item.id;
-      }
-
-      uniqueItems.set(uniqueKey, merged);
+      // If existing is dispatched and current is not, keep existing (do nothing)
     }
   });
 
