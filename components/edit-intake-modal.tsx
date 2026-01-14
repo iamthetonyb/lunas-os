@@ -182,6 +182,8 @@ function EditIntakeForm({ intake, onSuccess, onClose }: { intake: RecentIntake; 
       });
       // Force refresh all job request related queries
       await mutate((key) => typeof key === 'string' && key.startsWith('/api/job-requests'));
+      // Also refresh schedule data to reflect changes instantly
+      await mutate((key) => typeof key === 'string' && key.startsWith('/api/schedule/blue-book'));
       onSuccess();
     } catch (error) {
       console.error('Error updating job request:', error);
