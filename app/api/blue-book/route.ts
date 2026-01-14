@@ -21,7 +21,8 @@ export const GET = safe(async (req: Request) => {
 
   const isPaginated = Boolean(pageParam || pageSizeParam);
   const page = Math.max(1, parseInt(pageParam || '1', 10) || 1);
-  const pageSize = Math.max(1, Math.min(parseInt(pageSizeParam || '25', 10) || 25, 100));
+  // Increased default to 500 to prevent community splitting across pages
+  const pageSize = Math.max(1, Math.min(parseInt(pageSizeParam || '500', 10) || 500, 1000));
   const offset = (page - 1) * pageSize;
 
   const conditions = [];

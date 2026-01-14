@@ -360,9 +360,8 @@ export function IntakeForm() {
       await mutate('/api/job-requests/recent');
       // Force refresh using global matcher for any job request list
       await mutate((key) => Array.isArray(key) || (typeof key === 'string' && key.includes('/api/job-requests')));
-      await mutate('/api/schedule/blue-book');
-      // Instant Refresh: Clear all schedule/blue-book cache entries (including those with date params)
-      await mutate((key) => typeof key === 'string' && key.startsWith('/api/schedule/blue-book'));
+      // Refresh ALL schedule views, regardless of date range parameters
+      await mutate((key) => typeof key === 'string' && key.includes('/api/schedule'));
       toast.success('Job request created successfully!');
       router.push('/intake');
     } catch (error) {
