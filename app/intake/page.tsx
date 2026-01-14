@@ -211,7 +211,15 @@ function IntakeDetailModal({
 
 function RecentIntakes({ onIntakeSelect, onDelete, onEdit }: { onIntakeSelect: (intake: RecentIntake) => void, onDelete: (intakeId: string) => void, onEdit: (intake: RecentIntake) => void }) {
   const [page, setPage] = useState(1);
-  const { data, isLoading, error } = useSWR(`/api/job-requests/recent?page=${page}&limit=10`, fetcher);
+  const { data, isLoading, error, mutate: mutateIntakes } = useSWR(
+    `/api/job-requests/recent?page=${page}&limit=10`,
+    fetcher,
+    {
+      revalidateOnFocus: true,
+      revalidateOnReconnect: true,
+      refreshInterval: 5000, // Auto-refresh every 5 seconds for live updates
+    }
+  );
 
   if (isLoading) {
     return <p className="text-gray-500">Loading recent intakes...</p>;

@@ -166,7 +166,7 @@ export const PUT = safe(async (req, { params: paramsPromise }: { params: Promise
   });
 
   // 4. Sync Blue Book Entries (Post-Transaction)
-  // We want to update any Blue Book Entry linked to this job's services
+  // Update any BBE linked to this job's services with ALL relevant fields
   try {
     const serviceRows = await db
       .select({ id: jobRequestServices.id, serviceId: jobRequestServices.serviceId })
@@ -176,18 +176,22 @@ export const PUT = safe(async (req, { params: paramsPromise }: { params: Promise
     const serviceIds = serviceRows.map(s => s.serviceId!).filter(Boolean);
 
     if (serviceIds.length > 0) {
+      // Update BBE with complete data from the edited job request
       await db.update(blueBookEntries)
         .set({
+          builderId: rest.builderId,
+          communityId: rest.communityId,
           startDate: dueDateISO,
           lot: rest.lot,
           poNumber: poNumber ?? null,
-          status: status as any ?? undefined, // Sync status if changed
+          status: status as any ?? undefined,
           modelPlanId: rest.modelPlanId ?? null,
+          updatedAt: new Date(),
         })
         .where(
           and(
             inArray(blueBookEntries.serviceId, serviceIds),
-            eq(blueBookEntries.source, 'intake') // Only sync intake-generated ones to avoid messing up manual/scraped
+            eq(blueBookEntries.source, 'intake')
           )
         );
     }
