@@ -5,6 +5,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import useSWR from 'swr';
 import { fetchJSON } from '@/lib/utils/fetch-json';
 import { useSession } from 'next-auth/react';
+import { toast } from 'sonner';
 
 const PAGE_SIZE = 25;
 
@@ -1175,13 +1176,15 @@ export default function BlueBookPage() {
     }
   };
 
-  const handleDelete = async (id?: string) => {
+  const handleDelete = async (id?: string, e?: React.MouseEvent) => {
+    // Prevent event bubbling (stops row click from opening edit modal)
+    if (e) {
+      e.stopPropagation();
+      e.preventDefault();
+    }
+
     const entryId = id || editingEntry?.id;
     if (!entryId) return;
-
-    // Fix: Allow if Admin OR if Manual (Admins must always see button)
-    // If we have an ID but no editingEntry (direct delete), we trust the admin check in the UI + API safety
-    if (!isAdmin && editingEntry?.source !== 'manual') return;
 
     if (!confirm('Are you sure you want to delete this entry?')) return;
 
@@ -1195,10 +1198,12 @@ export default function BlueBookPage() {
       if (editingEntry?.id === entryId) {
         setEditingEntry(null);
       }
+      toast.success('Entry deleted successfully!');
     } catch (err) {
       const message =
         err instanceof Error ? err.message : typeof err === 'string' ? err : 'Unexpected error';
       setFormError(message);
+      toast.error(`Failed to delete: ${message}`);
     } finally {
       setSaving(false);
     }
@@ -1652,7 +1657,7 @@ export default function BlueBookPage() {
                                               {/* Delete button - available to all authorized users */}
                                               <button
                                                 className="ml-3 text-red-500 hover:text-red-700 transition-transform hover:scale-110"
-                                                onClick={() => handleDelete(entry.id)}
+                                                onClick={(e) => handleDelete(entry.id, e)}
                                                 title="Delete Entry"
                                               >
                                                 ❌
