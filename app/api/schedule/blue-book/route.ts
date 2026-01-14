@@ -248,10 +248,10 @@ export const GET = safe(async (req: Request) => {
 
   // Deduplicate combined results
   // Key: community-lot-service
+  // IMPORTANT: Merge fields from both sources to preserve walkTime, requestedBy, etc.
   const uniqueItems = new Map<string, typeof combinedResults[0]>();
 
   combinedResults.forEach(item => {
-    // specific unique key
     const uniqueKey = `${item.communityName || ''}|${item.lot || ''}|${item.serviceName || ''}`.toLowerCase();
 
     if (!uniqueItems.has(uniqueKey)) {
@@ -259,25 +259,45 @@ export const GET = safe(async (req: Request) => {
     } else {
       const existing = uniqueItems.get(uniqueKey)!;
 
-      // prioritization logic:
-      // 1. prefer assigned foreman
-      // 2. prefer non-pending status
-      // 3. prefer blue book entry (has id that isn't from job request service potentially?)
+      // MERGE LOGIC: Combine best data from both items
+      const merged = { ...existing };
 
-      const existingHasForeman = !!existing.assignedForemanName;
-      const currentHasForeman = !!item.assignedForemanName;
+      // Prefer DISPATCHED status over Pending
+      const existingDispatched = existing.status?.toUpperCase() === 'DISPATCHED';
+      const currentDispatched = item.status?.toUpperCase() === 'DISPATCHED';
 
-      if (currentHasForeman && !existingHasForeman) {
-        uniqueItems.set(uniqueKey, item);
-      } else if (currentHasForeman === existingHasForeman) {
-        // if both have/don't have foreman, prefer non-pending
-        const existingActive = existing.status !== 'Pending';
-        const currentActive = item.status !== 'Pending';
-
-        if (currentActive && !existingActive) {
-          uniqueItems.set(uniqueKey, item);
-        }
+      if (currentDispatched && !existingDispatched) {
+        merged.status = item.status;
+      } else if (!existingDispatched && existing.status === 'Pending' && item.status !== 'Pending') {
+        merged.status = item.status;
       }
+
+      // Prefer item with assigned foreman
+      if (item.assignedForemanName && !existing.assignedForemanName) {
+        merged.assignedForemanName = item.assignedForemanName;
+      }
+
+      // Preserve walkTime from whichever has it
+      if (!existing.walkTime && item.walkTime) {
+        merged.walkTime = item.walkTime;
+      }
+
+      // Preserve requestedBy from whichever has it
+      if (!existing.requestedBy && item.requestedBy) {
+        merged.requestedBy = item.requestedBy;
+      }
+
+      // Preserve originalStartDate if available
+      if (!existing.originalStartDate && item.originalStartDate) {
+        merged.originalStartDate = item.originalStartDate;
+      }
+
+      // Use ID from job request service if available (for dispatch targeting)
+      if (item.id && !existing.id?.includes('-')) {
+        merged.id = item.id;
+      }
+
+      uniqueItems.set(uniqueKey, merged);
     }
   });
 
