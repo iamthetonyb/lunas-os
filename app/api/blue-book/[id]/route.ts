@@ -99,20 +99,15 @@ export async function DELETE(req: Request, { params: paramsPromise }: { params: 
       return json({ ok: false, error: 'Missing entry id' }, 400);
     }
 
-    // First check if the entry exists and is manual
+    // Check if entry exists (no source restriction - authorized users can delete any entry)
     const existing = await db
-      .select({ source: blueBookEntries.source })
+      .select({ id: blueBookEntries.id })
       .from(blueBookEntries)
       .where(eq(blueBookEntries.id, params.id))
       .limit(1);
 
     if (!existing.length) {
       return json({ ok: false, error: 'Entry not found' }, 404);
-    }
-
-    const isManual = !existing[0].source || existing[0].source.toUpperCase() === 'MANUAL';
-    if (!isManual) {
-      return json({ ok: false, error: 'Only manually created entries can be deleted' }, 403);
     }
 
     try {
@@ -125,7 +120,7 @@ export async function DELETE(req: Request, { params: paramsPromise }: { params: 
     } catch (deleteError: any) {
       // Check for foreign key constraint violation
       if (deleteError.message?.includes('foreign key constraint') || deleteError.code === '23503') {
-        return json({ ok: false, error: 'Cannot delete entry because it is dispatched.' }, 400);
+        return json({ ok: false, error: 'Cannot delete entry because it is linked to an active assignment. Remove dispatch first.' }, 400);
       }
       throw deleteError;
     }
