@@ -6,7 +6,7 @@ import useSWR, { mutate } from 'swr';
 import { fetchJSON } from '@/lib/utils/fetch-json';
 import { useSession } from 'next-auth/react';
 import { ConfirmationModal } from '@/components/ui/confirmation-modal';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useOrgRealtime } from '@/lib/realtime/use-org-realtime';
 
 const fetcher = <T,>(url: string) => fetchJSON<T>(url);
@@ -30,12 +30,15 @@ export default function DispatchPage() {
   // Realtime updates
   useOrgRealtime(orgId);
 
-  // Date state for day-by-day filtering
-  const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
+  // Date state for day-by-day filtering (hydration-safe)
+  const [date, setDate] = useState('');
+  useEffect(() => {
+    setDate(new Date().toISOString().split('T')[0]);
+  }, []);
 
-  // Fetch dispatch batches from API - filtered by date
+  // Fetch dispatch batches from API - filtered by date (guard for empty date)
   const { data: batches = [], mutate: mutateBatches } = useSWR<DispatchBatch[]>(
-    `/api/dispatch-batches?date=${date}`,
+    date ? `/api/dispatch-batches?date=${date}` : null,
     fetcher,
     {
       refreshInterval: 5000,

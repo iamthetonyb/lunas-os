@@ -4,6 +4,7 @@ import { PageHeader } from '@/components/page-header';
 import Link from 'next/link';
 import useSWR from 'swr';
 import { fetchJSON } from '@/lib/utils/fetch-json';
+import { useState, useEffect } from 'react';
 
 const fetcher = async <T,>(url: string) => {
   try {
@@ -72,12 +73,18 @@ export default function DashboardPage() {
     fetcher
   );
 
-  // Calculate dynamic stats
+  // Calculate dynamic stats (hydration-safe today)
   const intakeList = Array.isArray(recentIntakes) ? recentIntakes : (recentIntakes as any)?.data || [];
   const activeJobCount = blueBookEntries.filter((e: any) => e.status !== 'COMPLETE').length;
   const pendingIntakeCount = intakeList.length;
+
+  // Use stable empty string for server, will update on client
+  const [today, setToday] = useState('');
+  useEffect(() => {
+    setToday(new Date().toISOString().split('T')[0]);
+  }, []);
+
   const scheduledTodayCount = dispatchBatches.filter((b: any) => {
-    const today = new Date().toISOString().split('T')[0];
     return b.serviceDate === today && b.status === 'SENT';
   }).length;
 
