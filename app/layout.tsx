@@ -1,23 +1,24 @@
 import type { Metadata } from 'next';
 import './globals.css';
-import { SWRProvider } from '@/components/swr-provider';
 import { ConditionalLayout } from '@/components/conditional-layout';
 import Providers from './providers';
+import { Toaster } from 'sonner';
+import { LanguageToggle } from '@/components/language-toggle';
 
-export const metadata: Metadata = { 
-  title: 'Lunas OS', 
-  description: 'Construction Cleanup Management' 
+export const metadata: Metadata = {
+  title: 'Lunas OS',
+  description: 'Construction Cleanup Management'
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className="min-h-screen bg-background text-foreground">
+      <body className="min-h-screen bg-background text-foreground relative">
         <Providers>
-          <SWRProvider>
-            <ConditionalLayout>{children}</ConditionalLayout>
-          </SWRProvider>
+          <ConditionalLayout>{children}</ConditionalLayout>
+          <LanguageToggle />
         </Providers>
+        <Toaster richColors position="top-right" closeButton />
       </body>
     </html>
   );

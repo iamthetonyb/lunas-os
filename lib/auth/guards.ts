@@ -1,9 +1,8 @@
 import 'server-only';
 
 import { auth } from '@/auth';
-import { getDb } from '@/lib/db/get-db';
-import * as schema from '@/db/schema';
-import { eq } from 'drizzle-orm';
+import { getConvexClient } from '@/lib/convex/http-client';
+import { api } from '@/convex/_generated/api';
 
 export class UnauthorizedError extends Error {
   status: number;
@@ -34,15 +33,15 @@ export async function requireSession() {
 }
 
 export async function getMembership(userEmail: string) {
-  const db = await getDb();
-  const user = await db.query.users.findFirst({
-    where: eq(schema.users.email, userEmail),
-  });
+  const convex = getConvexClient();
+  const user = await convex.query(api.queries.getUserByEmail, { email: userEmail });
   if (!user) return null;
-  const membership = await db.query.orgMembers.findFirst({
-    where: eq(schema.orgMembers.userId, user.id),
-  });
-  return membership ? { ...membership, userId: user.id, email: userEmail } : null;
+  return {
+    userId: user._id,
+    email: userEmail,
+    orgId: user.orgId,
+    role: user.orgRole,
+  };
 }
 
 export async function requireMembership(allowed: string[] = []) {
@@ -52,7 +51,7 @@ export async function requireMembership(allowed: string[] = []) {
     throw new ForbiddenError('Not a member of any org');
   }
   if (allowed.length) {
-    const role = String((membership as any).role ?? '').toLowerCase();
+    const role = String(membership.role ?? '').toLowerCase();
     const ok = allowed.map((item) => item.toLowerCase()).includes(role);
     if (!ok) {
       console.error('[guards] Role check failed:', {
@@ -76,7 +75,7 @@ export async function requireUser() {
     id: membership.userId,
     email: session.user!.email!,
     orgId: membership.orgId,
-    role: (membership as any).role,
+    role: membership.role,
   };
 }
 
@@ -85,6 +84,6 @@ export async function requireRole(role: string | string[]) {
   return {
     id: membership.userId,
     orgId: membership.orgId,
-    role: (membership as any).role,
+    role: membership.role,
   };
 }

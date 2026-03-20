@@ -2,11 +2,22 @@
 
 import { PageHeader } from '@/components/page-header';
 import Link from 'next/link';
-import useSWR, { mutate } from 'swr';
-import { fetchJSON } from '@/lib/utils/fetch-json';
+import { useQuery, useMutation } from 'convex/react';
+import { api } from '@/convex/_generated/api';
+import { Id } from '@/convex/_generated/dataModel';
 import { useState, Fragment } from 'react';
 import { Dialog, Transition } from '@headlessui/react';
 import { EditIntakeModal } from '@/components/edit-intake-modal';
+import { useSession } from 'next-auth/react';
+import { toast } from 'sonner';
+
+// Helper: Parse ISO date string as local date (avoids UTC midnight -> previous day issue)
+const formatDateLocal = (dateStr: string | null | undefined): string => {
+  if (!dateStr) return '';
+  // Append noon time to prevent timezone rollback
+  const d = new Date(dateStr + 'T12:00:00');
+  return d.toLocaleDateString();
+};
 
 export type RecentIntake = {
   id: string;
@@ -31,9 +42,9 @@ export type RecentIntake = {
     name: string;
     walkTime: string | null;
   }[];
+  amount: string | null;
+  status: string | null;
 };
-
-const fetcher = (url: string) => fetchJSON<RecentIntake[]>(url);
 
 function DetailItem({ label, value }: { label: string; value: string | null | undefined }) {
   if (!value) return null;
@@ -111,7 +122,7 @@ function IntakeDetailModal({
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-2">
                       <DetailItem
                         label="Due Date"
-                        value={new Date(intake.dueDate).toLocaleDateString()}
+                        value={formatDateLocal(intake.dueDate)}
                       />
                       <DetailItem label="PO Number" value={intake.poNumber} />
                       <DetailItem label="Requested By" value={intake.requestedBy} />
@@ -189,80 +200,113 @@ function IntakeDetailModal({
 }
 
 function RecentIntakes({ onIntakeSelect, onDelete, onEdit }: { onIntakeSelect: (intake: RecentIntake) => void, onDelete: (intakeId: string) => void, onEdit: (intake: RecentIntake) => void }) {
-  const { data: intakes, isLoading, error } = useSWR('/api/job-requests/recent', fetcher);
+  const [page, setPage] = useState(1);
+  const data = useQuery(api.jobRequests.getRecent, { page, limit: 10 });
+
+  const isLoading = data === undefined;
 
   if (isLoading) {
     return <p className="text-gray-500">Loading recent intakes...</p>;
   }
 
-  if (error) {
-    return <p className="text-red-500">Failed to load recent intakes.</p>;
-  }
+  const { intakes, total, totalPages } = data || { intakes: [], total: 0, totalPages: 0 };
 
   if (!intakes || intakes.length === 0) {
     return <p className="text-gray-500">No recent intakes found.</p>;
   }
 
   return (
-    <div className="overflow-x-auto">
-      <table className="min-w-full divide-y divide-gray-200 text-sm">
-        <thead className="bg-gray-50">
-          <tr>
-            <th className="px-4 py-2 text-left font-semibold text-gray-500">Community</th>
-            <th className="px-4 py-2 text-left font-semibold text-gray-500">Builder</th>
-            <th className="px-4 py-2 text-left font-semibold text-gray-500">Lot</th>
-            <th className="px-4 py-2 text-left font-semibold text-gray-500">Due Date</th>
-            <th className="px-4 py-2 text-left font-semibold text-gray-500">Services</th>
-            <th className="px-4 py-2 text-left font-semibold text-gray-500">Actions</th>
-          </tr>
-        </thead>
-        <tbody className="divide-y divide-gray-100 bg-white">
-          {intakes.map((intake) => (
-            <tr
-              key={intake.id}
-              onClick={() => onIntakeSelect(intake)}
-              className="cursor-pointer hover:bg-gray-50"
-            >
-              <td className="px-4 py-3 font-medium text-gray-900">{intake.communityName}</td>
-              <td className="px-4 py-3 text-gray-700">{intake.builderName}</td>
-              <td className="px-4 py-3 text-gray-700">{intake.lot}</td>
-              <td className="px-4 py-3 text-gray-700">
-                {new Date(intake.dueDate).toLocaleDateString()}
-              </td>
-              <td className="px-4 py-3 text-gray-600">
-                {intake.services.map((s) => s.name).join(', ')}
-              </td>
-              <td className="px-4 py-3 text-right">
-                <div className="flex justify-end gap-2">
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onEdit(intake);
-                    }}
-                    className="text-blue-600 hover:underline"
-                  >
-                    Edit
-                  </button>
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onDelete(intake.id);
-                    }}
-                    className="text-red-600 hover:underline"
-                  >
-                    Delete
-                  </button>
-                </div>
-              </td>
+    <div className="space-y-4">
+      <div className="overflow-x-auto">
+        <table className="min-w-full divide-y divide-gray-200 text-sm">
+          <thead className="bg-gray-50">
+            <tr>
+              <th className="px-4 py-2 text-left font-semibold text-gray-500">Community</th>
+              <th className="px-4 py-2 text-left font-semibold text-gray-500">Builder</th>
+              <th className="px-4 py-2 text-left font-semibold text-gray-500">Lot</th>
+              <th className="px-4 py-2 text-left font-semibold text-gray-500">Due Date</th>
+              <th className="px-4 py-2 text-left font-semibold text-gray-500">Services</th>
+              <th className="px-4 py-2 text-left font-semibold text-gray-500">Actions</th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody className="divide-y divide-gray-100 bg-white">
+            {intakes.map((intake: any) => (
+              <tr
+                key={intake.id}
+                onClick={() => onIntakeSelect(intake)}
+                className="cursor-pointer hover:bg-gray-50"
+              >
+                <td className="px-4 py-3 font-medium text-gray-900">{intake.communityName}</td>
+                <td className="px-4 py-3 text-gray-700">{intake.builderName}</td>
+                <td className="px-4 py-3 text-gray-700">{intake.lot}</td>
+                <td className="px-4 py-3 text-gray-700">
+                  {formatDateLocal(intake.dueDate)}
+                </td>
+                <td className="px-4 py-3 text-gray-600">
+                  {intake.services.map((s: any) => s.name).join(', ')}
+                </td>
+                <td className="px-4 py-3 text-right">
+                  <div className="flex justify-end gap-2">
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onEdit(intake);
+                      }}
+                      className="text-blue-600 hover:underline"
+                    >
+                      Edit
+                    </button>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onDelete(intake.id);
+                      }}
+                      className="text-red-600 hover:underline"
+                    >
+                      Delete
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      {/* Pagination Controls */}
+      <div className="flex items-center justify-between px-4 py-3 border-t border-gray-100 bg-gray-50 rounded-b-lg">
+        <div className="text-sm text-gray-500">
+          Showing <span className="font-medium">{intakes.length}</span> of <span className="font-medium">{total}</span> intakes
+        </div>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setPage(p => Math.max(1, p - 1))}
+            disabled={page === 1}
+            className="px-3 py-1 border border-gray-300 rounded-md text-sm font-medium disabled:opacity-50 hover:bg-white"
+          >
+            Previous
+          </button>
+          <span className="text-sm text-gray-700">
+            Page {page} of {totalPages}
+          </span>
+          <button
+            onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+            disabled={page === totalPages}
+            className="px-3 py-1 border border-gray-300 rounded-md text-sm font-medium disabled:opacity-50 hover:bg-white"
+          >
+            Next
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
 
 export default function IntakePage() {
+  const { data: session } = useSession();
+
+  const removeIntake = useMutation(api.jobRequests.remove);
+
   const [selectedIntake, setSelectedIntake] = useState<RecentIntake | null>(null);
   const [isDetailModalOpen, setDetailModalOpen] = useState(false);
   const [isEditModalOpen, setEditModalOpen] = useState(false);
@@ -292,7 +336,7 @@ export default function IntakePage() {
 
   async function handleEditSuccess() {
     setEditModalOpen(false);
-    await mutate('/api/job-requests/recent');
+    // No manual revalidation needed — Convex auto-updates
   }
 
   async function handleDelete(intakeId: string) {
@@ -300,17 +344,20 @@ export default function IntakePage() {
       alert('Cannot delete intake: ID is missing.');
       return;
     }
+    console.log('[intake] Attempting to delete:', intakeId);
     if (!window.confirm('Are you sure you want to delete this intake?')) {
       return;
     }
 
     try {
-      await fetchJSON(`/api/job-requests/${intakeId}`, { method: 'DELETE' });
-      await mutate('/api/job-requests/recent');
+      await removeIntake({ id: intakeId as Id<"jobRequests"> });
+      console.log('[intake] Successfully deleted:', intakeId);
       setDetailModalOpen(false); // Close modal if open
+      toast.success('Intake deleted successfully!');
     } catch (error) {
-      console.error('Failed to delete intake', error);
-      alert('Failed to delete intake.');
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      console.error('[intake] Failed to delete:', intakeId, message);
+      toast.error(`Failed to delete intake: ${message}`);
     }
   }
 

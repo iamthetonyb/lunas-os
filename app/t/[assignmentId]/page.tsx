@@ -1,16 +1,15 @@
 'use client';
 
 import { PageHeader } from '@/components/page-header';
-import useSWR from 'swr';
+import { useQuery, useMutation } from 'convex/react';
+import { api } from '@/convex/_generated/api';
+import { Id } from '@/convex/_generated/dataModel';
 import SignatureCanvas from 'react-signature-canvas';
 import { useRef, useState, use } from 'react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import Link from 'next/link';
-import { fetchJSON } from '@/lib/utils/fetch-json';
-
-const fetcher = <T,>(url: string) => fetchJSON<T>(url);
 
 const schema = z.object({
   status: z.enum(['COMPLETE', 'NOT_DONE']),
@@ -24,8 +23,14 @@ type FormData = z.infer<typeof schema>;
 export default function FieldTicketPage({ params }: { params: Promise<{ assignmentId: string }> }) {
   // Unwrap params using React.use() for Next.js 15
   const { assignmentId } = use(params);
-  
-  const { data: assignment, error } = useSWR<any>(`/api/assignments/${assignmentId}`, fetcher);
+
+  const assignment = useQuery(
+    api.assignmentFunctions.getById,
+    { id: assignmentId as Id<"assignments"> }
+  );
+  const submitTicket = useMutation(api.assignmentFunctions.submitTicket);
+
+  const error = assignment === null; // null means not found; undefined means loading
   const foremanSigRef = useRef<SignatureCanvas>(null);
   const customerSigRef = useRef<SignatureCanvas>(null);
 
@@ -42,16 +47,13 @@ export default function FieldTicketPage({ params }: { params: Promise<{ assignme
     const customerSig = customerSigRef.current?.toDataURL();
 
     try {
-      await fetchJSON(`/api/tickets/${assignmentId}`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          ...data,
-          foremanSig,
-          customerSig,
-        }),
+      await submitTicket({
+        assignmentId: assignmentId as Id<"assignments">,
+        windows: data.windows?.toString(),
+        tubs: data.tubs?.toString(),
+        notes: data.notes,
+        foremanSig,
+        customerSig,
       });
       alert('Field ticket submitted successfully!');
     } catch (error) {
@@ -84,8 +86,8 @@ export default function FieldTicketPage({ params }: { params: Promise<{ assignme
 
   return (
     <>
-      <PageHeader 
-        title="Field Ticket" 
+      <PageHeader
+        title="Field Ticket"
         description={`Assignment ID: ${assignment.id}`}
         action={
           <Link href="/schedule" className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700">
@@ -100,7 +102,7 @@ export default function FieldTicketPage({ params }: { params: Promise<{ assignme
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Status</label>
-                <select 
+                <select
                   {...register('status')}
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                 >
@@ -132,8 +134,8 @@ export default function FieldTicketPage({ params }: { params: Promise<{ assignme
 
               <div>
                 <label htmlFor="notes" className="block text-sm font-medium text-gray-700 mb-2">Notes</label>
-                <textarea 
-                  id="notes" 
+                <textarea
+                  id="notes"
                   {...register('notes')}
                   rows={4}
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
@@ -149,13 +151,13 @@ export default function FieldTicketPage({ params }: { params: Promise<{ assignme
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Foreman Signature</label>
                 <div className="border border-gray-300 rounded-lg overflow-hidden">
-                  <SignatureCanvas 
-                    ref={foremanSigRef} 
-                    canvasProps={{ 
-                      width: 500, 
-                      height: 200, 
-                      className: 'w-full bg-white' 
-                    }} 
+                  <SignatureCanvas
+                    ref={foremanSigRef}
+                    canvasProps={{
+                      width: 500,
+                      height: 200,
+                      className: 'w-full bg-white'
+                    }}
                   />
                 </div>
                 <button
@@ -170,13 +172,13 @@ export default function FieldTicketPage({ params }: { params: Promise<{ assignme
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Customer Signature</label>
                 <div className="border border-gray-300 rounded-lg overflow-hidden">
-                  <SignatureCanvas 
-                    ref={customerSigRef} 
-                    canvasProps={{ 
-                      width: 500, 
-                      height: 200, 
-                      className: 'w-full bg-white' 
-                    }} 
+                  <SignatureCanvas
+                    ref={customerSigRef}
+                    canvasProps={{
+                      width: 500,
+                      height: 200,
+                      className: 'w-full bg-white'
+                    }}
                   />
                 </div>
                 <button
@@ -197,7 +199,7 @@ export default function FieldTicketPage({ params }: { params: Promise<{ assignme
             >
               Cancel
             </Link>
-            <button 
+            <button
               type="submit"
               className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium"
             >

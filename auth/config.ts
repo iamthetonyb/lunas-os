@@ -4,7 +4,7 @@ export const baseAuthConfig: Partial<NextAuthConfig> = {
   secret: process.env.AUTH_SECRET,
   trustHost: true,
   session: { strategy: 'jwt' },
-  pages: { signIn: '/signin' },
+  pages: { signIn: '/login' },
 };
 
 export type { NextAuthConfig };

@@ -1,31 +1,25 @@
 import { NextRequest } from 'next/server';
-import { getDb } from '@/lib/db/get-db';
-import { invoices } from '@/db/schema';
-import { eq } from 'drizzle-orm';
+import { ConvexHttpClient } from 'convex/browser';
+import { api } from '@/convex/_generated/api';
+import { Id } from '@/convex/_generated/dataModel';
 import { renderToStream } from '@react-pdf/renderer';
 import { InvoicePdf } from '@/components/invoice-pdf';
-import { json } from '@/lib/utils/json';
 
 export const runtime = 'nodejs';
 export const preferredRegion = 'auto';
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
-    // Await params Promise (Next.js 16+ requirement)
     const resolved = await params;
     const { id } = resolved;
-    
-    const db = await getDb();
-    const invoice = await db.query.invoices.findFirst({
-      where: eq(invoices.id, id),
-      with: {
-        invoiceLines: true,
-        builder: true,
-      },
+
+    const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
+    const invoice = await convex.query(api.invoicing.getById, {
+      id: id as Id<"invoices">,
     });
 
     if (!invoice) {
-      return json({ ok: false, error: 'Invoice not found' }, 404);
+      return Response.json({ ok: false, error: 'Invoice not found' }, { status: 404 });
     }
 
     const pdfStream = await renderToStream(<InvoicePdf invoice={invoice} />);
@@ -37,6 +31,6 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     });
   } catch (error) {
     console.error('Error generating invoice PDF:', error);
-    return json({ ok: false, error: (error as Error).message ?? 'Failed to generate invoice PDF' }, 500);
+    return Response.json({ ok: false, error: (error as Error).message ?? 'Failed to generate invoice PDF' }, { status: 500 });
   }
 }

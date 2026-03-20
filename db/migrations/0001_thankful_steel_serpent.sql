@@ -1,1 +1,0 @@
-ALTER TABLE "communities" ADD CONSTRAINT "communities_name_unique" UNIQUE("name");

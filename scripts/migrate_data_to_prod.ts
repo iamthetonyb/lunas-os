@@ -3,14 +3,14 @@ import { drizzle } from 'drizzle-orm/postgres-js';
 import postgres from 'postgres';
 
 const LOCAL_DB = 'postgresql://localhost:5432/lunas';
-const PROD_DB = 'postgresql://doadmin:AVNS_w9GDyyYtB0rF_YYuUWo@dbaas-db-3491169-do-user-28219872-0.e.db.ondigitalocean.com:25060/defaultdb?sslmode=require';
+const PROD_DB = process.env.PROD_DATABASE_URL || '';
 
 async function main() {
   const localClient = postgres(LOCAL_DB);
   const prodClient = postgres(PROD_DB, { ssl: 'require' });
 
   console.log('📊 Migrating blue_book_entries...');
-  
+
   const entries = await localClient`
     SELECT 
       id, builder_id, community_id, lot, model_plan_id, service_id,
@@ -43,7 +43,7 @@ async function main() {
         )
         ON CONFLICT (id) DO NOTHING
       `;
-    } catch (err) {
+    } catch (err: any) {
       console.error(`Error migrating entry ${entry.id}:`, err.message);
     }
   }
@@ -65,7 +65,7 @@ async function main() {
         )
         ON CONFLICT (id) DO NOTHING
       `;
-    } catch (err) {
+    } catch (err: any) {
       console.error(`Error migrating plan ${plan.id}:`, err.message);
     }
   }

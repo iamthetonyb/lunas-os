@@ -2,14 +2,24 @@ import NextAuth from 'next-auth';
 import Credentials from 'next-auth/providers/credentials';
 import Google from 'next-auth/providers/google';
 import MicrosoftEntraID from 'next-auth/providers/microsoft-entra-id';
-import { DrizzleAdapter } from '@auth/drizzle-adapter';
-import { getDb } from '@/lib/db/get-db';
 import { z } from 'zod';
-import { eq } from 'drizzle-orm';
-import bcrypt from 'bcrypt';
+import bcrypt from 'bcryptjs';
+import { ConvexHttpClient } from 'convex/browser';
+import { api } from './convex/_generated/api';
+import { Id } from './convex/_generated/dataModel';
 
-export const { handlers, auth, signIn, signOut } = NextAuth(async () => {
-  const db = await getDb();
+const getConvex = (() => {
+  let client: ConvexHttpClient | null = null;
+  return () => {
+    if (client) return client;
+    const url = process.env.NEXT_PUBLIC_CONVEX_URL;
+    if (!url) throw new Error('NEXT_PUBLIC_CONVEX_URL is not set');
+    client = new ConvexHttpClient(url);
+    return client;
+  };
+})();
+
+export const { handlers, auth, signIn, signOut } = NextAuth(() => {
   const devEmails =
     (process.env.DEV_EMAILS ?? '')
       .split(',')
@@ -26,6 +36,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth(async () => {
         password: { label: 'Password', type: 'password' },
       },
       async authorize(raw) {
+        console.log('[auth] Authorizing...');
         const parsed = z
           .object({
             email: z.string().email(),
@@ -37,50 +48,55 @@ export const { handlers, auth, signIn, signOut } = NextAuth(async () => {
           return null;
         }
         const { email, password } = parsed.data;
+        console.log('[auth] Checking user:', email);
 
-        // Check database users first
+        // Dev credentials fallback (works even if Convex is down)
+        if (
+          devPassword &&
+          devEmails.includes(email.toLowerCase()) &&
+          password === devPassword
+        ) {
+          console.log('[auth] Valid dev credentials for:', email);
+          try {
+            const convex = getConvex();
+            const user = await convex.query(api.queries.getUserByEmail, { email });
+            if (user) {
+              return { id: user._id, email: user.email, name: user.name || email.split('@')[0] };
+            }
+          } catch (e) {
+            console.warn('[auth] Convex lookup failed for dev user, using synthetic ID');
+          }
+          return { id: `dev-${email}`, email, name: email.split('@')[0] };
+        }
+
+        // Regular Convex-based auth
         try {
-          const user = await db.query.users.findFirst({
-            where: (users, { eq }) => eq(users.email, email),
-          });
+          const convex = getConvex();
+          const user = await convex.query(api.queries.getUserByEmail, { email });
 
           if (!user) {
             console.log('[auth] User not found:', email);
             return null;
           }
 
-          // Check dev credentials (fallback for admin access)
-          if (
-            devPassword &&
-            devEmails.includes(email.toLowerCase()) &&
-            password === devPassword
-          ) {
-            console.log('[auth] Valid dev credentials for:', email);
-            return { 
-              id: user.id, 
-              email: user.email, 
-              name: user.name || email.split('@')[0] 
-            };
-          }
+          console.log('[auth] User found:', user._id, user.role);
 
-          // Check hashed password
           if (!user.passwordHash) {
             console.log('[auth] User has no password hash:', email);
             return null;
           }
 
           const passwordValid = await bcrypt.compare(password, user.passwordHash);
-          
           if (!passwordValid) {
             console.log('[auth] Invalid password for:', email);
             return null;
           }
 
-          console.log('[auth] Valid credentials from DB for:', email);
-          return { 
-            id: user.id, 
-            email: user.email, 
-            name: user.name || email.split('@')[0] 
+          console.log('[auth] Valid credentials from Convex for:', email);
+          return {
+            id: user._id,
+            email: user.email,
+            name: user.name || email.split('@')[0],
           };
         } catch (error) {
           console.error('[auth] Error checking credentials:', error);
@@ -113,36 +129,37 @@ export const { handlers, auth, signIn, signOut } = NextAuth(async () => {
 
   return {
     trustHost: true,
-    session: { strategy: 'jwt' },
+    session: { strategy: 'jwt' as const },
     secret: process.env.AUTH_SECRET,
     pages: { signIn: '/login' },
-    adapter: DrizzleAdapter(db) as any,
     providers,
     callbacks: {
-      // Add role and orgId from org_members to the session
-      async jwt({ token, user }) {
+      async jwt({ token, user }: any) {
         if (user?.id) {
-          // Load user from users table
-          const dbUser = await db.query.users.findFirst({
-            where: (users, { eq }) => eq(users.id, user.id),
-          });
-          if (dbUser) {
-            token.userId = dbUser.id;
-            token.userRole = dbUser.role;
-            
-            // Load org membership (role + orgId)
-            const membership = await db.query.orgMembers.findFirst({
-              where: (orgMembers, { eq }) => eq(orgMembers.userId, dbUser.id),
-            });
-            if (membership) {
-              token.orgId = membership.orgId;
-              token.orgRole = membership.role;
+          token.userId = user.id;
+          try {
+            // Skip Convex lookup for synthetic dev IDs
+            if (typeof user.id === 'string' && user.id.startsWith('dev-')) {
+              token.userRole = 'ADMIN';
+              return token;
             }
+            const convex = getConvex();
+            const dbUser = await convex.query(api.queries.getUserById, {
+              userId: user.id as Id<"users">,
+            });
+            if (dbUser) {
+              token.userId = dbUser._id;
+              token.userRole = dbUser.role;
+              token.orgId = dbUser.orgId;
+              token.orgRole = dbUser.orgRole;
+            }
+          } catch (e) {
+            console.warn('[auth] JWT callback: Convex lookup failed, using basic user info');
           }
         }
         return token;
       },
-      async session({ session, token }) {
+      async session({ session, token }: any) {
         if (token?.userId) {
           session.user.id = token.userId as string;
         }

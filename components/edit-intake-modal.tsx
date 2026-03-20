@@ -4,31 +4,23 @@ import { Controller, useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useTranslation } from 'react-i18next';
-import useSWR from 'swr';
+import { useQuery, useMutation } from 'convex/react';
+import { api } from '@/convex/_generated/api';
+import { Id } from '@/convex/_generated/dataModel';
 import {
   useEffect,
   useMemo,
   Fragment,
 } from 'react';
 import dayjs from 'dayjs';
-import { fetchJSON } from '@/lib/utils/fetch-json';
 import { Dialog, Transition } from '@headlessui/react';
 import type { RecentIntake } from '@/app/intake/page';
 import { SearchableSelect, SearchableMultiSelect, type SelectOption } from './searchable-select';
 
-const fetcher = async <T,>(url: string): Promise<T> => {
-  try {
-    return await fetchJSON<T>(url);
-  } catch (error) {
-    console.error('Fetcher error for', url, error);
-    return [] as unknown as T;
-  }
-};
-
-type BuilderDTO = { id: string; name: string };
-type CommunityDTO = { id: string; name: string; builderId?: string | null };
-type ModelPlanDTO = { id: string; name: string; builderId?: string | null; code?: string | null };
-type ServiceDTO = { id: string; name: string; code?: string | null };
+type BuilderDTO = { _id: string; name: string };
+type CommunityDTO = { _id: string; name: string; builderId?: string | null };
+type ModelPlanDTO = { _id: string; name: string; builderId?: string | null; code?: string | null };
+type ServiceDTO = { _id: string; name: string; code?: string | null };
 
 const REQUESTED_BY_LIST = ['Anahi', 'Chayo', 'Blanca', 'Raudel', 'Francisco'] as const;
 type RequestedByName = (typeof REQUESTED_BY_LIST)[number];
@@ -52,6 +44,8 @@ const baseSchema = z.object({
   contactPhone: z.string().optional(),
   contactEmail: z.string().email('Invalid email format').optional().or(z.literal('')),
   poNumber: z.string().optional(),
+  amount: z.union([z.number(), z.string(), z.null()]).optional(),
+  status: z.string().optional(),
 });
 
 type FormData = z.infer<typeof baseSchema>;
@@ -59,13 +53,15 @@ type FormData = z.infer<typeof baseSchema>;
 
 function EditIntakeForm({ intake, onSuccess, onClose }: { intake: RecentIntake; onSuccess: () => void; onClose: () => void; }) {
   const { t } = useTranslation();
-  
+
   // CRITICAL: All hooks MUST be called unconditionally at the top level before any returns
   // to comply with React Rules of Hooks. Moving data fetching hooks here.
-  const { data: builders } = useSWR<BuilderDTO[]>('/api/builders', fetcher);
-  const { data: communities } = useSWR<CommunityDTO[]>('/api/communities', fetcher);
-  const { data: modelPlans } = useSWR<ModelPlanDTO[]>('/api/model-plans', fetcher);
-  const { data: services } = useSWR<ServiceDTO[]>('/api/services', fetcher);
+  const builders = useQuery(api.queries.getBuilders) as BuilderDTO[] | undefined;
+  const communities = useQuery(api.queries.getCommunities) as CommunityDTO[] | undefined;
+  const modelPlans = useQuery(api.queries.getModelPlans) as ModelPlanDTO[] | undefined;
+  const services = useQuery(api.queries.getServices) as ServiceDTO[] | undefined;
+
+  const updateJobRequest = useMutation(api.jobRequests.update);
 
   // Initialize form with useForm hook - MUST be called unconditionally
   const {
@@ -92,6 +88,8 @@ function EditIntakeForm({ intake, onSuccess, onClose }: { intake: RecentIntake; 
       contactPhone: intake.contactPhone ?? '',
       contactEmail: intake.contactEmail ?? '',
       poNumber: intake.poNumber ?? '',
+      amount: intake.amount ?? '',
+      status: intake.status ?? 'PENDING',
     },
   });
 
@@ -109,7 +107,7 @@ function EditIntakeForm({ intake, onSuccess, onClose }: { intake: RecentIntake; 
       const label = service.name;
       const requiresNotes = normalized.includes('extra');
       const variant = requiresNotes ? 'danger' : undefined;
-      return { value: service.id, label, description, variant, requiresNotes };
+      return { value: service._id, label, description, variant, requiresNotes };
     });
   }, [services]);
 
@@ -124,12 +122,16 @@ function EditIntakeForm({ intake, onSuccess, onClose }: { intake: RecentIntake; 
     [selectedServiceIds, serviceOptionMap]
   );
 
-  const builderOptions = useMemo<SelectOption[]>(() => (builders ?? []).map((builder) => ({ value: builder.id, label: builder.name })), [builders]);
-  const communityOptions = useMemo(() => (communities ?? []).map((community) => ({ value: community.id, label: community.name })), [communities]);
+  const builderOptions = useMemo<SelectOption[]>(() => (builders ?? []).map((builder) => ({ value: builder._id, label: builder.name })), [builders]);
+  const communityOptions = useMemo(() => {
+    if (!communities) return [];
+    const filtered = builderId ? communities.filter(c => c.builderId === builderId) : communities;
+    return filtered.map((community) => ({ value: community._id, label: community.name }));
+  }, [communities, builderId]);
   const modelPlanOptions = useMemo(() => {
     if (!modelPlans) return [];
     const filtered = builderId ? modelPlans.filter((plan) => plan.builderId === builderId) : modelPlans;
-    return filtered.map((plan) => ({ value: plan.id, label: plan.name, description: plan.code ?? undefined }));
+    return filtered.map((plan) => ({ value: plan._id, label: plan.name, description: plan.code ?? undefined }));
   }, [modelPlans, builderId]);
   const requestedByOptions = useMemo<SelectOption[]>(() => REQUESTED_BY_LIST.map((name) => ({ value: name, label: name })), []);
 
@@ -137,7 +139,7 @@ function EditIntakeForm({ intake, onSuccess, onClose }: { intake: RecentIntake; 
   useEffect(() => {
     if (!modelPlanId) return;
     if (!modelPlans || modelPlans.length === 0) return;
-    const plan = modelPlans.find((item) => item.id === modelPlanId);
+    const plan = modelPlans.find((item) => item._id === modelPlanId);
     if (!plan) {
       setValue('modelPlanId', '');
       return;
@@ -167,10 +169,12 @@ function EditIntakeForm({ intake, onSuccess, onClose }: { intake: RecentIntake; 
     }
     clearErrors('notes');
     try {
-      await fetchJSON(`/api/job-requests/${intake.id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data),
+      await updateJobRequest({
+        id: intake.id as Id<"jobRequests">,
+        amount: data.amount != null ? String(data.amount) : undefined,
+        status: data.status ?? undefined,
+        notes: data.notes ?? undefined,
+        dueDate: data.dueDate ?? undefined,
       });
       onSuccess();
     } catch (error) {
@@ -236,10 +240,24 @@ function EditIntakeForm({ intake, onSuccess, onClose }: { intake: RecentIntake; 
           <label className="block text-sm font-medium text-gray-700 mb-1">PO Number</label>
           <input {...register('poNumber')} placeholder="PO Number" className="w-full px-4 py-2.5 border border-gray-300 rounded-lg" />
         </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Amount ($)</label>
+          <input {...register('amount')} type="number" step="0.01" placeholder="0.00" className="w-full px-4 py-2.5 border border-gray-300 rounded-lg" />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
+          <select {...register('status')} className="w-full px-4 py-2.5 border border-gray-300 rounded-lg bg-white">
+            <option value="PENDING">Pending</option>
+            <option value="APPROVED">Approved</option>
+            <option value="COMPLETED">Completed</option>
+            <option value="BILLED">Billed</option>
+            <option value="PAID">Paid</option>
+          </select>
+        </div>
       </div>
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-1">Notes</label>
-        <textarea {...register('notes')} placeholder="Notes" className="w-full px-4 py-2.5 border border-gray-300 rounded-lg" />
+        <textarea {...register('notes')} spellCheck="true" placeholder="Notes" className="w-full px-4 py-2.5 border border-gray-300 rounded-lg" />
       </div>
       <div className="flex justify-end gap-4 pt-4">
         <button type="button" onClick={onClose} className="px-6 py-3 border border-gray-300 text-gray-700 rounded-lg">Cancel</button>

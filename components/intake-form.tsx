@@ -4,18 +4,47 @@ import { Controller, useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useTranslation } from 'react-i18next';
-import useSWR, { mutate } from 'swr';
+import { useQuery, useMutation } from 'convex/react';
+import { api } from '@/convex/_generated/api';
+import { Id } from '@/convex/_generated/dataModel';
 import { useRouter } from 'next/navigation';
+import { toast } from 'sonner';
 import {
   useEffect,
   useMemo,
 } from 'react';
 import dayjs from 'dayjs';
-import { fetchJSON } from '@/lib/utils/fetch-json';
+import { useSession } from 'next-auth/react';
 import { SearchableSelect, SearchableMultiSelect } from './searchable-select';
+import { getFriendlyName } from '@/lib/utils/community-display';
 
 const REQUESTED_BY_LIST = ['Anahi', 'Chayo', 'Blanca', 'Raudel', 'Francisco'] as const;
 type RequestedByName = (typeof REQUESTED_BY_LIST)[number];
+
+// Walk time options - top of hour only
+const WALK_TIME_OPTIONS: SelectOption[] = [
+  { value: '', label: 'Select time...' },
+  { value: '06:00', label: '6:00 AM' },
+  { value: '07:00', label: '7:00 AM' },
+  { value: '08:00', label: '8:00 AM' },
+  { value: '09:00', label: '9:00 AM' },
+  { value: '10:00', label: '10:00 AM' },
+  { value: '11:00', label: '11:00 AM' },
+  { value: '12:00', label: '12:00 PM' },
+  { value: '13:00', label: '1:00 PM' },
+  { value: '14:00', label: '2:00 PM' },
+  { value: '15:00', label: '3:00 PM' },
+  { value: '16:00', label: '4:00 PM' },
+  { value: '17:00', label: '5:00 PM' },
+  { value: '18:00', label: '6:00 PM' },
+];
+
+type CommunityLotDTO = {
+  id: string;
+  lotNumber: string;
+  jobNumber: string;
+  address?: string | null;
+};
 
 const baseSchema = z.object({
   communityId: z.string().min(1, 'Community is required'),
@@ -42,15 +71,6 @@ const schema = baseSchema;
 
 type FormData = z.infer<typeof baseSchema>;
 
-const fetcher = async <T,>(url: string): Promise<T> => {
-  try {
-    return await fetchJSON<T>(url);
-  } catch (error) {
-    console.error('Fetcher error for', url, error);
-    return ([] as unknown) as T;
-  }
-};
-
 type SelectOption = {
   value: string;
   label: string;
@@ -59,49 +79,20 @@ type SelectOption = {
   requiresNotes?: boolean;
 };
 
-type BuilderDTO = {
-  id: string;
-  name: string;
-};
-
-type CommunityDTO = {
-  id: string;
-  name: string;
-  builderId?: string | null;
-};
-
-type ModelPlanDTO = {
-  id: string;
-  name: string;
-  builderId?: string | null;
-  code?: string | null;
-  defaults?: Record<string, unknown> | null;
-};
-
-type ServiceDTO = {
-  id: string;
-  name: string;
-  code?: string | null;
-};
-
-type SearchableSelectProps = {
-  value: string;
-  onChange: (value: string) => void;
-  options: SelectOption[];
-  placeholder?: string;
-  disabled?: boolean;
-  emptyStateLabel?: string;
-};
-
-
-
 export function IntakeForm() {
   const router = useRouter();
   const { t } = useTranslation();
-  const { data: builders } = useSWR<BuilderDTO[]>('/api/builders', fetcher);
-  const { data: communities } = useSWR<CommunityDTO[]>('/api/communities', fetcher);
-  const { data: modelPlans } = useSWR<ModelPlanDTO[]>('/api/model-plans', fetcher);
-  const { data: services } = useSWR<ServiceDTO[]>('/api/services', fetcher);
+
+  // Convex queries (reactive, auto-updating)
+  const builders = useQuery(api.queries.getBuilders) ?? [];
+  const communities = useQuery(api.queries.getCommunities) ?? [];
+  const modelPlans = useQuery(api.queries.getModelPlans) ?? [];
+  const services = useQuery(api.queries.getServices) ?? [];
+
+  const createJobRequest = useMutation(api.mutations.createJobRequest);
+
+  const { data: session } = useSession();
+  const isContractor = session?.user?.role === 'FOREMAN' || session?.user?.role === 'CREW';
 
   const {
     register,
@@ -129,21 +120,55 @@ export function IntakeForm() {
     }
   });
 
+  // Move watches up to fix lint
+  const watchedRequestedBy = useWatch({ control, name: 'requestedBy' });
+  const watchedCommunityId = useWatch({ control, name: 'communityId' });
   const builderId = useWatch({ control, name: 'builderId' });
   const communityId = useWatch({ control, name: 'communityId' });
   const modelPlanId = useWatch({ control, name: 'modelPlanId' });
   const selectedServiceIds = useWatch({ control, name: 'serviceIds' }) ?? [];
 
+  // Conditional Convex queries
+  const foremanContactData = useQuery(
+    api.userFunctions.getForemanContact,
+    watchedRequestedBy ? { name: watchedRequestedBy } : 'skip'
+  );
+
+  const communityLots = useQuery(
+    api.communityLots.byCommunity,
+    watchedCommunityId ? { communityId: watchedCommunityId as Id<"communities"> } : 'skip'
+  ) ?? [];
+
+  // Set default requestedBy for contractors
+  useEffect(() => {
+    if (isContractor && session?.user?.name && !watchedRequestedBy) {
+      const myName = REQUESTED_BY_LIST.find(n => n.toLowerCase() === session.user.name!.toLowerCase());
+      if (myName) {
+        setValue('requestedBy', myName, { shouldValidate: true });
+      }
+    }
+  }, [isContractor, session?.user?.name, setValue, watchedRequestedBy]);
+
+  // Lot options from scraped data
+  const lotOptions = useMemo<SelectOption[]>(() => {
+    if (!communityLots || communityLots.length === 0) return [];
+    return communityLots.map((lot: any) => ({
+      value: lot.lotNumber,
+      label: `Lot ${lot.lotNumber}`,
+      description: lot.address ?? lot.jobNumber,
+    }));
+  }, [communityLots]);
+
   const serviceOptions = useMemo<SelectOption[]>(() => {
     if (!services) return [];
-    return services.map((service) => {
+    return services.map((service: any) => {
       const normalized = service.name.toLowerCase();
       const description = service.code ? `Code: ${service.code}` : undefined;
       const label = service.name;
       const requiresNotes = normalized.includes('extra');
       const variant = requiresNotes ? 'danger' : undefined;
       return {
-        value: service.id,
+        value: service._id,
         label,
         description,
         variant,
@@ -168,8 +193,8 @@ export function IntakeForm() {
 
   const builderOptions = useMemo<SelectOption[]>(
     () =>
-      (builders ?? []).map((builder) => ({
-        value: builder.id,
+      builders.filter((b: any) => b.active !== false).map((builder: any) => ({
+        value: builder._id,
         label: builder.name,
       })),
     [builders]
@@ -177,24 +202,26 @@ export function IntakeForm() {
 
   const builderMap = useMemo(() => {
     const map = new Map<string, string>();
-    (builders ?? []).forEach((builder) => {
-      map.set(builder.id, builder.name);
+    builders.forEach((builder: any) => {
+      map.set(builder._id, builder.name);
     });
     return map;
   }, [builders]);
 
   const communityOptions = useMemo(() => {
-    return (communities ?? []).map((community) => ({
-      value: community.id,
-      label: community.name,
+    const list = communities.filter((c: any) => c.active !== false);
+    const filtered = builderId ? list.filter((c: any) => c.builderId === builderId) : list;
+    return filtered.map((community: any) => ({
+      value: community._id,
+      label: `${getFriendlyName(community.name)} (${builderMap.get(community.builderId ?? '') ?? 'Unknown'})`,
       description: builderMap.get(community.builderId ?? '') ?? undefined,
     }));
-  }, [communities, builderMap]);
+  }, [communities, builderMap, builderId]);
 
   const communityMap = useMemo(() => {
-    const map = new Map<string, CommunityDTO>();
-    (communities ?? []).forEach((community) => {
-      map.set(community.id, community);
+    const map = new Map<string, any>();
+    communities.forEach((community: any) => {
+      map.set(community._id, community);
     });
     return map;
   }, [communities]);
@@ -202,10 +229,10 @@ export function IntakeForm() {
   const modelPlanOptions = useMemo(() => {
     if (!modelPlans) return [] as SelectOption[];
     const filtered = builderId
-      ? modelPlans.filter((plan) => plan.builderId === builderId)
+      ? modelPlans.filter((plan: any) => plan.builderId === builderId)
       : modelPlans;
-    return filtered.map((plan) => ({
-      value: plan.id,
+    return filtered.map((plan: any) => ({
+      value: plan._id,
       label: plan.name,
       description: plan.code ?? undefined,
     }));
@@ -216,12 +243,10 @@ export function IntakeForm() {
     []
   );
 
-
-
   useEffect(() => {
     if (!modelPlanId) return;
     if (!modelPlans || modelPlans.length === 0) return;
-    const plan = modelPlans.find((item) => item.id === modelPlanId);
+    const plan = modelPlans.find((item: any) => item._id === modelPlanId);
     if (!plan) {
       setValue('modelPlanId', '', { shouldValidate: true });
       return;
@@ -233,9 +258,10 @@ export function IntakeForm() {
 
   useEffect(() => {
     if (builderId && modelPlanId) {
-      const modelPlan = modelPlans?.find((plan) => plan.id === modelPlanId);
+      const modelPlan = modelPlans?.find((plan: any) => plan._id === modelPlanId);
       if (modelPlan?.defaults) {
-        Object.entries(modelPlan.defaults).forEach(([key, value]) => {
+        const defaults = typeof modelPlan.defaults === 'string' ? JSON.parse(modelPlan.defaults) : modelPlan.defaults;
+        Object.entries(defaults).forEach(([key, value]) => {
           if (key in baseSchema.shape) {
             setValue(key as keyof FormData, value as FormData[keyof FormData]);
           }
@@ -250,6 +276,26 @@ export function IntakeForm() {
     }
   }, [extraWorkSelected, clearErrors]);
 
+  // Auto-populate builder when community is selected
+  useEffect(() => {
+    if (communityId) {
+      const community = communityMap.get(communityId);
+      if (community?.builderId && community.builderId !== builderId) {
+        setValue('builderId', community.builderId, { shouldValidate: true });
+      }
+    }
+  }, [communityId, communityMap, builderId, setValue]);
+
+  // Auto-populate contact info based on foreman/requestedBy selection
+  useEffect(() => {
+    if (foremanContactData) {
+      const contact = foremanContactData.phone || foremanContactData.email || '';
+      if (contact) {
+        setValue('contact', contact, { shouldValidate: true });
+      }
+    }
+  }, [foremanContactData, setValue]);
+
   const onSubmit = handleSubmit(async (data) => {
     const requiresNotes = data.serviceIds.some(
       (serviceId) => serviceOptionMap.get(serviceId)?.requiresNotes
@@ -263,19 +309,37 @@ export function IntakeForm() {
     }
     clearErrors('notes');
     try {
-      await fetchJSON('/api/intake', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(data),
+      // Build the services array from selected service IDs
+      const serviceEntries = data.serviceIds.map((serviceId) => {
+        const svc = services.find((s: any) => s._id === serviceId);
+        return {
+          serviceId: serviceId as Id<"services">,
+          serviceName: svc?.name ?? 'Unknown Service',
+          walkTime: data.walkTime || undefined,
+        };
       });
-      await mutate('/api/job-requests/recent');
-      await mutate('/api/schedule/blue-book');
+
+      await createJobRequest({
+        builderId: data.builderId as Id<"builders">,
+        communityId: data.communityId as Id<"communities">,
+        lot: data.lot,
+        address: data.address || undefined,
+        modelPlanId: data.modelPlanId ? data.modelPlanId as Id<"modelPlans"> : undefined,
+        dueDate: data.dueDate,
+        notes: data.notes || undefined,
+        poNumber: data.poNumber || undefined,
+        requestedBy: data.requestedBy,
+        contactPhone: data.contact,
+        contactEmail: undefined,
+        services: serviceEntries,
+      });
+
+      // No need for SWR mutate — Convex reactivity auto-updates all listeners
+      toast.success('Job request created successfully!');
       router.push('/intake');
     } catch (error) {
       console.error('Error creating job request:', error);
-      alert('Error creating job request. Please try again.');
+      toast.error('Failed to create job request. Please try again.');
     }
   });
 
@@ -284,9 +348,9 @@ export function IntakeForm() {
       {/* Builder & Community Section */}
       <div className="bg-white border-2 border-gray-200 rounded-lg p-6">
         <h3 className="text-lg font-semibold text-gray-900 mb-4 pb-2 border-b border-gray-200">
-          📍 Builder & Location Information
+          Builder & Location Information
         </h3>
-        
+
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -358,12 +422,29 @@ export function IntakeForm() {
             <label htmlFor="lot" className="block text-sm font-medium text-gray-700 mb-2">
               {t('lot')} <span className="text-red-500">*</span>
             </label>
-            <input 
-              id="lot" 
-              {...register('lot')}
-              placeholder="e.g., Lot 123"
-              className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-            />
+            {lotOptions.length > 0 ? (
+              <Controller
+                control={control}
+                name="lot"
+                render={({ field }) => (
+                  <SearchableSelect
+                    value={field.value ?? ''}
+                    onChange={field.onChange}
+                    options={lotOptions}
+                    placeholder="Select lot number..."
+                    disabled={!lotOptions.length}
+                    emptyStateLabel="No lots found"
+                  />
+                )}
+              />
+            ) : (
+              <input
+                id="lot"
+                {...register('lot')}
+                placeholder="e.g., Lot 123"
+                className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              />
+            )}
             {errors.lot && (
               <p className="mt-1 text-sm text-red-600">{errors.lot.message}</p>
             )}
@@ -373,8 +454,8 @@ export function IntakeForm() {
             <label htmlFor="address" className="block text-sm font-medium text-gray-700 mb-2">
               {t('address')}
             </label>
-            <input 
-              id="address" 
+            <input
+              id="address"
               {...register('address')}
               placeholder="Full street address"
               className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
@@ -389,9 +470,9 @@ export function IntakeForm() {
       {/* Services Section */}
       <div className="bg-white border-2 border-gray-200 rounded-lg p-6">
         <h3 className="text-lg font-semibold text-gray-900 mb-4 pb-2 border-b border-gray-200">
-          🛠️ Services Required <span className="text-red-500">*</span>
+          Services Required <span className="text-red-500">*</span>
         </h3>
-        
+
         <Controller
           control={control}
           name="serviceIds"
@@ -413,20 +494,22 @@ export function IntakeForm() {
       {/* Schedule Section */}
       <div className="bg-white border-2 border-gray-200 rounded-lg p-6">
         <h3 className="text-lg font-semibold text-gray-900 mb-4 pb-2 border-b border-gray-200">
-          📅 Schedule Information
+          Schedule Information
         </h3>
-        
+
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div>
             <label htmlFor="dueDate" className="block text-sm font-medium text-gray-700 mb-2">
               {t('dueDate')} <span className="text-red-500">*</span>
             </label>
-            <input 
-              id="dueDate" 
-              type="date" 
-              {...register('dueDate')}
-              className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-            />
+            <div className="relative">
+              <input
+                id="dueDate"
+                type="date"
+                {...register('dueDate')}
+                className="w-full px-4 py-2.5 bg-transparent border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 cursor-pointer [&::-webkit-calendar-picker-indicator]:opacity-0 [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:inset-0 [&::-webkit-calendar-picker-indicator]:w-full [&::-webkit-calendar-picker-indicator]:cursor-pointer"
+              />
+            </div>
             {errors.dueDate && (
               <p className="mt-1 text-sm text-red-600">{errors.dueDate.message}</p>
             )}
@@ -436,13 +519,17 @@ export function IntakeForm() {
             <label htmlFor="walkTime" className="block text-sm font-medium text-gray-700 mb-2">
               {t('walkTime')}
             </label>
-            <input 
-              id="walkTime" 
-              type="time"
+            <select
+              id="walkTime"
               {...register('walkTime')}
-              placeholder="e.g., 2:00 PM"
               className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-            />
+            >
+              {WALK_TIME_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
           </div>
         </div>
       </div>
@@ -450,9 +537,9 @@ export function IntakeForm() {
       {/* Contact Information Section */}
       <div className="bg-white border-2 border-gray-200 rounded-lg p-6">
         <h3 className="text-lg font-semibold text-gray-900 mb-4 pb-2 border-b border-gray-200">
-          👤 Contact Information
+          Contact Information
         </h3>
-        
+
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div>
             <label htmlFor="requestedBy" className="block text-sm font-medium text-gray-700 mb-2">
@@ -467,7 +554,7 @@ export function IntakeForm() {
                   onChange={field.onChange}
                   options={requestedByOptions}
                   placeholder="Select requester"
-                  disabled={requestedByOptions.length === 0}
+                  disabled={isContractor || requestedByOptions.length === 0}
                   emptyStateLabel="No matches"
                 />
               )}
@@ -481,8 +568,8 @@ export function IntakeForm() {
             <label htmlFor="contact" className="block text-sm font-medium text-gray-700 mb-2">
               {t('contact')} <span className="text-red-500">*</span>
             </label>
-            <input 
-              id="contact" 
+            <input
+              id="contact"
               {...register('contact')}
               placeholder="Phone or email"
               className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
@@ -496,8 +583,8 @@ export function IntakeForm() {
             <label htmlFor="poNumber" className="block text-sm font-medium text-gray-700 mb-2">
               {t('poNumber')}
             </label>
-            <input 
-              id="poNumber" 
+            <input
+              id="poNumber"
               {...register('poNumber')}
               placeholder="Purchase Order Number"
               className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
@@ -509,17 +596,18 @@ export function IntakeForm() {
       {/* Notes Section */}
       <div className="bg-white border-2 border-gray-200 rounded-lg p-6">
         <h3 className="text-lg font-semibold text-gray-900 mb-4 pb-2 border-b border-gray-200">
-          📝 Additional Notes
+          Additional Notes
         </h3>
-        
+
         <div>
           <label htmlFor="notes" className="block text-sm font-medium text-gray-700 mb-2">
             {t('notes')} {extraWorkSelected && <span className="text-red-500">*</span>}
           </label>
-          <textarea 
-            id="notes" 
+          <textarea
+            id="notes"
             {...register('notes')}
             rows={4}
+            spellCheck="true"
             placeholder="Any additional information or special instructions..."
             className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none"
           />

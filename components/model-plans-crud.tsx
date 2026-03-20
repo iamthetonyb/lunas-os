@@ -1,21 +1,13 @@
 'use client';
 
-import useSWR from 'swr';
 import { useState, Fragment } from 'react';
 import { Dialog, Transition } from '@headlessui/react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { fetchJSON } from '@/lib/utils/fetch-json';
-
-const fetcher = async <T,>(url: string): Promise<T> => {
-  try {
-    return await fetchJSON<T>(url);
-  } catch (error) {
-    console.error('Fetcher error for', url, error);
-    return ([] as unknown) as T;
-  }
-};
+import { useQuery, useMutation } from 'convex/react';
+import { api } from '@/convex/_generated/api';
+import { Id } from '@/convex/_generated/dataModel';
 
 const schema = z.object({
   name: z.string().min(1, 'Name is required'),
@@ -28,7 +20,7 @@ const schema = z.object({
 type FormData = z.infer<typeof schema>;
 
 interface ModelPlan {
-  id: string;
+  _id: Id<"modelPlans">;
   name: string;
   code: string;
   builderId: string;
@@ -37,13 +29,17 @@ interface ModelPlan {
 }
 
 interface Builder {
-  id: string;
+  _id: Id<"builders">;
   name: string;
 }
 
 export function ModelPlansCrud() {
-  const { data: modelPlans, mutate } = useSWR<ModelPlan[]>('/api/model-plans', fetcher);
-  const { data: builders } = useSWR<Builder[]>('/api/builders', fetcher);
+  const modelPlans = useQuery(api.queries.getModelPlans) as ModelPlan[] | undefined;
+  const builders = useQuery(api.queries.getBuilders) as Builder[] | undefined;
+  const createModelPlan = useMutation(api.mutations.createModelPlan);
+  const updateModelPlan = useMutation(api.mutations.updateModelPlan);
+  const deleteModelPlan = useMutation(api.mutations.deleteModelPlan);
+
   const [isOpen, setIsOpen] = useState(false);
   const [selectedModelPlan, setSelectedModelPlan] = useState<ModelPlan | null>(null);
   const [isDeleting, setIsDeleting] = useState<string | null>(null);
@@ -58,19 +54,24 @@ export function ModelPlansCrud() {
   });
 
   const onSubmit = handleSubmit(async (data) => {
-    const url = selectedModelPlan ? `/api/model-plans/${selectedModelPlan.id}` : '/api/model-plans';
-    const method = selectedModelPlan ? 'PUT' : 'POST';
-
     try {
-      await fetchJSON(url, {
-        method,
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(data),
-      });
+      if (selectedModelPlan) {
+        await updateModelPlan({
+          id: selectedModelPlan._id,
+          name: data.name,
+          code: data.code,
+          sqft: data.sqft,
+          builderId: data.builderId as Id<"builders">,
+        });
+      } else {
+        await createModelPlan({
+          name: data.name,
+          code: data.code,
+          sqft: data.sqft,
+          builderId: data.builderId as Id<"builders">,
+        });
+      }
 
-      mutate();
       setIsOpen(false);
       reset();
       setSelectedModelPlan(null);
@@ -82,19 +83,16 @@ export function ModelPlansCrud() {
 
   const openModal = (modelPlan: ModelPlan | null = null) => {
     setSelectedModelPlan(modelPlan);
-    reset(modelPlan || {});
+    reset(modelPlan ? { name: modelPlan.name, code: modelPlan.code, builderId: modelPlan.builderId, sqft: modelPlan.sqft } : {});
     setIsOpen(true);
   };
 
   const handleDelete = async (id: string) => {
     if (!confirm('Are you sure you want to delete this model plan?')) return;
-    
+
     setIsDeleting(id);
     try {
-      await fetchJSON(`/api/model-plans/${id}`, {
-        method: 'DELETE',
-      });
-      mutate();
+      await deleteModelPlan({ id: id as Id<"modelPlans"> });
     } catch (error) {
       console.error('Failed to delete model plan', error);
       alert('Failed to delete model plan.');
@@ -104,7 +102,7 @@ export function ModelPlansCrud() {
   };
 
   const getBuilderName = (builderId: string) => {
-    const builder = builders?.find((b) => b.id === builderId);
+    const builder = builders?.find((b) => b._id === builderId);
     return builder?.name || 'Unknown Builder';
   };
 
@@ -166,7 +164,7 @@ export function ModelPlansCrud() {
               </thead>
               <tbody className="bg-white dark:bg-slate-900 divide-y divide-gray-200 dark:divide-gray-700">
                 {modelPlans?.map((plan) => (
-                  <tr key={plan.id} className="hover:bg-gray-50 dark:hover:bg-slate-800 transition-colors">
+                  <tr key={plan._id} className="hover:bg-gray-50 dark:hover:bg-slate-800 transition-colors">
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center gap-2">
                         <span className="text-xl">🏠</span>
@@ -201,11 +199,11 @@ export function ModelPlansCrud() {
                           Edit
                         </button>
                         <button
-                          onClick={() => handleDelete(plan.id)}
-                          disabled={isDeleting === plan.id}
+                          onClick={() => handleDelete(plan._id)}
+                          disabled={isDeleting === plan._id}
                           className="inline-flex items-center gap-1 px-3 py-1.5 bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300 hover:bg-red-100 dark:hover:bg-red-900/40 rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                         >
-                          {isDeleting === plan.id ? (
+                          {isDeleting === plan._id ? (
                             <>
                               <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
                                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
@@ -309,7 +307,7 @@ export function ModelPlansCrud() {
                       >
                         <option value="">-- Select Builder --</option>
                         {builders?.map((builder) => (
-                          <option key={builder.id} value={builder.id}>
+                          <option key={builder._id} value={builder._id}>
                             {builder.name}
                           </option>
                         ))}

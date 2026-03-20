@@ -1,23 +1,14 @@
 'use client';
 
-import useSWR from 'swr';
 import { useState } from 'react';
 import { Dialog, Transition } from '@headlessui/react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Fragment } from 'react';
-import { fetchJSON } from '@/lib/utils/fetch-json';
-
-const fetcher = async (url: string) => {
-  try {
-    const data = await fetchJSON<Service[]>(url);
-    return Array.isArray(data) ? data : [];
-  } catch (error) {
-    console.error('Fetcher error for', url, error);
-    return [];
-  }
-};
+import { useQuery, useMutation } from 'convex/react';
+import { api } from '@/convex/_generated/api';
+import { Id } from '@/convex/_generated/dataModel';
 
 const schema = z.object({
   name: z.string().min(1, 'Name is required'),
@@ -29,7 +20,7 @@ const schema = z.object({
 type FormData = z.infer<typeof schema>;
 
 interface Service {
-  id: string;
+  _id: Id<"services">;
   name: string;
   code: string;
   category: string;
@@ -37,7 +28,11 @@ interface Service {
 }
 
 export function ServicesCrud() {
-  const { data: services, mutate } = useSWR<Service[]>('/api/services', fetcher);
+  const services = useQuery(api.queries.getServices) as Service[] | undefined;
+  const createService = useMutation(api.mutations.createService);
+  const updateService = useMutation(api.mutations.updateService);
+  const deleteService = useMutation(api.mutations.deleteService);
+
   const [isOpen, setIsOpen] = useState(false);
   const [selectedService, setSelectedService] = useState<Service | null>(null);
   const [isDeleting, setIsDeleting] = useState<string | null>(null);
@@ -52,18 +47,12 @@ export function ServicesCrud() {
   });
 
   const onSubmit = handleSubmit(async (data) => {
-    const url = selectedService ? `/api/services/${selectedService.id}` : '/api/services';
-    const method = selectedService ? 'PUT' : 'POST';
-
     try {
-      await fetchJSON(url, {
-        method,
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(data),
-      });
-      mutate();
+      if (selectedService) {
+        await updateService({ id: selectedService._id, ...data });
+      } else {
+        await createService(data);
+      }
       setIsOpen(false);
       reset();
       setSelectedService(null);
@@ -75,19 +64,16 @@ export function ServicesCrud() {
 
   const openModal = (service: Service | null = null) => {
     setSelectedService(service);
-    reset(service as any || {});
+    reset(service ? { name: service.name, code: service.code, category: service.category, unitKind: service.unitKind as FormData['unitKind'] } : {});
     setIsOpen(true);
   };
 
   const handleDelete = async (id: string) => {
     if (!confirm('Are you sure you want to delete this service?')) return;
-    
+
     setIsDeleting(id);
     try {
-      await fetchJSON(`/api/services/${id}`, {
-        method: 'DELETE',
-      });
-      mutate();
+      await deleteService({ id: id as Id<"services"> });
     } catch (error) {
       console.error('Failed to delete service', error);
       alert('Failed to delete service.');
@@ -163,7 +149,7 @@ export function ServicesCrud() {
               </thead>
               <tbody className="bg-white dark:bg-slate-900 divide-y divide-gray-200 dark:divide-gray-700">
                 {services?.map((service) => (
-                  <tr key={service.id} className="hover:bg-gray-50 dark:hover:bg-slate-800 transition-colors">
+                  <tr key={service._id} className="hover:bg-gray-50 dark:hover:bg-slate-800 transition-colors">
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="text-sm font-medium text-gray-900 dark:text-gray-100">
                         {service.name}
@@ -192,11 +178,11 @@ export function ServicesCrud() {
                           Edit
                         </button>
                         <button
-                          onClick={() => handleDelete(service.id)}
-                          disabled={isDeleting === service.id}
+                          onClick={() => handleDelete(service._id)}
+                          disabled={isDeleting === service._id}
                           className="inline-flex items-center gap-1 px-3 py-1.5 bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300 hover:bg-red-100 dark:hover:bg-red-900/40 rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                         >
-                          {isDeleting === service.id ? (
+                          {isDeleting === service._id ? (
                             <>
                               <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
                                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>

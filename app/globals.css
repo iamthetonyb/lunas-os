@@ -1,5 +1,11 @@
 @import "tailwindcss";
 
+@config "../tailwind.config.ts";
+
+@theme {
+  --variant-dark: .dark &;
+}
+
 /* Custom CSS variables */
 :root {
   --background: #f9fafb;
@@ -10,6 +16,7 @@
   --ring: #3b82f6;
   --nav-bg: #ffffff;
   --nav-hover: #f3f4f6;
+  color-scheme: light;
 }
 
 .dark {
@@ -21,6 +28,7 @@
   --ring: #60a5fa;
   --nav-bg: #1e293b;
   --nav-hover: #334155;
+  color-scheme: dark;
 }
 
 /* Base styles */
@@ -29,6 +37,16 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
   transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+/* Ensure inputs and icons are visible in both modes */
+input[type="date"]::-webkit-calendar-picker-indicator {
+  cursor: pointer;
+  filter: none;
+}
+
+.dark input[type="date"]::-webkit-calendar-picker-indicator {
+  filter: invert(1);
 }
 
 .bg-background {
@@ -68,7 +86,6 @@ textarea::placeholder {
 .dark textarea:focus,
 .dark select:focus {
   border-color: var(--ring);
-  ring-color: var(--ring);
 }
 
 /* Button cursor */
@@ -77,60 +94,13 @@ button {
   transition: all 0.3s ease;
 }
 
-/* Card backgrounds */
-.bg-white {
-  transition: background-color 0.3s ease;
-}
-
-.dark .bg-white {
+/* Soften global overrides to allow Tailwind classes to work better */
+.dark .bg-white:not([class*='bg-']) {
   background-color: var(--card-bg);
 }
 
-.dark .bg-gray-50 {
-  background-color: #0f172a;
-}
-
-.dark .bg-gray-100 {
-  background-color: #1e293b;
-}
-
-/* Text colors */
-.dark .text-gray-900 {
+.dark .text-gray-900:not([class*='text-']) {
   color: #f1f5f9;
-}
-
-.dark .text-gray-800 {
-  color: #e2e8f0;
-}
-
-.dark .text-gray-700 {
-  color: #cbd5e1;
-}
-
-.dark .text-gray-600 {
-  color: #94a3b8;
-}
-
-.dark .text-gray-500 {
-  color: #64748b;
-}
-
-/* Border colors */
-.dark .border-gray-200 {
-  border-color: var(--border);
-}
-
-.dark .border-gray-300 {
-  border-color: var(--border);
-}
-
-/* Hover states */
-.dark .hover\:bg-gray-50:hover {
-  background-color: var(--nav-hover);
-}
-
-.dark .hover\:bg-gray-100:hover {
-  background-color: var(--nav-hover);
 }
 
 /* Shadows in dark mode */

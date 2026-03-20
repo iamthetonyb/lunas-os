@@ -2,8 +2,11 @@
 
 import { PageHeader } from '@/components/page-header';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import useSWR from 'swr';
-import { fetchJSON } from '@/lib/utils/fetch-json';
+import { useQuery, useMutation } from 'convex/react';
+import { api } from '@/convex/_generated/api';
+import { Id } from '@/convex/_generated/dataModel';
+import { useSession } from 'next-auth/react';
+import { toast } from 'sonner';
 
 const PAGE_SIZE = 25;
 
@@ -31,13 +34,10 @@ type BlueBookEntry = {
   modelPlanCode: string | null;
   modelPlanSqft: string | null;
   source?: string | null; // 'scraped' or 'manual'
-};
-
-type BlueBookResponse = {
-  entries: BlueBookEntry[];
-  total: number;
-  page: number;
-  pageSize: number;
+  createdAt: number;
+  updatedAt?: number;
+  assignedForemanName?: string | null;
+  crewName?: string | null;
 };
 
 type Builder = {
@@ -52,23 +52,6 @@ type ModelPlan = {
   code: string | null;
   sqft: string | null;
 };
-
-const fetcher = async (url: string): Promise<BlueBookResponse> => {
-  const data = await fetchJSON<BlueBookResponse | BlueBookEntry[]>(url);
-  if (Array.isArray(data)) {
-    return {
-      entries: data,
-      total: data.length,
-      page: 1,
-      pageSize: data.length || PAGE_SIZE,
-    };
-  }
-  return data;
-};
-
-const builderFetcher = (url: string) => fetchJSON<Builder[]>(url);
-
-const modelPlanFetcher = (url: string) => fetchJSON<ModelPlan[]>(url);
 
 function useDebounce<T>(value: T, delay = 300) {
   const [debounced, setDebounced] = useState(value);
@@ -123,7 +106,7 @@ type LotSummary = {
   modelPlanName: string | null;
   modelPlanCode: string | null;
   modelPlanSqft: string | null;
-  earliestStart: number;
+  nextActivityDate: number;
   totalAmount: number;
 };
 
@@ -134,7 +117,7 @@ type CommunityGroup = {
   communityName: string | null;
   entries: BlueBookEntry[];
   lots: LotSummary[];
-  earliestStart: number;
+  nextActivityDate: number;
   checkNumbers: string[];
   totalAmount: number;
 };
@@ -142,19 +125,19 @@ type CommunityGroup = {
 const KNOWN_PHASES: Record<string, PhaseDefinition> = {
   '22702': {
     code: '22702',
-    title: '22702 – T3',
+    title: '22702 \u2013 T3',
     shorthand: 'T3',
     serviceNames: ['Frame Sweep'],
   },
   '22712': {
     code: '22712',
-    title: '22712 – T2',
+    title: '22712 \u2013 T2',
     shorthand: 'T2',
     serviceNames: ['Tubs & Windows', 'Q/A', 'Power Wash'],
   },
   '22714': {
     code: '22714',
-    title: '22714 – T1',
+    title: '22714 \u2013 T1',
     shorthand: 'T1',
     serviceNames: ['Final Clean', 'Touch up Clean'],
   },
@@ -232,6 +215,10 @@ export default function BlueBookPage() {
   const [saving, setSaving] = useState(false);
   const [newTabBuilderId, setNewTabBuilderId] = useState('');
 
+  // Session for admin check - admins can always see delete button
+  const { data: session } = useSession();
+  const isAdmin = (session?.user as any)?.role === 'admin' || (session?.user as any)?.role === 'backoffice';
+
   // Populate form state when editing or creating
   useEffect(() => {
     if (editingEntry) {
@@ -273,28 +260,47 @@ export default function BlueBookPage() {
     setPage(1);
   }, [debouncedSearch, sort, activeBuilderId]);
 
-  const { data: buildersData } = useSWR('/api/builders', builderFetcher, {
-    revalidateOnFocus: false,
-  });
-  const { data: modelPlansData } = useSWR('/api/model-plans', modelPlanFetcher, {
-    revalidateOnFocus: false,
-  });
-  const { data: communitiesData } = useSWR('/api/communities', async (url) => {
-    const res = await fetchJSON<Array<{ id: string; name: string; builderId?: string | null }>>(url);
-    return res;
-  }, {
-    revalidateOnFocus: false,
-  });
-  const { data: servicesData } = useSWR('/api/services', async (url) => {
-    const res = await fetchJSON<Array<{ id: string; name: string; code?: string | null }>>(url);
-    return res;
-  }, {
-    revalidateOnFocus: false,
-  });
-  const availableBuilders = buildersData || [];
-  const modelPlans = useMemo(() => modelPlansData ?? [], [modelPlansData]);
-  const communities = useMemo(() => communitiesData ?? [], [communitiesData]);
-  const services = useMemo(() => servicesData ?? [], [servicesData]);
+  // Convex queries for reference data
+  const buildersData = useQuery(api.queries.getBuilders, {});
+  const modelPlansData = useQuery(api.queries.getModelPlans, {});
+  const communitiesData = useQuery(api.queries.getCommunities, {});
+  const servicesData = useQuery(api.queries.getServices, {});
+
+  // Convex mutations
+  const updateEntry = useMutation(api.blueBook.update);
+  const createEntry = useMutation(api.blueBook.create);
+  const removeEntry = useMutation(api.blueBook.remove);
+
+  const availableBuilders: Builder[] = useMemo(() =>
+    (buildersData ?? []).map((b: any) => ({ id: b._id, name: b.name })),
+    [buildersData]
+  );
+  const modelPlans: ModelPlan[] = useMemo(() =>
+    (modelPlansData ?? []).map((p: any) => ({
+      id: p._id,
+      builderId: p.builderId ?? null,
+      name: p.name,
+      code: p.code ?? null,
+      sqft: p.sqft ?? null,
+    })),
+    [modelPlansData]
+  );
+  const communities = useMemo(() =>
+    (communitiesData ?? []).map((c: any) => ({
+      id: c._id,
+      name: c.name,
+      builderId: c.builderId ?? null,
+    })),
+    [communitiesData]
+  );
+  const services = useMemo(() =>
+    (servicesData ?? []).map((s: any) => ({
+      id: s._id,
+      name: s.name,
+      code: s.code ?? null,
+    })),
+    [servicesData]
+  );
   const plansByBuilder = useMemo(() => {
     const map: Record<string, ModelPlan[]> = {};
     modelPlans.forEach((plan) => {
@@ -362,17 +368,22 @@ export default function BlueBookPage() {
     (builder) => !tabBuilderIds.includes(builder.id)
   );
 
-  const builderParam =
-    activeBuilderId && activeBuilderId !== 'all' ? `&builderId=${activeBuilderId}` : '';
-  const { data, error, isLoading, mutate } = useSWR(
-    `/api/blue-book?page=${page}&pageSize=${PAGE_SIZE}&sort=${sort}&search=${encodeURIComponent(
-      debouncedSearch
-    )}${builderParam}`,
-    fetcher,
-    { keepPreviousData: true, revalidateOnFocus: false }
-  );
+  // Convex query for blue book entries
+  const blueBookQueryArgs = useMemo(() => ({
+    page,
+    pageSize: PAGE_SIZE,
+    sort,
+    search: debouncedSearch || undefined,
+    builderId: (activeBuilderId && activeBuilderId !== 'all')
+      ? activeBuilderId as Id<"builders">
+      : undefined,
+  }), [page, PAGE_SIZE, sort, debouncedSearch, activeBuilderId]);
 
-  const entries = useMemo(() => data?.entries ?? [], [data]);
+  const data = useQuery(api.blueBook.list, blueBookQueryArgs);
+  const isLoading = data === undefined;
+  const error = false; // Convex throws on error
+
+  const entries: BlueBookEntry[] = useMemo(() => (data?.entries ?? []) as BlueBookEntry[], [data]);
   const total = data?.total ?? entries.length;
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
   const canPrev = page > 1;
@@ -383,16 +394,16 @@ export default function BlueBookPage() {
   );
   const formatAmount = useCallback(
     (value: string | null) => {
-      if (!value) return '—';
+      if (!value) return '\u2014';
       const numeric = Number(value);
-      if (!Number.isFinite(numeric)) return '—';
+      if (!Number.isFinite(numeric)) return '\u2014';
       return currencyFormatter.format(numeric);
     },
     [currencyFormatter]
   );
   const formatNumberAmount = useCallback(
     (value: number | null | undefined) => {
-      if (typeof value !== 'number' || !Number.isFinite(value)) return '—';
+      if (typeof value !== 'number' || !Number.isFinite(value)) return '\u2014';
       return currencyFormatter.format(value);
     },
     [currencyFormatter]
@@ -418,9 +429,22 @@ export default function BlueBookPage() {
 
     const communityMap = new Map<string, CommunityAccumulator>();
 
+    // Pre-fill from communities list (if activeBuilderId matches)
+    communities.forEach(c => {
+      if (activeBuilderId && activeBuilderId !== 'all' && c.builderId !== activeBuilderId) return;
+
+      const key = c.id;
+      communityMap.set(key, {
+        key: key,
+        builderName: availableBuilders.find(b => b.id === c.builderId)?.name ?? 'Unknown Builder',
+        builderId: c.builderId ?? null,
+        communityName: c.name,
+        entries: [],
+        lots: new Map(),
+      });
+    });
+
     const normaliseCommunityKey = (entry: BlueBookEntry) => {
-      // Use community ID if available, otherwise use community name + builder ID to group
-      // This ensures same-named communities under same builder are grouped together
       if (entry.communityId) {
         return entry.communityId;
       }
@@ -459,8 +483,8 @@ export default function BlueBookPage() {
       community.lots.get(lotKey)!.entries.push(entry);
     });
 
-    const toTimestamp = (value: string | null) =>
-      value ? new Date(value).getTime() : Number.MAX_SAFE_INTEGER;
+    const toTimestamp = (value: string | number | null) =>
+      typeof value === 'number' ? value : value ? new Date(value).getTime() : Number.MAX_SAFE_INTEGER;
 
     const parseAmount = (value: string | null) => {
       if (!value) return 0;
@@ -516,8 +540,8 @@ export default function BlueBookPage() {
 
               const baseComplete = definition.serviceNames.length
                 ? definition.serviceNames.every(
-                    (name) => (servicesByName.get(name)?.length ?? 0) > 0
-                  )
+                  (name) => (servicesByName.get(name)?.length ?? 0) > 0
+                )
                 : entriesForCode.length > 0;
 
               const orderedServices: LotPhaseService[] = [];
@@ -607,7 +631,7 @@ export default function BlueBookPage() {
               const firstServiceName = orderedServices[0]?.name;
               phases.push({
                 code,
-                title: firstServiceName ? `${code} – ${firstServiceName}` : code,
+                title: firstServiceName ? `${code} \u2013 ${firstServiceName}` : code,
                 shorthand: code,
                 baseComplete,
                 overrideStatus,
@@ -617,13 +641,20 @@ export default function BlueBookPage() {
               });
             });
 
-            const earliestStart = sortedEntries.length
+            const incompleteEntries = sortedEntries.filter((e) => (e.status || 'PENDING').toUpperCase() !== 'COMPLETE');
+            const nextActivityDate = incompleteEntries.length
               ? Math.min(
+                ...incompleteEntries.map((entry) =>
+                  toTimestamp(entry.startDate ?? entry.createdAt)
+                )
+              )
+              : (sortedEntries.length
+                ? Math.min(
                   ...sortedEntries.map((entry) =>
-                    toTimestamp(entry.startDate ?? entry.checkDate)
+                    toTimestamp(entry.startDate ?? entry.createdAt)
                   )
                 )
-              : Number.MAX_SAFE_INTEGER;
+                : Number.MAX_SAFE_INTEGER);
             const totalAmount = sortedEntries.reduce(
               (sum, entry) => sum + parseAmount(entry.amount),
               0
@@ -640,24 +671,24 @@ export default function BlueBookPage() {
               modelPlanName: planSource?.modelPlanName ?? null,
               modelPlanCode: planSource?.modelPlanCode ?? null,
               modelPlanSqft: planSource?.modelPlanSqft ?? null,
-              earliestStart,
+              nextActivityDate,
               totalAmount,
             };
           })
           .sort((a, b) => {
             // Sort by earliest start date first, then by lot number
-            if (a.earliestStart !== b.earliestStart) {
-              return a.earliestStart - b.earliestStart;
+            if (a.nextActivityDate !== b.nextActivityDate) {
+              return a.nextActivityDate - b.nextActivityDate;
             }
             return a.lotLabel.localeCompare(b.lotLabel, undefined, { numeric: true, sensitivity: 'base' });
           });
 
-        const earliestStart = community.entries.length
+        const nextActivityDate = community.entries.length
           ? Math.min(
-              ...community.entries.map((entry) =>
-                toTimestamp(entry.startDate ?? entry.checkDate)
-              )
+            ...community.entries.map((entry) =>
+              toTimestamp(entry.startDate ?? entry.checkDate)
             )
+          )
           : Number.MAX_SAFE_INTEGER;
 
         const checkNumbers = Array.from(
@@ -680,7 +711,7 @@ export default function BlueBookPage() {
           communityName: community.communityName,
           entries: community.entries,
           lots,
-          earliestStart,
+          nextActivityDate,
           checkNumbers,
           totalAmount,
         };
@@ -694,9 +725,9 @@ export default function BlueBookPage() {
         } else if (nameA || nameB) {
           return nameA ? -1 : 1;
         }
-        return a.earliestStart - b.earliestStart;
+        return a.nextActivityDate - b.nextActivityDate;
       });
-  }, [entries, phaseOverrides]);
+  }, [entries, phaseOverrides, communities, activeBuilderId, availableBuilders]);
 
   const [openCommunities, setOpenCommunities] = useState<Record<string, boolean>>({});
   const [openLots, setOpenLots] = useState<Record<string, boolean>>({});
@@ -1020,14 +1051,16 @@ export default function BlueBookPage() {
       try {
         await Promise.all(
           lot.entries.map((entry) =>
-            fetchJSON(`/api/blue-book/${entry.id}`, {
-              method: 'PATCH',
-              headers: { 'content-type': 'application/json' },
-              body: JSON.stringify({ modelPlanId: normalizedNext }),
+            updateEntry({
+              id: entry.id as Id<"blueBookEntries">,
+              ...( normalizedNext !== null
+                ? { modelPlanId: normalizedNext as Id<"modelPlans"> }
+                : { modelPlanId: null }
+              ),
             })
           )
         );
-        await mutate();
+        // No manual mutate needed — Convex auto-updates
       } catch (err) {
         console.error('Failed to update model plan', err);
         setPlanErrors((prev) => ({
@@ -1049,7 +1082,7 @@ export default function BlueBookPage() {
         });
       }
     },
-    [mutate]
+    [updateEntry]
   );
 
   const handleSave = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -1058,22 +1091,19 @@ export default function BlueBookPage() {
     setSaving(true);
     setFormError(null);
     try {
-      await fetchJSON(`/api/blue-book/${editingEntry.id}`, {
-        method: 'PATCH',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({
-          lot: formState.lot || null,
-          startDate: formState.startDate || null,
-          status: formState.status,
-          invoiceNumber: formState.invoiceNumber || null,
-          amount: formState.amount ? Number(formState.amount) : null,
-          accountCategoryName: formState.accountCategoryName || null,
-          accountCategoryCode: formState.accountCategoryCode || null,
-          checkNumber: formState.checkNumber || null,
-          checkDate: formState.checkDate || null,
-        }),
+      await updateEntry({
+        id: editingEntry.id as Id<"blueBookEntries">,
+        lot: formState.lot || undefined,
+        startDate: formState.startDate || undefined,
+        status: formState.status,
+        invoiceNumber: formState.invoiceNumber || undefined,
+        amount: formState.amount ? formState.amount : undefined,
+        accountCategoryName: formState.accountCategoryName || undefined,
+        accountCategoryCode: formState.accountCategoryCode || undefined,
+        checkNumber: formState.checkNumber || undefined,
+        checkDate: formState.checkDate || undefined,
       });
-      await mutate();
+      // No manual mutate needed — Convex auto-updates
       setEditingEntry(null);
     } catch (err) {
       const message =
@@ -1089,25 +1119,21 @@ export default function BlueBookPage() {
     setSaving(true);
     setFormError(null);
     try {
-      await fetchJSON('/api/blue-book', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({
-          builderId: formState.builderId,
-          communityId: formState.communityId,
-          serviceId: formState.serviceId || null,
-          lot: formState.lot || null,
-          startDate: formState.startDate || null,
-          status: formState.status || 'PENDING',
-          invoiceNumber: formState.invoiceNumber || null,
-          amount: formState.amount ? Number(formState.amount) : null,
-          accountCategoryName: formState.accountCategoryName || null,
-          accountCategoryCode: formState.accountCategoryCode || null,
-          checkNumber: formState.checkNumber || null,
-          checkDate: formState.checkDate || null,
-        }),
+      await createEntry({
+        builderId: formState.builderId as Id<"builders">,
+        communityId: formState.communityId ? formState.communityId as Id<"communities"> : undefined,
+        serviceId: formState.serviceId ? formState.serviceId as Id<"services"> : null,
+        lot: formState.lot || undefined,
+        startDate: formState.startDate || undefined,
+        status: formState.status || 'PENDING',
+        invoiceNumber: formState.invoiceNumber || undefined,
+        amount: formState.amount ? Number(formState.amount) : null,
+        accountCategoryName: formState.accountCategoryName || undefined,
+        accountCategoryCode: formState.accountCategoryCode || undefined,
+        checkNumber: formState.checkNumber || undefined,
+        checkDate: formState.checkDate || undefined,
       });
-      await mutate();
+      // No manual mutate needed — Convex auto-updates
       setIsCreatingManual(false);
       setFormState({
         lot: '',
@@ -1132,22 +1158,32 @@ export default function BlueBookPage() {
     }
   };
 
-  const handleDelete = async () => {
-    if (!editingEntry || editingEntry.source !== 'manual') return;
-    if (!confirm('Are you sure you want to delete this manual entry?')) return;
-    
+  const handleDelete = async (id?: string, e?: React.MouseEvent) => {
+    // Prevent event bubbling (stops row click from opening edit modal)
+    if (e) {
+      e.stopPropagation();
+      e.preventDefault();
+    }
+
+    const entryId = id || editingEntry?.id;
+    if (!entryId) return;
+
+    if (!confirm('Are you sure you want to delete this entry?')) return;
+
     setSaving(true);
     setFormError(null);
     try {
-      await fetchJSON(`/api/blue-book/${editingEntry.id}`, {
-        method: 'DELETE',
-      });
-      await mutate();
-      setEditingEntry(null);
+      await removeEntry({ id: entryId as Id<"blueBookEntries"> });
+      // No manual mutate needed — Convex auto-updates
+      if (editingEntry?.id === entryId) {
+        setEditingEntry(null);
+      }
+      toast.success('Entry deleted successfully!');
     } catch (err) {
       const message =
         err instanceof Error ? err.message : typeof err === 'string' ? err : 'Unexpected error';
       setFormError(message);
+      toast.error(`Failed to delete: ${message}`);
     } finally {
       setSaving(false);
     }
@@ -1170,11 +1206,10 @@ export default function BlueBookPage() {
       <main className="px-6 py-6">
         <div className="mb-6 flex flex-wrap items-center gap-3">
           <button
-            className={`rounded-full border px-4 py-2 text-sm transition ${
-              activeBuilderId === 'all'
-                ? 'border-blue-500 bg-blue-500 text-white'
-                : 'border-gray-300 bg-white text-gray-700 hover:border-blue-400'
-            }`}
+            className={`rounded-full border px-4 py-2 text-sm transition ${activeBuilderId === 'all'
+              ? 'border-blue-500 bg-blue-500 text-white'
+              : 'border-gray-300 bg-white text-gray-700 hover:border-blue-400'
+              }`}
             onClick={() => setActiveBuilderId('all')}
           >
             All Builders
@@ -1186,11 +1221,10 @@ export default function BlueBookPage() {
             return (
               <button
                 key={builder.id}
-                className={`rounded-full border px-4 py-2 text-sm transition ${
-                  isActive
-                    ? 'border-blue-500 bg-blue-500 text-white'
-                    : 'border-gray-300 bg-white text-gray-700 hover:border-blue-400'
-                }`}
+                className={`rounded-full border px-4 py-2 text-sm transition ${isActive
+                  ? 'border-blue-500 bg-blue-500 text-white'
+                  : 'border-gray-300 bg-white text-gray-700 hover:border-blue-400'
+                  }`}
                 onClick={() => setActiveBuilderId(builder.id)}
               >
                 {builder.name}
@@ -1217,52 +1251,20 @@ export default function BlueBookPage() {
           </select>
         </div>
 
-        {selectableBuilders.length > 0 && (
-          <div className="mb-6 flex flex-col gap-3 rounded-lg border border-dashed border-gray-300 p-4 text-sm dark:border-slate-700 lg:flex-row lg:items-center lg:justify-between">
-            <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:flex-1">
-              <div className="font-semibold text-gray-700 dark:text-gray-200">
-                Add Builder Tab
-              </div>
-              <select
-                value={newTabBuilderId}
-                onChange={(e) => setNewTabBuilderId(e.target.value)}
-                className="rounded-lg border border-gray-300 px-3 py-2 dark:bg-slate-900 dark:text-white"
-              >
-                <option value="">Select builder…</option>
-                {selectableBuilders.map((builder) => (
-                  <option key={builder.id} value={builder.id}>
-                    {builder.name}
-                </option>
-              ))}
-            </select>
-              <button
-                type="button"
-                disabled={!newTabBuilderId}
-                onClick={() => {
-                  if (newTabBuilderId) {
-                    setCustomTabIds((prev) => [...prev, newTabBuilderId]);
-                    setActiveBuilderId(newTabBuilderId);
-                    setNewTabBuilderId('');
-                  }
-                }}
-                className="rounded-lg bg-blue-600 px-4 py-2 font-semibold text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                Add
-              </button>
-            </div>
-            <button
-              type="button"
-              onClick={() => setIsCreatingManual(true)}
-              className="rounded-lg bg-green-600 px-4 py-2 font-semibold text-white hover:bg-green-700 whitespace-nowrap"
-            >
-              + Manual Entry
-            </button>
-          </div>
-        )}
+        {/* Manual Entry Button */}
+        <div className="mb-6 flex justify-end">
+          <button
+            type="button"
+            onClick={() => setIsCreatingManual(true)}
+            className="rounded-lg bg-green-600 px-4 py-2 font-semibold text-white hover:bg-green-700 whitespace-nowrap"
+          >
+            + Manual Entry
+          </button>
+        </div>
 
         {isLoading && (
           <div className="bg-white dark:bg-slate-800 rounded-lg border border-gray-200 dark:border-slate-700 p-6 shadow-sm">
-            <p className="text-gray-600 dark:text-gray-400">Loading entries…</p>
+            <p className="text-gray-600 dark:text-gray-400">Loading entries...</p>
           </div>
         )}
 
@@ -1287,9 +1289,8 @@ export default function BlueBookPage() {
             );
             const phaseSummary =
               phaseCounts.total > 0
-                ? ` · ${phaseCounts.complete}/${phaseCounts.total} phase${
-                    phaseCounts.total === 1 ? '' : 's'
-                  } logged`
+                ? ` \u00B7 ${phaseCounts.complete}/${phaseCounts.total} phase${phaseCounts.total === 1 ? '' : 's'
+                } logged`
                 : '';
 
             return (
@@ -1306,26 +1307,25 @@ export default function BlueBookPage() {
                       {group.communityName || 'Unknown Community'}
                     </p>
                     <p className="text-xs text-gray-500 dark:text-gray-400">
-                      {`${group.builderName || 'Unknown Builder'} · ${totalLots} lot${
-                        totalLots === 1 ? '' : 's'
-                      } · ${totalChecks} check${totalChecks === 1 ? '' : 's'}${phaseSummary}`}
+                      {`${group.builderName || 'Unknown Builder'} \u00B7 ${totalLots} lot${totalLots === 1 ? '' : 's'
+                        } \u00B7 ${totalChecks} check${totalChecks === 1 ? '' : 's'}${phaseSummary}`}
                     </p>
                   </div>
                   <div className="flex items-center gap-4 text-sm text-gray-600 dark:text-gray-300">
                     <span>{formatNumberAmount(group.totalAmount)}</span>
-                    <span>{communityOpen ? '▲' : '▼'}</span>
+                    <span>{communityOpen ? '\u25B2' : '\u25BC'}</span>
                   </div>
                 </button>
                 {communityOpen && (
                   <div className="divide-y divide-gray-200 dark:divide-slate-700">
                     {group.lots.map((lot) => {
                       const lotOpen = openLots[lot.key];
-                      const hasEarliestStart =
-                        Number.isFinite(lot.earliestStart) &&
-                        lot.earliestStart !== Number.MAX_SAFE_INTEGER;
-                      const earliestDateLabel = hasEarliestStart
-                        ? new Date(lot.earliestStart).toLocaleDateString()
-                        : 'No start date';
+                      const hasNextActivity =
+                        Number.isFinite(lot.nextActivityDate) &&
+                        lot.nextActivityDate !== Number.MAX_SAFE_INTEGER;
+                      const nextActivityLabel = hasNextActivity
+                        ? new Date(lot.nextActivityDate).toLocaleDateString('en-US', { timeZone: 'UTC' })
+                        : 'No activity scheduled';
                       const lotTotalAmount = lot.entries.reduce((sum, entry) => {
                         if (!entry.amount) return sum;
                         const numeric = Number(entry.amount);
@@ -1342,18 +1342,17 @@ export default function BlueBookPage() {
                       const selectedPlan =
                         effectivePlanId && planOptions.length
                           ? planOptions.find((plan) => plan.id === effectivePlanId) ??
-                            modelPlans.find((plan) => plan.id === effectivePlanId) ??
-                            null
+                          modelPlans.find((plan) => plan.id === effectivePlanId) ??
+                          null
                           : null;
-                      const planName = selectedPlan?.name ?? lot.modelPlanName ?? '—';
-                      const planCode = selectedPlan?.code ?? lot.modelPlanCode ?? '—';
-                      const planSqft = selectedPlan?.sqft ?? lot.modelPlanSqft ?? '—';
+                      const planName = selectedPlan?.name ?? lot.modelPlanName ?? '\u2014';
+                      const planCode = selectedPlan?.code ?? lot.modelPlanCode ?? '\u2014';
+                      const planSqft = selectedPlan?.sqft ?? lot.modelPlanSqft ?? '\u2014';
                       const isSavingPlan = Boolean(savingPlanSelections[lot.key]);
                       const planError = planErrors[lot.key];
                       const phaseStatusText = lot.phases.length
-                        ? `${lot.phases.filter((phase) => phase.isComplete).length}/${
-                            lot.phases.length
-                          } phase${lot.phases.length === 1 ? '' : 's'} logged`
+                        ? `${lot.phases.filter((phase) => phase.isComplete).length}/${lot.phases.length
+                        } phase${lot.phases.length === 1 ? '' : 's'} logged`
                         : 'No phases mapped yet';
 
                       return (
@@ -1367,12 +1366,12 @@ export default function BlueBookPage() {
                                 Lot {lot.lotLabel}
                               </p>
                               <p className="text-xs text-gray-500 dark:text-gray-400">
-                                {`First activity: ${earliestDateLabel} · ${phaseStatusText}`}
+                                {`Next activity: ${nextActivityLabel} \u00B7 ${phaseStatusText}`}
                               </p>
                             </div>
                             <div className="flex items-center gap-4 text-xs text-gray-500 dark:text-gray-300">
                               <span>{formatNumberAmount(lotTotalAmount)}</span>
-                              <span>{lotOpen ? '▲' : '▼'}</span>
+                              <span>{lotOpen ? '\u25B2' : '\u25BC'}</span>
                             </div>
                           </button>
                           {lotOpen && (
@@ -1385,7 +1384,7 @@ export default function BlueBookPage() {
                                     </div>
                                     {isSavingPlan && (
                                       <span className="text-xs text-blue-600 dark:text-blue-300">
-                                        Saving…
+                                        Saving...
                                       </span>
                                     )}
                                   </div>
@@ -1426,10 +1425,10 @@ export default function BlueBookPage() {
                                       {planName}
                                     </p>
                                     <p className="text-xs text-gray-500 dark:text-gray-400">
-                                      Code: {planCode || '—'}
+                                      Code: {planCode || '\u2014'}
                                     </p>
                                     <p className="text-xs text-gray-500 dark:text-gray-400">
-                                      Sq Ft: {planSqft || '—'}
+                                      Sq Ft: {planSqft || '\u2014'}
                                     </p>
                                   </div>
                                 </div>
@@ -1447,9 +1446,8 @@ export default function BlueBookPage() {
                                       lot.phases.map((phase) => {
                                         const helperText =
                                           phase.overrideStatus !== undefined
-                                            ? `Manually marked as ${
-                                                phase.isComplete ? 'logged' : 'pending'
-                                              }`
+                                            ? `Manually marked as ${phase.isComplete ? 'logged' : 'pending'
+                                            }`
                                             : phase.baseComplete
                                               ? 'Logged from ingested data'
                                               : 'Pending';
@@ -1501,9 +1499,8 @@ export default function BlueBookPage() {
                                                       .join(', ');
                                                     const serviceHelperText =
                                                       service.overrideStatus !== undefined
-                                                        ? `Manually marked as ${
-                                                            service.isLogged ? 'logged' : 'pending'
-                                                          }`
+                                                        ? `Manually marked as ${service.isLogged ? 'logged' : 'pending'
+                                                        }`
                                                         : service.baseLogged
                                                           ? 'Logged from ingested data'
                                                           : 'Pending';
@@ -1568,87 +1565,100 @@ export default function BlueBookPage() {
                                     )}
                                   </div>
                                 </div>
-                              </div>
-
-                              <div className="rounded-lg border border-gray-200 dark:border-slate-700">
-                                <div className="flex items-center justify-between border-b border-gray-200 px-4 py-2 text-xs font-semibold uppercase tracking-wide text-gray-500 dark:border-slate-700 dark:text-gray-400">
-                                  <span>Invoices &amp; Checks</span>
-                                  <span>{lot.entries.length} item{lot.entries.length === 1 ? '' : 's'}</span>
-                                </div>
-                                <div className="overflow-x-auto">
-                                  <table className="min-w-full divide-y divide-gray-200 text-sm dark:divide-slate-700">
-                                    <thead className="bg-gray-50 text-left text-xs font-semibold uppercase tracking-wide text-gray-500 dark:bg-slate-900 dark:text-gray-400">
-                                      <tr>
-                                        <th className="px-4 py-2">Check #</th>
-                                        <th className="px-4 py-2">Check Date</th>
-                                        <th className="px-4 py-2">Category</th>
-                                        <th className="px-4 py-2">Invoice</th>
-                                        <th className="px-4 py-2">Amount</th>
-                                        <th className="px-4 py-2">Status</th>
-                                        <th className="px-4 py-2 text-right">Actions</th>
-                                      </tr>
-                                    </thead>
-                                    <tbody className="divide-y divide-gray-200 dark:divide-slate-700">
-                                      {lot.entries.map((entry) => (
-                                        <tr key={entry.id} className="bg-white dark:bg-slate-900">
-                                          <td className="px-4 py-3 text-gray-900 dark:text-white">
-                                            {entry.checkNumber || '—'}
-                                          </td>
-                                          <td className="px-4 py-3 text-gray-900 dark:text-white">
-                                            {entry.checkDate
-                                              ? new Date(entry.checkDate).toLocaleDateString()
-                                              : '—'}
-                                          </td>
-                                          <td className="px-4 py-3 text-gray-900 dark:text-white">
-                                            {entry.accountCategoryCode
-                                              ? `${entry.accountCategoryCode} – ${entry.accountCategoryName || ''}`.trim()
-                                              : entry.serviceName || '—'}
-                                          </td>
-                                          <td className="px-4 py-3 text-gray-900 dark:text-white">
-                                            {entry.invoiceNumber || '—'}
-                                          </td>
-                                          <td className="px-4 py-3 text-gray-900 dark:text-white">
-                                            {formatAmount(entry.amount)}
-                                          </td>
-                                          <td className="px-4 py-3">
-                                            <div className="flex items-center gap-2">
-                                              <span
-                                                className={`inline-flex rounded-full px-2 py-1 text-xs font-semibold ${
-                                                  entry.status === 'COMPLETE'
+                                <div className="mt-6 rounded-lg border border-gray-200 dark:border-slate-700 col-span-full">
+                                  <div className="flex items-center justify-between border-b border-gray-200 px-4 py-2 text-xs font-semibold uppercase tracking-wide text-gray-500 dark:border-slate-700 dark:text-gray-400">
+                                    <span>Invoices &amp; Checks</span>
+                                    <span>{lot.entries.length} item{lot.entries.length === 1 ? '' : 's'}</span>
+                                  </div>
+                                  <div className="overflow-x-auto">
+                                    <table className="min-w-full divide-y divide-gray-200 text-sm dark:divide-slate-700">
+                                      <thead className="bg-gray-50 text-left text-xs font-semibold uppercase tracking-wide text-gray-500 dark:bg-slate-900 dark:text-gray-400">
+                                        <tr>
+                                          <th className="px-4 py-2">Check #</th>
+                                          <th className="px-4 py-2">Check Date</th>
+                                          <th className="px-4 py-2">Category</th>
+                                          <th className="px-4 py-2">Crew</th>
+                                          <th className="px-4 py-2">Invoice</th>
+                                          <th className="px-4 py-2">Amount</th>
+                                          <th className="px-4 py-2">Status</th>
+                                          <th className="px-4 py-2 text-right">Actions</th>
+                                        </tr>
+                                      </thead>
+                                      <tbody className="divide-y divide-gray-200 dark:divide-slate-700">
+                                        {lot.entries.map((entry) => (
+                                          <tr key={entry.id} className="bg-white dark:bg-slate-900">
+                                            <td className="px-4 py-3 text-gray-900 dark:text-white">
+                                              {entry.checkNumber || '\u2014'}
+                                            </td>
+                                            <td className="px-4 py-3 text-gray-900 dark:text-white">
+                                              {entry.checkDate
+                                                ? new Date(entry.checkDate).toLocaleDateString()
+                                                : '\u2014'}
+                                            </td>
+                                            <td className="px-4 py-3 text-gray-900 dark:text-white">
+                                              {entry.accountCategoryCode
+                                                ? `${entry.accountCategoryCode} \u2013 ${entry.accountCategoryName || ''}`.trim()
+                                                : entry.serviceName || '\u2014'}
+                                            </td>
+                                            <td className="px-4 py-3 text-gray-900 dark:text-white">
+                                              {entry.assignedForemanName || '\u2014'}
+                                              {entry.crewName ? ` / ${entry.crewName}` : ''}
+                                            </td>
+                                            <td className="px-4 py-3 text-gray-900 dark:text-white">
+                                              {entry.invoiceNumber || '\u2014'}
+                                            </td>
+                                            <td className="px-4 py-3 text-gray-900 dark:text-white">
+                                              {formatAmount(entry.amount)}
+                                            </td>
+                                            <td className="px-4 py-3">
+                                              <div className="flex items-center gap-2">
+                                                <span
+                                                  className={`inline-flex rounded-full px-2 py-1 text-xs font-semibold ${entry.status === 'COMPLETE'
                                                     ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
                                                     : 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200'
-                                                }`}
-                                              >
-                                                {entry.status}
-                                              </span>
-                                              {entry.source === 'manual' && (
-                                                <span className="inline-flex items-center gap-1 rounded-full bg-purple-100 px-2 py-1 text-xs font-semibold text-purple-800 dark:bg-purple-900 dark:text-purple-200">
-                                                  ✏️ Manual
+                                                    }`}
+                                                >
+                                                  {entry.status}
                                                 </span>
-                                              )}
-                                            </div>
-                                          </td>
-                                          <td className="px-4 py-3 text-right">
-                                            <button
-                                              className="text-sm font-semibold text-blue-600 hover:text-blue-700 dark:text-blue-400"
-                                              onClick={() => setEditingEntry(entry)}
-                                            >
-                                              Edit
-                                            </button>
-                                          </td>
-                                        </tr>
-                                      ))}
-                                    </tbody>
-                                  </table>
+                                                {entry.source === 'manual' && (
+                                                  <span className="inline-flex items-center gap-1 rounded-full bg-purple-100 px-2 py-1 text-xs font-semibold text-purple-800 dark:bg-purple-900 dark:text-purple-200">
+                                                    Manual
+                                                  </span>
+                                                )}
+                                              </div>
+                                            </td>
+                                            <td className="px-4 py-3 text-right">
+                                              <button
+                                                className="text-sm font-semibold text-blue-600 hover:text-blue-700 dark:text-blue-400"
+                                                onClick={() => setEditingEntry(entry)}
+                                              >
+                                                Edit
+                                              </button>
+                                              {/* Delete button - available to all authorized users */}
+                                              <button
+                                                className="ml-3 text-red-500 hover:text-red-700 transition-transform hover:scale-110"
+                                                onClick={(e) => handleDelete(entry.id, e)}
+                                                title="Delete Entry"
+                                              >
+                                                X
+                                              </button>
+                                            </td>
+                                          </tr>
+                                        ))}
+                                      </tbody>
+                                    </table>
+                                  </div>
                                 </div>
                               </div>
                             </div>
-                          )}
+                          )
+                          }
                         </div>
                       );
                     })}
                   </div>
-                )}
+                )
+                }
               </div>
             );
           })}
@@ -1656,7 +1666,7 @@ export default function BlueBookPage() {
 
         <div className="mt-6 flex items-center justify-between rounded-lg border border-gray-200 bg-white p-4 text-sm shadow-sm dark:border-slate-700 dark:bg-slate-800 dark:text-gray-200">
           <span>
-            Page {page} of {totalPages} · {total} total entries
+            Page {page} of {totalPages} \u00B7 {total} total entries
           </span>
           <div className="flex gap-2">
             <button
@@ -1675,319 +1685,323 @@ export default function BlueBookPage() {
             </button>
           </div>
         </div>
-      </main>
+      </main >
 
-      {editingEntry && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4 py-10">
-          <div className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-2xl dark:bg-slate-900">
-            <div className="mb-4 flex items-center justify-between">
-              <div>
-                <div className="flex items-center gap-2">
-                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Edit Entry</h3>
-                  {editingEntry.source === 'manual' && (
-                    <span className="inline-flex items-center gap-1 rounded-full bg-purple-100 px-2 py-1 text-xs font-semibold text-purple-800 dark:bg-purple-900 dark:text-purple-200">
-                      ✏️ Manual Entry
-                    </span>
-                  )}
+      {/* Edit Entry Modal */}
+      {
+        editingEntry && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4 py-10">
+            <div className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-2xl dark:bg-slate-900">
+              <div className="mb-4 flex items-center justify-between">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Edit Entry</h3>
+                    {editingEntry.source === 'manual' && (
+                      <span className="inline-flex items-center gap-1 rounded-full bg-purple-100 px-2 py-1 text-xs font-semibold text-purple-800 dark:bg-purple-900 dark:text-purple-200">
+                        Manual Entry
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">
+                    Check {editingEntry.checkNumber || 'N/A'} \u00B7 Invoice {editingEntry.invoiceNumber || 'N/A'}
+                  </p>
                 </div>
-                <p className="text-sm text-gray-500 dark:text-gray-400">
-                  Check {editingEntry.checkNumber || 'N/A'} · Invoice {editingEntry.invoiceNumber || 'N/A'}
-                </p>
+                <button
+                  onClick={() => setEditingEntry(null)}
+                  className="text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400"
+                >
+                  Close
+                </button>
               </div>
-              <button
-                onClick={() => setEditingEntry(null)}
-                className="text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400"
-              >
-                Close
-              </button>
-            </div>
-            <form className="space-y-4 text-sm" onSubmit={handleSave}>
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                <label className="flex flex-col gap-1">
-                  <span className="text-gray-600 dark:text-gray-300">Lot</span>
-                  <input
-                    className="rounded-lg border border-gray-300 px-3 py-2 dark:bg-slate-800 dark:text-white"
-                    value={formState.lot}
-                    onChange={(e) => setFormState((prev) => ({ ...prev, lot: e.target.value }))}
-                  />
-                </label>
-                <label className="flex flex-col gap-1">
-                  <span className="text-gray-600 dark:text-gray-300">Start Date</span>
-                  <input
-                    type="date"
-                    className="rounded-lg border border-gray-300 px-3 py-2 dark:bg-slate-800 dark:text-white"
-                    value={formState.startDate}
-                    onChange={(e) => setFormState((prev) => ({ ...prev, startDate: e.target.value }))}
-                  />
-                </label>
-                <label className="flex flex-col gap-1">
-                  <span className="text-gray-600 dark:text-gray-300">Status</span>
-                  <select
-                    className="rounded-lg border border-gray-300 px-3 py-2 dark:bg-slate-800 dark:text-white"
-                    value={formState.status}
-                    onChange={(e) => setFormState((prev) => ({ ...prev, status: e.target.value }))}
-                  >
-                    <option value="PENDING">Pending</option>
-                    <option value="COMPLETE">Complete</option>
-                  </select>
-                </label>
-                <label className="flex flex-col gap-1">
-                  <span className="text-gray-600 dark:text-gray-300">Amount</span>
-                  <input
-                    type="number"
-                    step="0.01"
-                    className="rounded-lg border border-gray-300 px-3 py-2 dark:bg-slate-800 dark:text-white"
-                    value={formState.amount}
-                    onChange={(e) => setFormState((prev) => ({ ...prev, amount: e.target.value }))}
-                  />
-                </label>
-                <label className="flex flex-col gap-1">
-                  <span className="text-gray-600 dark:text-gray-300">Invoice #</span>
-                  <input
-                    className="rounded-lg border border-gray-300 px-3 py-2 dark:bg-slate-800 dark:text-white"
-                    value={formState.invoiceNumber}
-                    onChange={(e) => setFormState((prev) => ({ ...prev, invoiceNumber: e.target.value }))}
-                  />
-                </label>
-                <label className="flex flex-col gap-1">
-                  <span className="text-gray-600 dark:text-gray-300">Check #</span>
-                  <input
-                    className="rounded-lg border border-gray-300 px-3 py-2 dark:bg-slate-800 dark:text-white"
-                    value={formState.checkNumber}
-                    onChange={(e) => setFormState((prev) => ({ ...prev, checkNumber: e.target.value }))}
-                  />
-                </label>
-                <label className="flex flex-col gap-1">
-                  <span className="text-gray-600 dark:text-gray-300">Check Date</span>
-                  <input
-                    type="date"
-                    className="rounded-lg border border-gray-300 px-3 py-2 dark:bg-slate-800 dark:text-white"
-                    value={formState.checkDate}
-                    onChange={(e) => setFormState((prev) => ({ ...prev, checkDate: e.target.value }))}
-                  />
-                </label>
-                <label className="flex flex-col gap-1">
-                  <span className="text-gray-600 dark:text-gray-300">Account Category</span>
-                  <input
-                    className="rounded-lg border border-gray-300 px-3 py-2 dark:bg-slate-800 dark:text-white"
-                    value={formState.accountCategoryName}
-                    onChange={(e) =>
-                      setFormState((prev) => ({ ...prev, accountCategoryName: e.target.value }))
-                    }
-                  />
-                </label>
-                <label className="flex flex-col gap-1">
-                  <span className="text-gray-600 dark:text-gray-300">Category Code</span>
-                  <input
-                    className="rounded-lg border border-gray-300 px-3 py-2 dark:bg-slate-800 dark:text-white"
-                    value={formState.accountCategoryCode}
-                    onChange={(e) =>
-                      setFormState((prev) => ({ ...prev, accountCategoryCode: e.target.value }))
-                    }
-                  />
-                </label>
-              </div>
-              {formError && <p className="text-sm text-red-600">{formError}</p>}
-              <div className="flex justify-between gap-3">
-                {editingEntry?.source === 'manual' && (
+              <form className="space-y-4 text-sm" onSubmit={handleSave}>
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                  <label className="flex flex-col gap-1">
+                    <span className="text-gray-600 dark:text-gray-300">Lot</span>
+                    <input
+                      className="rounded-lg border border-gray-300 px-3 py-2 dark:bg-slate-800 dark:text-white"
+                      value={formState.lot}
+                      onChange={(e) => setFormState((prev) => ({ ...prev, lot: e.target.value }))}
+                    />
+                  </label>
+                  <label className="flex flex-col gap-1">
+                    <span className="text-gray-600 dark:text-gray-300">Start Date</span>
+                    <input
+                      type="date"
+                      className="rounded-lg border border-gray-300 px-3 py-2 dark:bg-slate-800 dark:text-white"
+                      value={formState.startDate}
+                      onChange={(e) => setFormState((prev) => ({ ...prev, startDate: e.target.value }))}
+                    />
+                  </label>
+                  <label className="flex flex-col gap-1">
+                    <span className="text-gray-600 dark:text-gray-300">Status</span>
+                    <select
+                      className="rounded-lg border border-gray-300 px-3 py-2 dark:bg-slate-800 dark:text-white"
+                      value={formState.status}
+                      onChange={(e) => setFormState((prev) => ({ ...prev, status: e.target.value }))}
+                    >
+                      <option value="PENDING">Pending</option>
+                      <option value="COMPLETE">Complete</option>
+                    </select>
+                  </label>
+                  <label className="flex flex-col gap-1">
+                    <span className="text-gray-600 dark:text-gray-300">Amount</span>
+                    <input
+                      type="number"
+                      step="0.01"
+                      className="rounded-lg border border-gray-300 px-3 py-2 dark:bg-slate-800 dark:text-white"
+                      value={formState.amount}
+                      onChange={(e) => setFormState((prev) => ({ ...prev, amount: e.target.value }))}
+                    />
+                  </label>
+                  <label className="flex flex-col gap-1">
+                    <span className="text-gray-600 dark:text-gray-300">Invoice #</span>
+                    <input
+                      className="rounded-lg border border-gray-300 px-3 py-2 dark:bg-slate-800 dark:text-white"
+                      value={formState.invoiceNumber}
+                      onChange={(e) => setFormState((prev) => ({ ...prev, invoiceNumber: e.target.value }))}
+                    />
+                  </label>
+                  <label className="flex flex-col gap-1">
+                    <span className="text-gray-600 dark:text-gray-300">Check #</span>
+                    <input
+                      className="rounded-lg border border-gray-300 px-3 py-2 dark:bg-slate-800 dark:text-white"
+                      value={formState.checkNumber}
+                      onChange={(e) => setFormState((prev) => ({ ...prev, checkNumber: e.target.value }))}
+                    />
+                  </label>
+                  <label className="flex flex-col gap-1">
+                    <span className="text-gray-600 dark:text-gray-300">Check Date</span>
+                    <input
+                      type="date"
+                      className="rounded-lg border border-gray-300 px-3 py-2 dark:bg-slate-800 dark:text-white"
+                      value={formState.checkDate}
+                      onChange={(e) => setFormState((prev) => ({ ...prev, checkDate: e.target.value }))}
+                    />
+                  </label>
+                  <label className="flex flex-col gap-1">
+                    <span className="text-gray-600 dark:text-gray-300">Account Category</span>
+                    <input
+                      className="rounded-lg border border-gray-300 px-3 py-2 dark:bg-slate-800 dark:text-white"
+                      value={formState.accountCategoryName}
+                      onChange={(e) =>
+                        setFormState((prev) => ({ ...prev, accountCategoryName: e.target.value }))
+                      }
+                    />
+                  </label>
+                  <label className="flex flex-col gap-1">
+                    <span className="text-gray-600 dark:text-gray-300">Category Code</span>
+                    <input
+                      className="rounded-lg border border-gray-300 px-3 py-2 dark:bg-slate-800 dark:text-white"
+                      value={formState.accountCategoryCode}
+                      onChange={(e) =>
+                        setFormState((prev) => ({ ...prev, accountCategoryCode: e.target.value }))
+                      }
+                    />
+                  </label>
+                </div>
+                {formError && <p className="text-sm text-red-600">{formError}</p>}
+                <div className="flex justify-between gap-3">
+                  {/* Delete button - available to all authorized users */}
                   <button
                     type="button"
                     className="rounded-lg border border-red-300 bg-red-50 px-4 py-2 text-sm font-semibold text-red-600 hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-50"
-                    onClick={handleDelete}
+                    onClick={() => handleDelete()}
                     disabled={saving}
                   >
-                    {saving ? 'Deleting…' : 'Delete Entry'}
+                    {saving ? 'Deleting...' : 'Delete Entry'}
                   </button>
-                )}
-                <div className="flex gap-3 ml-auto">
+                  <div className="flex gap-3 ml-auto">
+                    <button
+                      type="button"
+                      className="rounded-lg border border-gray-300 px-4 py-2 text-sm dark:border-slate-600"
+                      onClick={() => setEditingEntry(null)}
+                      disabled={saving}
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+                      disabled={saving}
+                    >
+                      {saving ? 'Saving...' : 'Save Changes'}
+                    </button>
+                  </div>
+                </div>
+              </form>
+            </div>
+          </div>
+        )
+      }
+
+      {
+        isCreatingManual && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4 py-10">
+            <div className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-2xl dark:bg-slate-900 max-h-[90vh] overflow-y-auto">
+              <div className="mb-4 flex items-center justify-between">
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Create Manual Entry</h3>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">
+                    Add a new Blue Book entry manually
+                  </p>
+                </div>
+                <button
+                  onClick={() => setIsCreatingManual(false)}
+                  className="text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400"
+                >
+                  Close
+                </button>
+              </div>
+              <form className="space-y-4 text-sm" onSubmit={handleCreateManual}>
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                  <label className="flex flex-col gap-1 md:col-span-2">
+                    <span className="text-gray-600 dark:text-gray-300">Builder *</span>
+                    <select
+                      required
+                      className="rounded-lg border border-gray-300 px-3 py-2 dark:bg-slate-800 dark:text-white"
+                      value={formState.builderId}
+                      onChange={(e) => setFormState((prev) => ({ ...prev, builderId: e.target.value, communityId: '' }))}
+                    >
+                      <option value="">Select Builder</option>
+                      {availableBuilders.map((b) => (
+                        <option key={b.id} value={b.id}>{b.name}</option>
+                      ))}
+                    </select>
+                  </label>
+                  <label className="flex flex-col gap-1 md:col-span-2">
+                    <span className="text-gray-600 dark:text-gray-300">Community *</span>
+                    <select
+                      required
+                      className="rounded-lg border border-gray-300 px-3 py-2 dark:bg-slate-800 dark:text-white"
+                      value={formState.communityId}
+                      onChange={(e) => setFormState((prev) => ({ ...prev, communityId: e.target.value }))}
+                    >
+                      <option value="">Select Community</option>
+                      {communities.filter(c => !formState.builderId || c.builderId === formState.builderId).map((c) => (
+                        <option key={c.id} value={c.id}>{c.name}</option>
+                      ))}
+                    </select>
+                  </label>
+                  <label className="flex flex-col gap-1 md:col-span-2">
+                    <span className="text-gray-600 dark:text-gray-300">Service (Optional)</span>
+                    <select
+                      className="rounded-lg border border-gray-300 px-3 py-2 dark:bg-slate-800 dark:text-white"
+                      value={formState.serviceId}
+                      onChange={(e) => setFormState((prev) => ({ ...prev, serviceId: e.target.value }))}
+                    >
+                      <option value="">Select Service</option>
+                      {services.map((s) => (
+                        <option key={s.id} value={s.id}>{s.name} {s.code ? `(${s.code})` : ''}</option>
+                      ))}
+                    </select>
+                  </label>
+                  <label className="flex flex-col gap-1">
+                    <span className="text-gray-600 dark:text-gray-300">Lot</span>
+                    <input
+                      className="rounded-lg border border-gray-300 px-3 py-2 dark:bg-slate-800 dark:text-white"
+                      value={formState.lot}
+                      onChange={(e) => setFormState((prev) => ({ ...prev, lot: e.target.value }))}
+                    />
+                  </label>
+                  <label className="flex flex-col gap-1">
+                    <span className="text-gray-600 dark:text-gray-300">Start Date</span>
+                    <input
+                      type="date"
+                      className="rounded-lg border border-gray-300 px-3 py-2 dark:bg-slate-800 dark:text-white"
+                      value={formState.startDate}
+                      onChange={(e) => setFormState((prev) => ({ ...prev, startDate: e.target.value }))}
+                    />
+                  </label>
+                  <label className="flex flex-col gap-1">
+                    <span className="text-gray-600 dark:text-gray-300">Status</span>
+                    <select
+                      className="rounded-lg border border-gray-300 px-3 py-2 dark:bg-slate-800 dark:text-white"
+                      value={formState.status}
+                      onChange={(e) => setFormState((prev) => ({ ...prev, status: e.target.value }))}
+                    >
+                      <option value="PENDING">Pending</option>
+                      <option value="COMPLETE">Complete</option>
+                    </select>
+                  </label>
+                  <label className="flex flex-col gap-1">
+                    <span className="text-gray-600 dark:text-gray-300">Amount</span>
+                    <input
+                      type="number"
+                      step="0.01"
+                      className="rounded-lg border border-gray-300 px-3 py-2 dark:bg-slate-800 dark:text-white"
+                      value={formState.amount}
+                      onChange={(e) => setFormState((prev) => ({ ...prev, amount: e.target.value }))}
+                    />
+                  </label>
+                  <label className="flex flex-col gap-1">
+                    <span className="text-gray-600 dark:text-gray-300">Invoice #</span>
+                    <input
+                      className="rounded-lg border border-gray-300 px-3 py-2 dark:bg-slate-800 dark:text-white"
+                      value={formState.invoiceNumber}
+                      onChange={(e) => setFormState((prev) => ({ ...prev, invoiceNumber: e.target.value }))}
+                    />
+                  </label>
+                  <label className="flex flex-col gap-1">
+                    <span className="text-gray-600 dark:text-gray-300">Check #</span>
+                    <input
+                      className="rounded-lg border border-gray-300 px-3 py-2 dark:bg-slate-800 dark:text-white"
+                      value={formState.checkNumber}
+                      onChange={(e) => setFormState((prev) => ({ ...prev, checkNumber: e.target.value }))}
+                    />
+                  </label>
+                  <label className="flex flex-col gap-1">
+                    <span className="text-gray-600 dark:text-gray-300">Check Date</span>
+                    <input
+                      type="date"
+                      className="rounded-lg border border-gray-300 px-3 py-2 dark:bg-slate-800 dark:text-white"
+                      value={formState.checkDate}
+                      onChange={(e) => setFormState((prev) => ({ ...prev, checkDate: e.target.value }))}
+                    />
+                  </label>
+                  <label className="flex flex-col gap-1">
+                    <span className="text-gray-600 dark:text-gray-300">Account Category</span>
+                    <input
+                      className="rounded-lg border border-gray-300 px-3 py-2 dark:bg-slate-800 dark:text-white"
+                      value={formState.accountCategoryName}
+                      onChange={(e) =>
+                        setFormState((prev) => ({ ...prev, accountCategoryName: e.target.value }))
+                      }
+                    />
+                  </label>
+                  <label className="flex flex-col gap-1">
+                    <span className="text-gray-600 dark:text-gray-300">Category Code</span>
+                    <input
+                      className="rounded-lg border border-gray-300 px-3 py-2 dark:bg-slate-800 dark:text-white"
+                      value={formState.accountCategoryCode}
+                      onChange={(e) =>
+                        setFormState((prev) => ({ ...prev, accountCategoryCode: e.target.value }))
+                      }
+                    />
+                  </label>
+                </div>
+                {formError && <p className="text-sm text-red-600">{formError}</p>}
+                <div className="flex justify-end gap-3">
                   <button
                     type="button"
                     className="rounded-lg border border-gray-300 px-4 py-2 text-sm dark:border-slate-600"
-                    onClick={() => setEditingEntry(null)}
+                    onClick={() => setIsCreatingManual(false)}
                     disabled={saving}
                   >
                     Cancel
                   </button>
                   <button
                     type="submit"
-                    className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+                    className="rounded-lg bg-green-600 px-4 py-2 text-sm font-semibold text-white hover:bg-green-700 disabled:cursor-not-allowed disabled:opacity-50"
                     disabled={saving}
                   >
-                    {saving ? 'Saving…' : 'Save Changes'}
+                    {saving ? 'Creating...' : 'Create Entry'}
                   </button>
                 </div>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {isCreatingManual && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4 py-10">
-          <div className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-2xl dark:bg-slate-900 max-h-[90vh] overflow-y-auto">
-            <div className="mb-4 flex items-center justify-between">
-              <div>
-                <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Create Manual Entry</h3>
-                <p className="text-sm text-gray-500 dark:text-gray-400">
-                  Add a new Blue Book entry manually
-                </p>
-              </div>
-              <button
-                onClick={() => setIsCreatingManual(false)}
-                className="text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400"
-              >
-                Close
-              </button>
+              </form>
             </div>
-            <form className="space-y-4 text-sm" onSubmit={handleCreateManual}>
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                <label className="flex flex-col gap-1 md:col-span-2">
-                  <span className="text-gray-600 dark:text-gray-300">Builder *</span>
-                  <select
-                    required
-                    className="rounded-lg border border-gray-300 px-3 py-2 dark:bg-slate-800 dark:text-white"
-                    value={formState.builderId}
-                    onChange={(e) => setFormState((prev) => ({ ...prev, builderId: e.target.value, communityId: '' }))}
-                  >
-                    <option value="">Select Builder</option>
-                    {availableBuilders.map((b) => (
-                      <option key={b.id} value={b.id}>{b.name}</option>
-                    ))}
-                  </select>
-                </label>
-                <label className="flex flex-col gap-1 md:col-span-2">
-                  <span className="text-gray-600 dark:text-gray-300">Community *</span>
-                  <select
-                    required
-                    className="rounded-lg border border-gray-300 px-3 py-2 dark:bg-slate-800 dark:text-white"
-                    value={formState.communityId}
-                    onChange={(e) => setFormState((prev) => ({ ...prev, communityId: e.target.value }))}
-                  >
-                    <option value="">Select Community</option>
-                    {communities.filter(c => !formState.builderId || c.builderId === formState.builderId).map((c) => (
-                      <option key={c.id} value={c.id}>{c.name}</option>
-                    ))}
-                  </select>
-                </label>
-                <label className="flex flex-col gap-1 md:col-span-2">
-                  <span className="text-gray-600 dark:text-gray-300">Service (Optional)</span>
-                  <select
-                    className="rounded-lg border border-gray-300 px-3 py-2 dark:bg-slate-800 dark:text-white"
-                    value={formState.serviceId}
-                    onChange={(e) => setFormState((prev) => ({ ...prev, serviceId: e.target.value }))}
-                  >
-                    <option value="">Select Service</option>
-                    {services.map((s) => (
-                      <option key={s.id} value={s.id}>{s.name} {s.code ? `(${s.code})` : ''}</option>
-                    ))}
-                  </select>
-                </label>
-                <label className="flex flex-col gap-1">
-                  <span className="text-gray-600 dark:text-gray-300">Lot</span>
-                  <input
-                    className="rounded-lg border border-gray-300 px-3 py-2 dark:bg-slate-800 dark:text-white"
-                    value={formState.lot}
-                    onChange={(e) => setFormState((prev) => ({ ...prev, lot: e.target.value }))}
-                  />
-                </label>
-                <label className="flex flex-col gap-1">
-                  <span className="text-gray-600 dark:text-gray-300">Start Date</span>
-                  <input
-                    type="date"
-                    className="rounded-lg border border-gray-300 px-3 py-2 dark:bg-slate-800 dark:text-white"
-                    value={formState.startDate}
-                    onChange={(e) => setFormState((prev) => ({ ...prev, startDate: e.target.value }))}
-                  />
-                </label>
-                <label className="flex flex-col gap-1">
-                  <span className="text-gray-600 dark:text-gray-300">Status</span>
-                  <select
-                    className="rounded-lg border border-gray-300 px-3 py-2 dark:bg-slate-800 dark:text-white"
-                    value={formState.status}
-                    onChange={(e) => setFormState((prev) => ({ ...prev, status: e.target.value }))}
-                  >
-                    <option value="PENDING">Pending</option>
-                    <option value="COMPLETE">Complete</option>
-                  </select>
-                </label>
-                <label className="flex flex-col gap-1">
-                  <span className="text-gray-600 dark:text-gray-300">Amount</span>
-                  <input
-                    type="number"
-                    step="0.01"
-                    className="rounded-lg border border-gray-300 px-3 py-2 dark:bg-slate-800 dark:text-white"
-                    value={formState.amount}
-                    onChange={(e) => setFormState((prev) => ({ ...prev, amount: e.target.value }))}
-                  />
-                </label>
-                <label className="flex flex-col gap-1">
-                  <span className="text-gray-600 dark:text-gray-300">Invoice #</span>
-                  <input
-                    className="rounded-lg border border-gray-300 px-3 py-2 dark:bg-slate-800 dark:text-white"
-                    value={formState.invoiceNumber}
-                    onChange={(e) => setFormState((prev) => ({ ...prev, invoiceNumber: e.target.value }))}
-                  />
-                </label>
-                <label className="flex flex-col gap-1">
-                  <span className="text-gray-600 dark:text-gray-300">Check #</span>
-                  <input
-                    className="rounded-lg border border-gray-300 px-3 py-2 dark:bg-slate-800 dark:text-white"
-                    value={formState.checkNumber}
-                    onChange={(e) => setFormState((prev) => ({ ...prev, checkNumber: e.target.value }))}
-                  />
-                </label>
-                <label className="flex flex-col gap-1">
-                  <span className="text-gray-600 dark:text-gray-300">Check Date</span>
-                  <input
-                    type="date"
-                    className="rounded-lg border border-gray-300 px-3 py-2 dark:bg-slate-800 dark:text-white"
-                    value={formState.checkDate}
-                    onChange={(e) => setFormState((prev) => ({ ...prev, checkDate: e.target.value }))}
-                  />
-                </label>
-                <label className="flex flex-col gap-1">
-                  <span className="text-gray-600 dark:text-gray-300">Account Category</span>
-                  <input
-                    className="rounded-lg border border-gray-300 px-3 py-2 dark:bg-slate-800 dark:text-white"
-                    value={formState.accountCategoryName}
-                    onChange={(e) =>
-                      setFormState((prev) => ({ ...prev, accountCategoryName: e.target.value }))
-                    }
-                  />
-                </label>
-                <label className="flex flex-col gap-1">
-                  <span className="text-gray-600 dark:text-gray-300">Category Code</span>
-                  <input
-                    className="rounded-lg border border-gray-300 px-3 py-2 dark:bg-slate-800 dark:text-white"
-                    value={formState.accountCategoryCode}
-                    onChange={(e) =>
-                      setFormState((prev) => ({ ...prev, accountCategoryCode: e.target.value }))
-                    }
-                  />
-                </label>
-              </div>
-              {formError && <p className="text-sm text-red-600">{formError}</p>}
-              <div className="flex justify-end gap-3">
-                <button
-                  type="button"
-                  className="rounded-lg border border-gray-300 px-4 py-2 text-sm dark:border-slate-600"
-                  onClick={() => setIsCreatingManual(false)}
-                  disabled={saving}
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="rounded-lg bg-green-600 px-4 py-2 text-sm font-semibold text-white hover:bg-green-700 disabled:cursor-not-allowed disabled:opacity-50"
-                  disabled={saving}
-                >
-                  {saving ? 'Creating…' : 'Create Entry'}
-                </button>
-              </div>
-            </form>
           </div>
-        </div>
-      )}
+        )
+      }
     </>
   );
 }
