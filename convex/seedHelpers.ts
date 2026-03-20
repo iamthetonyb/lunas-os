@@ -76,6 +76,46 @@ export const createJobRequestService = mutation({
     },
 });
 
+export const upsertCrew = mutation({
+    args: {
+        name: v.string(),
+    },
+    handler: async (ctx, args) => {
+        // Check if crew already exists by name
+        const existing = await ctx.db.query("crews").collect();
+        const match = existing.find(c => c.name === args.name);
+        if (match) return { id: match._id, existed: true };
+        const id = await ctx.db.insert("crews", {
+            name: args.name,
+            createdAt: Date.now(),
+        });
+        return { id, existed: false };
+    },
+});
+
+export const linkCommunitiesToBuilder = mutation({
+    args: {
+        builderName: v.string(),
+    },
+    handler: async (ctx, args) => {
+        // Find the builder by name
+        const builders = await ctx.db.query("builders").collect();
+        const builder = builders.find(b => b.name === args.builderName);
+        if (!builder) return { updated: 0, error: `Builder "${args.builderName}" not found` };
+
+        // Find communities without a builderId and link them
+        const communities = await ctx.db.query("communities").collect();
+        let updated = 0;
+        for (const community of communities) {
+            if (!community.builderId) {
+                await ctx.db.patch(community._id, { builderId: builder._id });
+                updated++;
+            }
+        }
+        return { updated, builderId: builder._id };
+    },
+});
+
 export const createDispatchBatchRaw = mutation({
     args: {
         serviceDate: v.optional(v.string()),

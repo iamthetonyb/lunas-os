@@ -29,15 +29,7 @@ const FOREMEN_DIRECTORY: ForemanConfig[] = [
 ].sort((a, b) => a.name.localeCompare(b.name));
 const UNASSIGNED_FOREMAN = { id: 'unassigned', name: 'Unassigned' };
 
-// Full crew list for dispatch (sorted alphabetically)
-const CREW_MEMBERS = [
-  'Adriana', 'Alan', 'Alejandro', 'Alfonso', 'Anahi', 'Antonio M',
-  'Arnulfo', 'Bicho', 'Blanca', 'Carmen', 'Chayo', 'Conchita',
-  'Efren', 'Fernando', 'Francisco', 'Guillermo', 'Ignacio', 'Johnny',
-  'Jose V', 'Kimberley', 'Letty', 'Luis D', 'Lupe', 'Lupe P',
-  'Paco L', 'Paco M', 'Pancho', 'Ramon M', 'Raudel', 'Ricardo',
-  'Rogelio', 'Sergio C', 'Sergio E', 'Susana', 'Yadira'
-];
+// Crew members loaded from Convex (see useQuery below)
 
 // Helper: Get next business day (skip weekends)
 function getNextBusinessDay(fromDate: Date): Date {
@@ -175,7 +167,6 @@ export default function SchedulePage() {
     selectedDate: '',
   });
   const [rescheduledJobs, setRescheduledJobs] = useState<Map<string, string>>(new Map()); // jobId -> new date
-  const [selectedForemenMap, setSelectedForemenMap] = useState<Map<string, string>>(new Map()); // jobId -> foremanName
   const [confirmModal, setConfirmModal] = useState<{
     isOpen: boolean;
     title: string;
@@ -196,20 +187,8 @@ export default function SchedulePage() {
   const rescheduleJobMutation = useMutation(api.mutations.rescheduleJob);
   const completeJobMutation = useMutation(api.assignmentFunctions.complete);
 
-  // Handle inline foreman selection - persist to database
+  // Handle inline foreman selection - persist to database (Convex reactivity updates UI automatically)
   const handleForemanChange = async (jobId: string, foremanName: string) => {
-    // Update local state immediately for responsive UI
-    setSelectedForemenMap(prev => {
-      const newMap = new Map(prev);
-      if (foremanName === '') {
-        newMap.delete(jobId);
-      } else {
-        newMap.set(jobId, foremanName);
-      }
-      return newMap;
-    });
-
-    // Persist to database
     try {
       await assignForemanMutation({ jobId: jobId as any, foremanName: foremanName || undefined });
     } catch (error) {
@@ -237,22 +216,8 @@ export default function SchedulePage() {
 
   // Convex queries - reactive, no need for SWR polling or cache invalidation
   const upcomingJobs = useQuery(api.queries.getScheduleJobs, date ? { startDate: scheduleRange.start, endDate: scheduleRange.end } : 'skip') ?? [];
-
-  // Initialize foreman map from saved data when jobs load
-  useEffect(() => {
-    if (upcomingJobs && upcomingJobs.length > 0) {
-      const initialMap = new Map<string, string>();
-      upcomingJobs.forEach((job) => {
-        const jobId = job.id; // Use the same ID consistently
-        if (job.assignedForemanName) {
-          initialMap.set(jobId, job.assignedForemanName);
-        }
-      });
-      if (initialMap.size > 0) {
-        setSelectedForemenMap(initialMap);
-      }
-    }
-  }, [upcomingJobs]);
+  const crews = useQuery(api.queries.getCrews) ?? [];
+  const crewNames = useMemo(() => crews.map((c: any) => c.name).sort(), [crews]);
 
   const decoratedJobs = useMemo<DecoratedJob[]>(
     () =>
@@ -279,29 +244,22 @@ export default function SchedulePage() {
     if (isContractor && session?.user?.name) {
       const userName = session.user.name;
       const myConfig = FOREMEN_DIRECTORY.find(f => f.name.toLowerCase() === userName.toLowerCase()) || { id: 'me', name: userName };
-
-      // Find count for this contractor
-      const count = decoratedJobs.filter(job => {
-        const assigned = selectedForemenMap.get(job.id);
-        return assigned?.toLowerCase() === userName.toLowerCase();
-      }).length;
-
+      const count = decoratedJobs.filter(job =>
+        job.assignedForemanName?.toLowerCase() === userName.toLowerCase()
+      ).length;
       return [{ id: myConfig.id, name: myConfig.name, count }];
     }
 
-    // Count jobs that have been manually assigned vs unassigned
+    // Single source of truth: assignedForemanName from database
     const counts: Record<string, number> = {};
     decoratedJobs.forEach((job) => {
-      // Check both the selectedForemenMap AND the job's saved assignedForemanName
-      const assignedForeman = selectedForemenMap.get(job.id) || job.assignedForemanName;
+      const assignedForeman = job.assignedForemanName;
       if (assignedForeman) {
-        // Find the foreman id by name
         const foremanConfig = FOREMEN_DIRECTORY.find(f => f.name === assignedForeman);
         if (foremanConfig) {
           counts[foremanConfig.id] = (counts[foremanConfig.id] ?? 0) + 1;
         }
       } else {
-        // Job is truly unassigned (no foreman in map AND no saved assignedForemanName)
         counts[UNASSIGNED_FOREMAN.id] = (counts[UNASSIGNED_FOREMAN.id] ?? 0) + 1;
       }
     });
@@ -312,17 +270,16 @@ export default function SchedulePage() {
       count: counts[foreman.id] ?? 0,
     }));
 
-    // Always show Unassigned tab (for non-contractors)
     if (!isContractor) {
       orderedTabs.push({
         id: UNASSIGNED_FOREMAN.id,
         name: UNASSIGNED_FOREMAN.name,
-        count: counts[UNASSIGNED_FOREMAN.id] ?? 0, // Only count truly unassigned jobs
+        count: counts[UNASSIGNED_FOREMAN.id] ?? 0,
       });
     }
 
     return orderedTabs;
-  }, [decoratedJobs, selectedForemenMap, isContractor, session?.user?.name]);
+  }, [decoratedJobs, isContractor, session?.user?.name]);
 
   const [activeForemanId, setActiveForemanId] = useState<string>('all');
 
@@ -347,49 +304,37 @@ export default function SchedulePage() {
   const visibleJobs = useMemo(() => {
     let jobs = decoratedJobs;
 
-    // Filter by selected foreman tab
+    // Filter by selected foreman tab — single source: assignedForemanName from DB
     if (activeForemanId !== 'all') {
       const selectedName = FOREMEN_DIRECTORY.find(f => f.id === activeForemanId)?.name;
-      // Strict check: Must match assigned name. Unassigned = neither assigned.
-      // NOTE: Using current 'selectedName' from directory to ensure correct ID mapping
       jobs = jobs.filter(job => {
-        const assigned = selectedForemenMap.get(job.id) || job.assignedForemanName;
         if (activeForemanId === 'unassigned') {
-          // Unassigned: no assigned foreman AND no foremanName
-          return !assigned && !job.foremanName;
+          return !job.assignedForemanName;
         }
-        return assigned === selectedName;
+        return job.assignedForemanName === selectedName;
       });
     }
 
     // For contractors, filter to only show jobs assigned to them
     if (isContractor && session?.user?.name) {
       const userName = session.user.name.toLowerCase();
-      jobs = jobs.filter(job => {
-        const assignedForeman = selectedForemenMap.get(job.id);
-        return assignedForeman?.toLowerCase() === userName;
-      });
+      jobs = jobs.filter(job =>
+        job.assignedForemanName?.toLowerCase() === userName
+      );
     }
 
-    // Sort by: 1) Foreman name (alphabetical), 2) walkTime ascending (earliest first)
+    // Sort by: 1) Foreman name, 2) walkTime ascending
     jobs = [...jobs].sort((a, b) => {
-      // Get assigned foreman names
-      const foremanA = (selectedForemenMap.get(a.id) || a.assignedForemanName || 'ZZZ Unassigned').toLowerCase();
-      const foremanB = (selectedForemenMap.get(b.id) || b.assignedForemanName || 'ZZZ Unassigned').toLowerCase();
-
-      // Primary sort: Foreman name (alphabetical)
-      if (foremanA !== foremanB) {
-        return foremanA.localeCompare(foremanB);
-      }
-
-      // Secondary sort: walkTime ascending (8:00 AM before 10:00 AM)
+      const foremanA = (a.assignedForemanName || 'ZZZ Unassigned').toLowerCase();
+      const foremanB = (b.assignedForemanName || 'ZZZ Unassigned').toLowerCase();
+      if (foremanA !== foremanB) return foremanA.localeCompare(foremanB);
       const timeA = a.walkTime || a.walk_time || '23:59';
       const timeB = b.walkTime || b.walk_time || '23:59';
       return timeA.localeCompare(timeB);
     });
 
     return jobs;
-  }, [activeForemanId, decoratedJobs, isContractor, session?.user?.name, selectedForemenMap]);
+  }, [activeForemanId, decoratedJobs, isContractor, session?.user?.name]);
 
   // Group jobs by community for display
   const jobsByCommunity = useMemo(() => {
@@ -425,8 +370,8 @@ export default function SchedulePage() {
       alert('Please select a crew member.');
       return;
     }
-    // Get foreman from the inline table selector
-    const foremanName = selectedForemenMap.get(dispatchModal.job.id) || 'Unassigned';
+    // Get foreman from database (reactive via Convex)
+    const foremanName = dispatchModal.job.assignedForemanName || 'Unassigned';
     try {
       await dispatchJobMutation({
         jobId: dispatchModal.job.id as any,
@@ -468,7 +413,6 @@ export default function SchedulePage() {
         jobId: rescheduleModal.job.id as any,
         newDate: rescheduleModal.selectedDate,
       });
-      setRescheduledJobs((prev) => new Map(prev).set(rescheduleModal.job!.id, rescheduleModal.selectedDate));
       closeRescheduleModal();
     } catch (error) {
       console.error('Failed to reschedule job', error);
@@ -643,7 +587,7 @@ export default function SchedulePage() {
                       job={job}
                       isContractor={isContractor}
                       rescheduledDate={rescheduledJobs.get(job.id)}
-                      selectedForemanName={selectedForemenMap.get(job.id)}
+                      selectedForemanName={job.assignedForemanName ?? undefined}
                       foremenDirectory={FOREMEN_DIRECTORY}
                       onForemanChange={handleForemanChange}
                       onDispatch={openDispatchModal}
@@ -703,7 +647,7 @@ export default function SchedulePage() {
                       <div className="p-2 bg-blue-50 dark:bg-blue-900/30 rounded-lg">
                         <p className="text-sm text-gray-900 dark:text-gray-100">
                           <strong>Assigned Foreman:</strong>{' '}
-                          {selectedForemenMap.get(dispatchModal.job.id) || 'Not selected - use table dropdown first'}
+                          {dispatchModal.job.assignedForemanName || 'Not selected - use table dropdown first'}
                         </p>
                       </div>
                     )}
@@ -718,7 +662,7 @@ export default function SchedulePage() {
                         className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-700 text-gray-900 dark:text-white"
                       >
                         <option value="">Choose crew member...</option>
-                        {CREW_MEMBERS.map((crew) => (
+                        {crewNames.map((crew: string) => (
                           <option key={crew} value={crew}>{crew}</option>
                         ))}
                       </select>

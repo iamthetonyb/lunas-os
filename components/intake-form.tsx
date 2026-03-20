@@ -193,7 +193,7 @@ export function IntakeForm() {
 
   const builderOptions = useMemo<SelectOption[]>(
     () =>
-      builders.filter((b: any) => b.active !== false).map((builder: any) => ({
+      builders.map((builder: any) => ({
         value: builder._id,
         label: builder.name,
       })),
@@ -209,8 +209,10 @@ export function IntakeForm() {
   }, [builders]);
 
   const communityOptions = useMemo(() => {
-    const list = communities.filter((c: any) => c.active !== false);
-    const filtered = builderId ? list.filter((c: any) => c.builderId === builderId) : list;
+    // Show communities matching selected builder, OR communities with no builder assigned
+    const filtered = builderId
+      ? communities.filter((c: any) => c.builderId === builderId || !c.builderId)
+      : communities;
     return filtered.map((community: any) => ({
       value: community._id,
       label: `${getFriendlyName(community.name)} (${builderMap.get(community.builderId ?? '') ?? 'Unknown'})`,
@@ -275,6 +277,17 @@ export function IntakeForm() {
       clearErrors('notes');
     }
   }, [extraWorkSelected, clearErrors]);
+
+  // Clear community when builder changes (community may not belong to new builder)
+  useEffect(() => {
+    if (builderId && communityId) {
+      const community = communityMap.get(communityId);
+      // If the selected community doesn't match the new builder, clear it
+      if (community?.builderId && community.builderId !== builderId) {
+        setValue('communityId', '', { shouldValidate: false });
+      }
+    }
+  }, [builderId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Auto-populate builder when community is selected
   useEffect(() => {

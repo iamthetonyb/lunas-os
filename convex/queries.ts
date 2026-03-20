@@ -264,24 +264,27 @@ export const getOrgs = query({
     },
 });
 
-// Get all builders
+// Get all active builders
 export const getBuilders = query({
     handler: async (ctx) => {
-        return await ctx.db.query("builders").collect();
+        const builders = await ctx.db.query("builders").collect();
+        return builders.filter((b) => b.active !== false);
     },
 });
 
-// Get all communities
+// Get all active communities
 export const getCommunities = query({
     handler: async (ctx) => {
-        return await ctx.db.query("communities").collect();
+        const communities = await ctx.db.query("communities").collect();
+        return communities.filter((c) => c.active !== false);
     },
 });
 
-// Get all services
+// Get all active services
 export const getServices = query({
     handler: async (ctx) => {
-        return await ctx.db.query("services").collect();
+        const services = await ctx.db.query("services").collect();
+        return services.filter((s) => s.active !== false);
     },
 });
 
