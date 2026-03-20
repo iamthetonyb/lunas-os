@@ -124,6 +124,30 @@ export const createJobRequest = mutation({
         })),
     },
     handler: async (ctx, args) => {
+        // Auto-detect extra work:
+        // 1. Explicit flag from intake form
+        // 2. Service name contains "extra"
+        // 3. Same community + lot already has a job (duplicate)
+        let isExtraWork = args.isExtraWork ?? false;
+        if (!isExtraWork) {
+            const hasExtraService = args.services.some(
+                (s) => s.serviceName.toLowerCase().includes("extra")
+            );
+            if (hasExtraService) isExtraWork = true;
+        }
+        if (!isExtraWork && args.communityId && args.lot) {
+            const existing = await ctx.db
+                .query("jobRequests")
+                .filter((q) =>
+                    q.and(
+                        q.eq(q.field("communityId"), args.communityId),
+                        q.eq(q.field("lot"), args.lot)
+                    )
+                )
+                .first();
+            if (existing) isExtraWork = true;
+        }
+
         // Create job request
         const jobRequestId = await ctx.db.insert("jobRequests", {
             builderId: args.builderId,
@@ -137,7 +161,7 @@ export const createJobRequest = mutation({
             requestedBy: args.requestedBy,
             contactPhone: args.contactPhone,
             contactEmail: args.contactEmail,
-            isExtraWork: args.isExtraWork,
+            isExtraWork: isExtraWork || undefined,
             createdAt: Date.now(),
         });
 

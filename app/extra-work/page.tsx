@@ -7,15 +7,19 @@ import { useSession } from 'next-auth/react';
 
 type JobRequest = {
   id: string;
-  dueDate: string;
-  builderName: string;
-  communityName: string;
-  lot: string;
-  address: string | null;
-  notes: string | null;
-  isExtraWork: boolean;
-  services: { id: string; name: string }[];
-  createdAt: string;
+  dueDate?: string;
+  builderName: string | null;
+  communityName: string | null;
+  lot?: string;
+  address?: string;
+  notes?: string;
+  amount?: string;
+  poNumber?: string;
+  status?: string;
+  isExtraWork?: boolean;
+  requestedBy?: string;
+  services: { id: string; name?: string; serviceName?: string }[];
+  createdAt: number;
 };
 
 export default function ExtraWorkPage() {
@@ -81,13 +85,13 @@ export default function ExtraWorkPage() {
               <tr><td colSpan={7} className="px-4 py-6 text-center text-gray-500">No extra work requests found.</td></tr>
             )}
             {jobs?.map((job) => {
-              const serviceKey = job.services.map(s => s.name).sort().join('|');
-              // Basic duplicate check (very naive but follows user request)
+              const svcName = (s: any) => s.serviceName || s.name || '';
+              const serviceKey = job.services.map(svcName).sort().join('|');
               const isDuplicate = jobs.some(other =>
                 other.id !== job.id &&
                 other.communityName === job.communityName &&
                 other.lot === job.lot &&
-                other.services.map(s => s.name).sort().join('|') === serviceKey
+                other.services.map(svcName).sort().join('|') === serviceKey
               );
 
               return (
@@ -131,7 +135,7 @@ export default function ExtraWorkPage() {
                     <div className="flex flex-wrap gap-1">
                       {job.services?.map(s => (
                         <span key={s.id} className="inline-flex rounded-full bg-blue-100 px-2 py-0.5 text-[10px] font-semibold text-blue-800">
-                          {s.name}
+                          {s.serviceName || s.name}
                         </span>
                       ))}
                     </div>
@@ -142,7 +146,7 @@ export default function ExtraWorkPage() {
                         <span className="text-[10px] text-gray-400">$</span>
                         <input
                           type="number"
-                          defaultValue={(job as any).amount || ''}
+                          defaultValue={job.amount || ''}
                           className="w-20 px-1 py-0.5 border rounded text-xs"
                           placeholder="Price"
                           onBlur={(e) => handleUpdate(job.id, 'amount', e.target.value)}
@@ -150,7 +154,7 @@ export default function ExtraWorkPage() {
                       </div>
                       <input
                         type="text"
-                        defaultValue={(job as any).poNumber || ''}
+                        defaultValue={job.poNumber || ''}
                         className="w-full px-1 py-0.5 border rounded text-[10px]"
                         placeholder="Invoice #"
                         onBlur={(e) => handleUpdate(job.id, 'poNumber', e.target.value)}
@@ -168,7 +172,7 @@ export default function ExtraWorkPage() {
                   </td>
                   <td className="px-4 py-3 text-gray-900">
                     <select
-                      defaultValue={(job as any).status || 'PENDING'}
+                      defaultValue={job.status || 'PENDING'}
                       className="w-28 px-1 py-1 border rounded text-xs"
                       onChange={(e) => handleUpdate(job.id, 'status', e.target.value)}
                     >

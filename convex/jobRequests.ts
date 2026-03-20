@@ -170,6 +170,9 @@ export const update = mutation({
         isExtraWork: v.optional(v.boolean()),
         notes: v.optional(v.string()),
         dueDate: v.optional(v.string()),
+        lot: v.optional(v.string()),
+        address: v.optional(v.string()),
+        poNumber: v.optional(v.string()),
     },
     handler: async (ctx, args) => {
         const { id, ...updates } = args;

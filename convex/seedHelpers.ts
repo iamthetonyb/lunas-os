@@ -116,6 +116,31 @@ export const linkCommunitiesToBuilder = mutation({
     },
 });
 
+export const retroFlagExtraWork = mutation({
+    handler: async (ctx) => {
+        const requests = await ctx.db.query("jobRequests").collect();
+        // Group by community+lot
+        const seen = new Map<string, boolean>();
+        let flagged = 0;
+        // Sort by createdAt ascending so first occurrence is the "original"
+        const sorted = [...requests].sort((a, b) => a.createdAt - b.createdAt);
+        for (const jr of sorted) {
+            if (!jr.communityId || !jr.lot) continue;
+            const key = `${jr.communityId}:${jr.lot}`;
+            if (seen.has(key)) {
+                // Duplicate — flag as extra work
+                if (!jr.isExtraWork) {
+                    await ctx.db.patch(jr._id, { isExtraWork: true });
+                    flagged++;
+                }
+            } else {
+                seen.set(key, true);
+            }
+        }
+        return { flagged };
+    },
+});
+
 export const createDispatchBatchRaw = mutation({
     args: {
         serviceDate: v.optional(v.string()),
