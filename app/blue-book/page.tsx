@@ -1,12 +1,12 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { useQuery } from 'convex/react';
 import { api } from '@/convex/_generated/api';
 import { useSession } from 'next-auth/react';
 import { toast } from 'sonner';
 import type { Id } from '@/convex/_generated/dataModel';
-import type { BlueBookEntry } from '@/types/blue-book';
+import type { BlueBookEntry, PhaseDefinition } from '@/types/blue-book';
 
 import { PageHeader } from '@/components/page-header';
 import { QueryWrapper } from '@/components/QueryWrapper';
@@ -23,6 +23,37 @@ import { usePhaseOverrides } from '@/hooks/usePhaseOverrides';
 import { useCommunityGroups } from '@/hooks/useCommunityGroups';
 
 const PAGE_SIZE = 500;
+
+// Default Pulte phases — used as fallback when DB has no phase configs yet
+const DEFAULT_PHASES: PhaseDefinition[] = [
+    {
+        _id: 'default-t3',
+        code: '22702',
+        title: '22702 – T3',
+        shorthand: 'T3',
+        serviceNames: ['Frame Sweep'],
+        sortOrder: 1,
+        active: true,
+    },
+    {
+        _id: 'default-t2',
+        code: '22712',
+        title: '22712 – T2',
+        shorthand: 'T2',
+        serviceNames: ['Tubs & Windows', 'Q/A', 'Power Wash'],
+        sortOrder: 2,
+        active: true,
+    },
+    {
+        _id: 'default-t1',
+        code: '22714',
+        title: '22714 – T1',
+        shorthand: 'T1',
+        serviceNames: ['Final Clean', 'Touch up Clean'],
+        sortOrder: 3,
+        active: true,
+    },
+];
 
 export default function BlueBookPage() {
     const { data: session } = useSession();
@@ -45,6 +76,15 @@ export default function BlueBookPage() {
     // ── Data queries ─────────────────────────────────────────────────
     const builders = useQuery(api.queries.getBuilders, {}) ?? [];
 
+    // Auto-select first builder on mount so entries show immediately
+    const [autoSelected, setAutoSelected] = useState(false);
+    useEffect(() => {
+        if (!autoSelected && builders.length > 0 && !filters.builderId) {
+            setBuilderId(builders[0]._id);
+            setAutoSelected(true);
+        }
+    }, [builders, filters.builderId, autoSelected, setBuilderId]);
+
     const blueBookResult = useQuery(api.blueBook.list, {
         builderId: filters.builderId
             ? (filters.builderId as Id<'builders'>)
@@ -57,12 +97,18 @@ export default function BlueBookPage() {
     });
 
     // Phase definitions for the active builder (or skip if "All Builders")
-    const phaseConfigs = useQuery(
+    const dbPhaseConfigs = useQuery(
         api.blueBookPhases.getByBuilder,
         filters.builderId
             ? { builderId: filters.builderId as Id<'builders'> }
             : 'skip'
     );
+
+    // Fall back to default Pulte phases when DB has no configs
+    const phaseConfigs: PhaseDefinition[] =
+        dbPhaseConfigs && dbPhaseConfigs.length > 0
+            ? (dbPhaseConfigs as unknown as PhaseDefinition[])
+            : DEFAULT_PHASES;
 
     // Phase overrides — need a representative communityId for the hook
     // We pass null when no builder selected; the hook handles "skip" internally
@@ -84,7 +130,7 @@ export default function BlueBookPage() {
 
     const communityGroups = useCommunityGroups(
         filteredEntries,
-        phaseConfigs ?? [],
+        phaseConfigs,
         overrides
     );
 

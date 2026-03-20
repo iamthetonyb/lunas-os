@@ -161,7 +161,7 @@ function LoginForm() {
 
               <button
                 type="button"
-                onClick={() => handleOAuthSignIn('azure-ad')}
+                onClick={() => handleOAuthSignIn('microsoft-entra-id')}
                 disabled={isLoading || oauthLoading !== null}
                 className="w-full inline-flex justify-center items-center px-4 py-2.5 border border-gray-300 rounded-lg shadow-sm bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
@@ -171,7 +171,7 @@ function LoginForm() {
                   <path fill="#7FBA00" d="M0 12.03h10.97V23H0z" />
                   <path fill="#FFB900" d="M12.03 12.03H23V23H12.03z" />
                 </svg>
-                {oauthLoading === 'azure-ad' ? 'Loading...' : 'Microsoft'}
+                {oauthLoading === 'microsoft-entra-id' ? 'Loading...' : 'Microsoft'}
               </button>
             </div>
           </div>

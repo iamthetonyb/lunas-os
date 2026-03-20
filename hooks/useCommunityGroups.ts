@@ -19,7 +19,7 @@ export function useCommunityGroups(
     overrideMap: Map<string, PhaseOverrideState>
 ): CommunityGroup[] {
     return useMemo(() => {
-        if (!entries.length || !phases.length) return [];
+        if (!entries.length) return [];
 
         // Group entries by community
         const byCommunity = new Map<string, BlueBookEntry[]>();
@@ -43,8 +43,19 @@ export function useCommunityGroups(
             const lots: LotSummary[] = [];
 
             for (const [lot, lotEntries] of byLot) {
+                // If no phases defined, create a single "all entries" phase
+                const effectivePhases: PhaseDefinition[] = phases.length > 0 ? phases : [{
+                    _id: 'all',
+                    code: 'ALL',
+                    title: 'All Services',
+                    shorthand: 'ALL',
+                    serviceNames: [...new Set(lotEntries.map(e => e.serviceName ?? e.accountCategoryName ?? '').filter(Boolean))],
+                    sortOrder: 0,
+                    active: true,
+                } as PhaseDefinition];
+
                 // Build phases for this lot
-                const lotPhases: LotPhase[] = phases.map((phase) => {
+                const lotPhases: LotPhase[] = effectivePhases.map((phase) => {
                     // Find entries matching this phase's services
                     const matchingEntries = lotEntries.filter((e) =>
                         phase.serviceNames.some(

@@ -487,6 +487,21 @@ export const createCommunity = mutation({
         if (trimmed.length < 1 || trimmed.length > 100) {
             throw new Error("Community name must be 1-100 characters");
         }
+        // Prevent duplicate communities with same name
+        const existing = await ctx.db
+            .query("communities")
+            .filter((q) => q.eq(q.field("normalizedName"), trimmed.toLowerCase()))
+            .collect();
+        const duplicate = existing.find(
+            (c) => c.active !== false && (
+                c.builderId === args.builderId ||
+                !c.builderId ||
+                !args.builderId
+            )
+        );
+        if (duplicate) {
+            throw new Error(`Community "${trimmed}" already exists`);
+        }
         const id = await ctx.db.insert("communities", {
             name: trimmed,
             normalizedName: trimmed.toLowerCase(),

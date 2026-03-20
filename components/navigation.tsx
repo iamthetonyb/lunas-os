@@ -106,10 +106,10 @@ const iconMap: Record<string, () => React.ReactElement> = {
 const baseNavigation = [
   { key: 'Dashboard', tKey: 'navigation.dashboard', href: '/dashboard' },
   { key: 'Intake', tKey: 'navigation.intake', href: '/intake' },
-  { key: 'Extra Work', tKey: 'navigation.extraWork', href: '/extra-work' },
   { key: 'Schedule', tKey: 'navigation.schedule', href: '/schedule' },
   { key: 'Dispatch', tKey: 'navigation.dispatch', href: '/dispatch' },
   { key: 'Blue Book', tKey: 'navigation.blueBook', href: '/blue-book' },
+  { key: 'Extra Work', tKey: 'navigation.extraWork', href: '/extra-work' },
   { key: 'Contracts', tKey: 'navigation.contracts', href: '/contracts' },
   { key: 'Invoicing', tKey: 'navigation.invoicing', href: '/invoicing' },
   { key: 'Import', tKey: 'navigation.import', href: '/import' },

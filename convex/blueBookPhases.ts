@@ -126,6 +126,56 @@ export const getOverridesByBuilderCommunity = query({
     },
 });
 
+/**
+ * Seed default Pulte phases if none exist for a builder.
+ * Safe to call multiple times — only inserts if builder has 0 phases.
+ */
+export const seedDefaults = mutation({
+    args: { builderId: v.id("builders") },
+    handler: async (ctx, args) => {
+        const existing = await ctx.db
+            .query("builderPhaseConfigs")
+            .withIndex("by_builder", (q) => q.eq("builderId", args.builderId))
+            .first();
+        if (existing) return { seeded: false, message: "Phases already exist" };
+
+        const defaults = [
+            {
+                code: "22702",
+                title: "22702 – T3",
+                shorthand: "T3",
+                serviceNames: ["Frame Sweep"],
+                sortOrder: 1,
+            },
+            {
+                code: "22712",
+                title: "22712 – T2",
+                shorthand: "T2",
+                serviceNames: ["Tubs & Windows", "Q/A", "Power Wash"],
+                sortOrder: 2,
+            },
+            {
+                code: "22714",
+                title: "22714 – T1",
+                shorthand: "T1",
+                serviceNames: ["Final Clean", "Touch up Clean"],
+                sortOrder: 3,
+            },
+        ];
+
+        const now = Date.now();
+        for (const phase of defaults) {
+            await ctx.db.insert("builderPhaseConfigs", {
+                builderId: args.builderId,
+                ...phase,
+                active: true,
+                createdAt: now,
+            });
+        }
+        return { seeded: true, count: defaults.length };
+    },
+});
+
 export const setOverride = mutation({
     args: {
         builderId: v.id("builders"),

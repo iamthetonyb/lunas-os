@@ -347,7 +347,22 @@ export const getCommunities = query({
     handler: async (ctx, args) => {
         const communities = await ctx.db.query("communities").collect();
         const active = communities.filter((c) => c.active !== false);
-        return args.limit ? active.slice(0, args.limit) : active;
+        // Deduplicate by normalized name — keep the one with a builderId, or the oldest
+        const seen = new Map<string, typeof active[0]>();
+        for (const c of active) {
+            const key = (c.normalizedName ?? c.name.toLowerCase());
+            const existing = seen.get(key);
+            if (!existing) {
+                seen.set(key, c);
+            } else if (c.builderId && !existing.builderId) {
+                // Prefer the one linked to a builder
+                seen.set(key, c);
+            }
+        }
+        const deduped = Array.from(seen.values()).sort((a, b) =>
+            a.name.localeCompare(b.name)
+        );
+        return args.limit ? deduped.slice(0, args.limit) : deduped;
     },
 });
 
