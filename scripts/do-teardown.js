@@ -1,4 +1,4 @@
-const DO_TOKEN = "dop_v1_bfa07615dac25fe798b5fdeb905a06a92bb13c121c716e4eaf6445820be96c4c";
+const DO_TOKEN = process.env.DO_TOKEN || "";
 
 async function main() {
   console.log("Fetching DigitalOcean Apps...");
