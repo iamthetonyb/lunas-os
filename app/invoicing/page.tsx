@@ -4,11 +4,12 @@ import { PageHeader } from '@/components/page-header';
 import { useQuery, useMutation } from 'convex/react';
 import { api } from '@/convex/_generated/api';
 import { Id } from '@/convex/_generated/dataModel';
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import Link from 'next/link';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 import { QueryWrapper } from '@/components/QueryWrapper';
+import { Pagination } from '@/components/ui/pagination';
 
 export default function InvoicingPage() {
   const { t } = useTranslation();
@@ -27,6 +28,16 @@ export default function InvoicingPage() {
   );
 
   const entries = blueBookEntries?.entries;
+
+  const [invoicePage, setInvoicePage] = useState(1);
+  const invoicePageSize = 15;
+  const invoiceTotal = Array.isArray(invoiceList) ? invoiceList.length : 0;
+  const invoiceTotalPages = Math.ceil(invoiceTotal / invoicePageSize);
+  const paginatedInvoices = useMemo(() => {
+    if (!Array.isArray(invoiceList)) return invoiceList;
+    const start = (invoicePage - 1) * invoicePageSize;
+    return invoiceList.slice(start, start + invoicePageSize);
+  }, [invoiceList, invoicePage]);
 
   const handleBuildDraft = async () => {
     const entryIds = Array.isArray(entries) ? entries.map((e: any) => e.id as Id<"blueBookEntries">) : [];
@@ -95,92 +106,102 @@ export default function InvoicingPage() {
             <h3 className="text-lg font-semibold text-gray-900">{t('invoicing.recentInvoices')}</h3>
           </div>
           <QueryWrapper
-            data={invoiceList}
+            data={paginatedInvoices}
             loadingMessage="Loading invoices..."
             emptyMessage="No invoices found. Build a draft to get started."
             errorMessage="Failed to load invoices."
           >
             {(invoices) => (
-              <div className="overflow-x-auto">
-                <table className="min-w-full divide-y divide-gray-200">
-                  <thead className="bg-gray-50">
-                    <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        {t('invoicing.invoiceNumber')}
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        {t('common.builder')}
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        {t('common.date')}
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        {t('common.amount')}
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        {t('common.status')}
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        {t('common.actions')}
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="bg-white divide-y divide-gray-200">
-                    {invoices.map((invoice: any) => {
-                      const statusLabel = invoice.status === 'PAID' ? 'Paid'
-                        : invoice.status === 'SENT' ? 'Sent'
-                        : invoice.status === 'VOID' ? 'Void'
-                        : 'Draft';
-                      return (
-                        <tr key={invoice.id} className="hover:bg-gray-50">
-                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-blue-600">
-                            <Link href={`/invoicing/${invoice.id}`} className="hover:underline">
-                              {invoice.id}
-                            </Link>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                            {invoice.builderName ?? '--'}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                            {invoice.issuedOn ?? '--'}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-gray-900">
-                            {invoice.total != null ? `$${invoice.total.toLocaleString('en-US', { minimumFractionDigits: 2 })}` : '--'}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm">
-                            <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
-                              statusLabel === 'Paid'
-                                ? 'bg-green-100 text-green-800'
-                                : statusLabel === 'Sent'
-                                ? 'bg-blue-100 text-blue-800'
-                                : statusLabel === 'Void'
-                                ? 'bg-red-100 text-red-800'
-                                : 'bg-yellow-100 text-yellow-800'
-                            }`}>
-                              {statusLabel}
-                            </span>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm">
-                            <div className="flex gap-3">
-                              <Link href={`/invoicing/${invoice.id}`} className="text-blue-600 hover:text-blue-800 font-medium">
-                                {t('invoicing.view')}
+              <>
+                <div className="overflow-x-auto">
+                  <table className="min-w-full divide-y divide-gray-200">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          {t('invoicing.invoiceNumber')}
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          {t('common.builder')}
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          {t('common.date')}
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          {t('common.amount')}
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          {t('common.status')}
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          {t('common.actions')}
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-gray-200">
+                      {invoices.map((invoice: any) => {
+                        const statusLabel = invoice.status === 'PAID' ? 'Paid'
+                          : invoice.status === 'SENT' ? 'Sent'
+                          : invoice.status === 'VOID' ? 'Void'
+                          : 'Draft';
+                        return (
+                          <tr key={invoice.id} className="hover:bg-gray-50">
+                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-blue-600">
+                              <Link href={`/invoicing/${invoice.id}`} className="hover:underline">
+                                {invoice.id}
                               </Link>
-                              <button className="text-gray-600 hover:text-gray-800 font-medium">
-                                {t('invoicing.pdf')}
-                              </button>
-                              {statusLabel === 'Draft' && (
-                                <button className="text-green-600 hover:text-green-800 font-medium">
-                                  {t('invoicing.send')}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                              {invoice.builderName ?? '--'}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                              {invoice.issuedOn ?? '--'}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-gray-900">
+                              {invoice.total != null ? `$${invoice.total.toLocaleString('en-US', { minimumFractionDigits: 2 })}` : '--'}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm">
+                              <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
+                                statusLabel === 'Paid'
+                                  ? 'bg-green-100 text-green-800'
+                                  : statusLabel === 'Sent'
+                                  ? 'bg-blue-100 text-blue-800'
+                                  : statusLabel === 'Void'
+                                  ? 'bg-red-100 text-red-800'
+                                  : 'bg-yellow-100 text-yellow-800'
+                              }`}>
+                                {statusLabel}
+                              </span>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm">
+                              <div className="flex gap-3">
+                                <Link href={`/invoicing/${invoice.id}`} className="text-blue-600 hover:text-blue-800 font-medium">
+                                  {t('invoicing.view')}
+                                </Link>
+                                <button className="text-gray-600 hover:text-gray-800 font-medium">
+                                  {t('invoicing.pdf')}
                                 </button>
-                              )}
-                            </div>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
+                                {statusLabel === 'Draft' && (
+                                  <button className="text-green-600 hover:text-green-800 font-medium">
+                                    {t('invoicing.send')}
+                                  </button>
+                                )}
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+                <Pagination
+                  page={invoicePage}
+                  totalPages={invoiceTotalPages}
+                  total={invoiceTotal}
+                  pageSize={invoicePageSize}
+                  onPageChange={setInvoicePage}
+                  noun={t('invoicing.title', 'invoices')}
+                />
+              </>
             )}
           </QueryWrapper>
         </div>

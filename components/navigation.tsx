@@ -2,7 +2,8 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { signOut, useSession } from 'next-auth/react';
+import { useClerk } from '@clerk/nextjs';
+import { useConvexUser } from '@/hooks/useConvexUser';
 import { useTheme } from 'next-themes';
 import Image from 'next/image';
 import { useEffect, useState } from 'react';
@@ -127,7 +128,8 @@ export function Navigation() {
   const currentTheme = theme === 'system' ? resolvedTheme : theme;
   const toggleTheme = () => setTheme(currentTheme === 'dark' ? 'light' : 'dark');
   const [mounted, setMounted] = useState(false);
-  const { data: session } = useSession();
+  const { data: session } = useConvexUser();
+  const { signOut } = useClerk();
   const { t } = useTranslation();
   const orgRole = session?.user?.orgRole ?? undefined;
   const userRole = session?.user?.role ?? undefined;
@@ -294,7 +296,7 @@ export function Navigation() {
               <span>{t('navigation.settings')}</span>
             </Link>
             <button
-              onClick={() => signOut({ callbackUrl: '/login' })}
+              onClick={() => signOut({ redirectUrl: '/login' })}
               className="flex-1 px-3 py-2 text-sm font-medium text-gray-600 dark:text-gray-400 rounded-lg hover:bg-gray-100 dark:hover:bg-slate-800 hover:text-red-600 dark:hover:text-red-400 transition-colors"
             >
               {t('navigation.logout')}

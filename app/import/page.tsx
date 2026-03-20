@@ -2,9 +2,11 @@
 
 import { PageHeader } from '@/components/page-header';
 import { useState, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 
 export default function ImportPage() {
+  const { t } = useTranslation();
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
   const [googleSheetsUrl, setGoogleSheetsUrl] = useState('');
@@ -28,11 +30,11 @@ export default function ImportPage() {
     setUploading(true);
     try {
       // TODO: Replace with actual import API endpoint
-      toast.info(`Import for "${selectedFile.name}" will be processed. API integration pending.`);
+      toast.info(t('import.importPending', { fileName: selectedFile.name }));
       setSelectedFile(null);
       if (fileInputRef.current) fileInputRef.current.value = '';
     } catch {
-      toast.error('Import failed. Please try again.');
+      toast.error(t('import.importFailed'));
     } finally {
       setUploading(false);
     }
@@ -40,17 +42,17 @@ export default function ImportPage() {
 
   const handleGoogleSheetsImport = async () => {
     if (!googleSheetsUrl.trim()) {
-      toast.warning('Please enter a Google Sheets URL first.');
+      toast.warning(t('import.enterUrlFirst'));
       return;
     }
 
     setUploading(true);
     try {
       // TODO: Connect to actual Google Sheets import API
-      toast.info('Google Sheets import will be processed. API integration pending.');
+      toast.info(t('import.googleSheetsPending'));
       setGoogleSheetsUrl('');
     } catch {
-      toast.error('Import failed. Please try again.');
+      toast.error(t('import.importFailed'));
     } finally {
       setUploading(false);
     }
@@ -63,12 +65,12 @@ export default function ImportPage() {
 
   return (
     <>
-      <PageHeader 
-        title="Data Import" 
-        description="Import job data from files, Google Sheets, or various formats"
+      <PageHeader
+        title={t('import.title')}
+        description={t('import.description')}
         action={
           <div className="text-sm text-gray-600 dark:text-gray-400 font-medium">
-            📥 Multiple Format Support
+            {t('import.multipleFormatSupport')}
           </div>
         }
       />
@@ -84,7 +86,7 @@ export default function ImportPage() {
             }`}
           >
             <span className="text-lg mr-2">📁</span>
-            File Upload
+            {t('import.fileUpload')}
           </button>
           <button
             onClick={() => setActiveSection('sheets')}
@@ -95,7 +97,7 @@ export default function ImportPage() {
             }`}
           >
             <span className="text-lg mr-2">📊</span>
-            Google Sheets
+            {t('import.googleSheets')}
           </button>
         </div>
 
@@ -105,10 +107,10 @@ export default function ImportPage() {
             <div className="mb-6">
               <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2 flex items-center gap-2">
                 <span className="text-2xl">📁</span>
-                File Import
+                {t('import.fileImportTitle')}
               </h3>
               <p className="text-sm text-gray-600 dark:text-gray-400">
-                Upload CSV, Excel (.xlsx, .xls, .ods), or PDF files containing job data.
+                {t('import.fileImportDescription')}
               </p>
             </div>
 
@@ -131,7 +133,7 @@ export default function ImportPage() {
                     </svg>
                   </div>
                   <p className="text-gray-600 dark:text-gray-400 mb-4">
-                    No file selected. Click the button below to choose a file.
+                    {t('import.noFileSelected')}
                   </p>
                   <button
                     onClick={handlePickFile}
@@ -140,7 +142,7 @@ export default function ImportPage() {
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                     </svg>
-                    Choose File to Import
+                    {t('import.chooseFile')}
                   </button>
                   <div className="mt-4 flex items-center justify-center gap-6 text-xs text-gray-500 dark:text-gray-500">
                     <span className="flex items-center gap-1">
@@ -168,13 +170,13 @@ export default function ImportPage() {
                     {selectedFile.name}
                   </p>
                   <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
-                    Size: {(selectedFile.size / 1024).toFixed(2)} KB
+                    {t('import.size')}: {(selectedFile.size / 1024).toFixed(2)} KB
                   </p>
                   <button
                     onClick={handleClearFile}
                     className="text-sm text-blue-600 dark:text-blue-400 hover:underline"
                   >
-                    Choose a different file
+                    {t('import.chooseDifferentFile')}
                   </button>
                 </div>
               )}
@@ -187,7 +189,7 @@ export default function ImportPage() {
                   onClick={handleClearFile}
                   className="px-6 py-3 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 font-medium transition-colors"
                 >
-                  Cancel
+                  {t('import.cancel')}
                 </button>
                 <button
                   onClick={handleImport}
@@ -200,14 +202,14 @@ export default function ImportPage() {
                         <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                         <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                       </svg>
-                      Importing...
+                      {t('import.importing')}
                     </>
                   ) : (
                     <>
                       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
                       </svg>
-                      Import File
+                      {t('import.importFile')}
                     </>
                   )}
                 </button>
@@ -222,17 +224,17 @@ export default function ImportPage() {
             <div className="mb-6">
               <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2 flex items-center gap-2">
                 <span className="text-2xl">📊</span>
-                Google Sheets Import
+                {t('import.googleSheetsImportTitle')}
               </h3>
               <p className="text-sm text-gray-600 dark:text-gray-400">
-                Import data directly from a shared Google Sheets URL.
+                {t('import.googleSheetsImportDescription')}
               </p>
             </div>
 
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Google Sheets URL
+                  {t('import.googleSheetsUrlLabel')}
                 </label>
                 <input
                   type="text"
@@ -242,7 +244,7 @@ export default function ImportPage() {
                   className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-slate-900 text-gray-900 dark:text-gray-100"
                 />
                 <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
-                  Make sure the Google Sheet is shared with &quot;Anyone with the link can view&quot; permissions
+                  {t('import.googleSheetsPermissionHint')}
                 </p>
               </div>
 
@@ -250,14 +252,14 @@ export default function ImportPage() {
               <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-4">
                 <h4 className="font-semibold text-green-900 dark:text-green-300 text-sm mb-2 flex items-center gap-2">
                   <span>📋</span>
-                  How to Share Your Google Sheet
+                  {t('import.howToShare')}
                 </h4>
                 <ol className="text-xs text-green-800 dark:text-green-200 space-y-1 ml-4 list-decimal">
-                  <li>Open your Google Sheet</li>
-                  <li>Click the &quot;Share&quot; button in the top-right corner</li>
-                  <li>Change &quot;Restricted&quot; to &quot;Anyone with the link&quot;</li>
-                  <li>Set permission to &quot;Viewer&quot;</li>
-                  <li>Copy the link and paste it above</li>
+                  <li>{t('import.shareStep1')}</li>
+                  <li>{t('import.shareStep2')}</li>
+                  <li>{t('import.shareStep3')}</li>
+                  <li>{t('import.shareStep4')}</li>
+                  <li>{t('import.shareStep5')}</li>
                 </ol>
               </div>
 
@@ -266,7 +268,7 @@ export default function ImportPage() {
                   onClick={() => setGoogleSheetsUrl('')}
                   className="px-6 py-3 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 font-medium transition-colors"
                 >
-                  Clear
+                  {t('import.clear')}
                 </button>
                 <button
                   onClick={handleGoogleSheetsImport}
@@ -279,14 +281,14 @@ export default function ImportPage() {
                         <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                         <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                       </svg>
-                      Importing...
+                      {t('import.importing')}
                     </>
                   ) : (
                     <>
                       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
                       </svg>
-                      Import from Google Sheets
+                      {t('import.importFromGoogleSheets')}
                     </>
                   )}
                 </button>
@@ -299,15 +301,15 @@ export default function ImportPage() {
         <div className="mt-6 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
           <h4 className="font-semibold text-blue-900 dark:text-blue-300 mb-2 flex items-center gap-2">
             <span>💡</span>
-            Import Tips
+            {t('import.importTips')}
           </h4>
           <ul className="text-sm text-blue-800 dark:text-blue-200 space-y-1 ml-6 list-disc">
-            <li><strong>CSV files</strong>: Ensure headers match expected format (builder, community, lot, address, etc.)</li>
-            <li><strong>Excel files</strong>: Supports .xlsx, .xls, and .ods formats. Data should be in first sheet.</li>
-            <li><strong>PDF files</strong>: Text-based PDFs work best. Scanned images may require OCR processing.</li>
-            <li><strong>Google Sheets</strong>: Sheet must be publicly accessible via link sharing. First row should contain headers.</li>
-            <li>Large files may take a few moments to process - please be patient.</li>
-            <li>Review imported data before finalizing to ensure accuracy.</li>
+            <li><strong>{t('import.csvFiles')}</strong>: {t('import.tipCsv')}</li>
+            <li><strong>{t('import.excelFiles')}</strong>: {t('import.tipExcel')}</li>
+            <li><strong>{t('import.pdfFiles')}</strong>: {t('import.tipPdf')}</li>
+            <li><strong>{t('import.googleSheets')}</strong>: {t('import.tipGoogleSheets')}</li>
+            <li>{t('import.tipPatience')}</li>
+            <li>{t('import.tipReview')}</li>
           </ul>
         </div>
       </main>

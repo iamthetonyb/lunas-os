@@ -205,6 +205,58 @@ export const update = mutation({
   },
 });
 
+/**
+ * Check if the same community + lot already has jobs with the same services.
+ * Returns duplicate service names so the UI can warn the user before submitting.
+ */
+export const checkDuplicateServices = query({
+  args: {
+    communityId: v.optional(v.id("communities")),
+    lot: v.optional(v.string()),
+    serviceNames: v.array(v.string()),
+  },
+  handler: async (ctx, args) => {
+    if (!args.communityId || !args.lot || args.serviceNames.length === 0) {
+      return { duplicates: [], hasDuplicates: false };
+    }
+
+    // Find existing job requests for this community + lot
+    const existingJobs = await ctx.db
+      .query("jobRequests")
+      .withIndex("by_community", (q) => q.eq("communityId", args.communityId!))
+      .filter((q) => q.eq(q.field("lot"), args.lot))
+      .collect();
+
+    if (existingJobs.length === 0) {
+      return { duplicates: [], hasDuplicates: false };
+    }
+
+    // Get all services for those jobs
+    const allServices = await Promise.all(
+      existingJobs.map((jr) =>
+        ctx.db
+          .query("jobRequestServices")
+          .withIndex("by_jobRequest", (q) => q.eq("jobRequestId", jr._id))
+          .collect()
+      )
+    );
+    const existingServiceNames = new Set(
+      allServices.flat().map((s) => (s.serviceName ?? '').toLowerCase()).filter(Boolean)
+    );
+
+    // Find which requested services already exist
+    const duplicates = args.serviceNames.filter((name) =>
+      existingServiceNames.has(name.toLowerCase())
+    );
+
+    return {
+      duplicates,
+      hasDuplicates: duplicates.length > 0,
+      existingJobCount: existingJobs.length,
+    };
+  },
+});
+
 export const remove = mutation({
   args: { id: v.id("jobRequests") },
   handler: async (ctx, args) => {

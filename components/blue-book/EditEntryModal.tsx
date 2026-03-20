@@ -2,9 +2,10 @@
 
 import { useState, useEffect, Fragment } from 'react';
 import { Dialog, Transition } from '@headlessui/react';
-import { useMutation } from 'convex/react';
+import { useMutation, useQuery } from 'convex/react';
 import { api } from '@/convex/_generated/api';
 import { toast } from 'sonner';
+import { useTranslation } from 'react-i18next';
 import type { BlueBookEntry } from '@/types/blue-book';
 import type { Id } from '@/convex/_generated/dataModel';
 
@@ -15,7 +16,17 @@ type Props = {
 };
 
 export function EditEntryModal({ entry, isOpen, onClose }: Props) {
+    const { t } = useTranslation();
     const updateEntry = useMutation(api.blueBook.update);
+
+    // Load model plans for the entry's builder so user can change it
+    const modelPlans = useQuery(
+        api.queries.getModelPlans,
+        entry?.builderId ? {} : 'skip'
+    );
+    const filteredPlans = (modelPlans ?? []).filter(
+        (p: any) => !entry?.builderId || p.builderId === entry.builderId
+    );
 
     const [form, setForm] = useState({
         status: '',
@@ -29,6 +40,7 @@ export function EditEntryModal({ entry, isOpen, onClose }: Props) {
         lot: '',
         startDate: '',
         invoiceNumber: '',
+        modelPlanId: '',
     });
 
     useEffect(() => {
@@ -45,6 +57,7 @@ export function EditEntryModal({ entry, isOpen, onClose }: Props) {
                 lot: entry.lot ?? '',
                 startDate: entry.startDate ?? '',
                 invoiceNumber: entry.invoiceNumber ?? '',
+                modelPlanId: entry.modelPlanId ?? '',
             });
         }
     }, [entry]);
@@ -65,6 +78,9 @@ export function EditEntryModal({ entry, isOpen, onClose }: Props) {
                 lot: form.lot || undefined,
                 startDate: form.startDate || undefined,
                 invoiceNumber: form.invoiceNumber || undefined,
+                modelPlanId: form.modelPlanId
+                    ? form.modelPlanId as Id<'modelPlans'>
+                    : null,
             });
             toast.success('Entry updated');
             onClose();
@@ -123,6 +139,20 @@ export function EditEntryModal({ entry, isOpen, onClose }: Props) {
                                     </Field>
                                     <Field label="Invoice #">
                                         <input type="text" value={form.invoiceNumber} onChange={(e) => setForm(f => ({ ...f, invoiceNumber: e.target.value }))} className="input-field" />
+                                    </Field>
+                                    <Field label={t('blueBook.modelPlan', 'Model Plan')}>
+                                        <select
+                                            value={form.modelPlanId}
+                                            onChange={(e) => setForm(f => ({ ...f, modelPlanId: e.target.value }))}
+                                            className="input-field"
+                                        >
+                                            <option value="">{t('blueBook.selectPlan', '-- None --')}</option>
+                                            {filteredPlans.map((plan: any) => (
+                                                <option key={plan._id} value={plan._id}>
+                                                    {plan.name}{plan.code ? ` (${plan.code})` : ''}{plan.sqft ? ` - ${plan.sqft} sqft` : ''}
+                                                </option>
+                                            ))}
+                                        </select>
                                     </Field>
                                     <div className="col-span-2 flex items-center gap-2">
                                         <input

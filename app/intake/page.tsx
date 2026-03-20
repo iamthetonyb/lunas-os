@@ -8,9 +8,10 @@ import { Id } from '@/convex/_generated/dataModel';
 import { useState, Fragment } from 'react';
 import { Dialog, Transition } from '@headlessui/react';
 import { EditIntakeModal } from '@/components/edit-intake-modal';
-import { useSession } from 'next-auth/react';
+import { useConvexUser } from '@/hooks/useConvexUser';
 import { toast } from 'sonner';
 import { useTranslation } from 'react-i18next';
+import { Pagination } from '@/components/ui/pagination';
 
 // Helper: Parse ISO date string as local date (avoids UTC midnight -> previous day issue)
 const formatDateLocal = (dateStr: string | null | undefined): string => {
@@ -276,38 +277,21 @@ function RecentIntakes({ onIntakeSelect, onDelete, onEdit }: { onIntakeSelect: (
         </table>
       </div>
 
-      {/* Pagination Controls */}
-      <div className="flex items-center justify-between px-4 py-3 border-t border-gray-100 bg-gray-50 rounded-b-lg">
-        <div className="text-sm text-gray-500">
-          Showing <span className="font-medium">{intakes.length}</span> of <span className="font-medium">{total}</span> intakes
-        </div>
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => setPage(p => Math.max(1, p - 1))}
-            disabled={page === 1}
-            className="px-3 py-1 border border-gray-300 rounded-md text-sm font-medium disabled:opacity-50 hover:bg-white"
-          >
-            {t('common.previous')}
-          </button>
-          <span className="text-sm text-gray-700">
-            Page {page} of {totalPages}
-          </span>
-          <button
-            onClick={() => setPage(p => Math.min(totalPages, p + 1))}
-            disabled={page === totalPages}
-            className="px-3 py-1 border border-gray-300 rounded-md text-sm font-medium disabled:opacity-50 hover:bg-white"
-          >
-            {t('common.next')}
-          </button>
-        </div>
-      </div>
+      <Pagination
+        page={page}
+        totalPages={totalPages}
+        total={total}
+        pageSize={10}
+        onPageChange={setPage}
+        noun={t('navigation.intake', 'intakes')}
+      />
     </div>
   );
 }
 
 export default function IntakePage() {
   const { t } = useTranslation();
-  const { data: session } = useSession();
+  const { data: session } = useConvexUser();
 
   const removeIntake = useMutation(api.jobRequests.remove);
 

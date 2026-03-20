@@ -4,7 +4,7 @@ import { PageHeader } from '@/components/page-header';
 import Link from 'next/link';
 import { useQuery, useMutation } from 'convex/react';
 import { api } from '@/convex/_generated/api';
-import { useSession } from 'next-auth/react';
+import { useConvexUser } from '@/hooks/useConvexUser';
 import { ConfirmationModal } from '@/components/ui/confirmation-modal';
 import { useState, useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -20,7 +20,7 @@ type DispatchBatch = {
 
 export default function DispatchPage() {
   const { t } = useTranslation();
-  const { data: session } = useSession();
+  const { data: session } = useConvexUser();
   const isContractor = session?.user?.role === 'FOREMAN' || session?.user?.role === 'CREW';
   const isAdmin = session?.user?.role === 'ADMIN';
   const currentUserName = session?.user?.name;

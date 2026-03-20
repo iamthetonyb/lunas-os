@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import type { CommunityGroup as CommunityGroupType } from '@/types/blue-book';
 import { LotCard } from './LotCard';
 
@@ -12,6 +13,7 @@ type Props = {
 };
 
 export function CommunityGroup({ group, onEditEntry, onPhaseOverride, onServiceToggle }: Props) {
+    const { t } = useTranslation();
     const [isExpanded, setIsExpanded] = useState(true);
     const completionPct = group.totalEntries > 0
         ? Math.round((group.completedEntries / group.totalEntries) * 100)
@@ -37,7 +39,7 @@ export function CommunityGroup({ group, onEditEntry, onPhaseOverride, onServiceT
                         {group.communityName}
                     </h3>
                     <span className="text-xs text-gray-500 dark:text-gray-400">
-                        {group.lots.length} lots
+                        {group.lots.length} {t('blueBook.lots')}
                     </span>
                 </div>
                 <div className="flex items-center gap-3">

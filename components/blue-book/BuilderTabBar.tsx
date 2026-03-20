@@ -1,5 +1,6 @@
 'use client';
 
+import { useTranslation } from 'react-i18next';
 import type { Builder } from '@/types/blue-book';
 
 type Props = {
@@ -9,6 +10,7 @@ type Props = {
 };
 
 export function BuilderTabBar({ builders, activeBuilder, onBuilderChange }: Props) {
+    const { t } = useTranslation();
     return (
         <div className="flex flex-wrap items-center gap-2 mb-4">
             <button
@@ -20,7 +22,7 @@ export function BuilderTabBar({ builders, activeBuilder, onBuilderChange }: Prop
                 }`}
                 onClick={() => onBuilderChange(null)}
             >
-                All Builders
+                {t('blueBook.allBuilders')}
             </button>
             {builders.map((builder) => (
                 <button

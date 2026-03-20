@@ -1,7 +1,7 @@
 "use client";
 
+import { ClerkProvider } from "@clerk/nextjs";
 import { ConvexProvider, ConvexReactClient } from "convex/react";
-import { SessionProvider } from "next-auth/react";
 import { ThemeProvider } from "next-themes";
 import { ReactNode, useEffect, useState } from "react";
 import { I18nextProvider } from 'react-i18next';
@@ -21,14 +21,14 @@ export default function Providers({ children }: { children: ReactNode }) {
   }, []);
 
   return (
-    <ConvexProvider client={convex}>
-      <SessionProvider>
+    <ClerkProvider>
+      <ConvexProvider client={convex}>
         <ThemeProvider attribute="class" defaultTheme="light" enableSystem={false}>
           <I18nextProvider i18n={i18n}>
             {mounted ? children : null}
           </I18nextProvider>
         </ThemeProvider>
-      </SessionProvider>
-    </ConvexProvider>
+      </ConvexProvider>
+    </ClerkProvider>
   );
 }

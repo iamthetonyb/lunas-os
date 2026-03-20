@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { use } from 'react';
 import { useQuery, useMutation } from 'convex/react';
 import { api } from '@/convex/_generated/api';
-import { useSession } from 'next-auth/react';
+import { useConvexUser } from '@/hooks/useConvexUser';
 import { getFriendlyName } from '@/lib/utils/community-display';
 import { ConfirmationModal } from '@/components/ui/confirmation-modal';
 import { useState } from 'react';
@@ -39,7 +39,7 @@ type DispatchJob = {
 export default function DispatchDetailPage({ params }: { params: Promise<{ id: string }> }) {
     const { id } = use(params);
     const { t } = useTranslation();
-    const { data: session } = useSession();
+    const { data: session } = useConvexUser();
     const isContractor = session?.user?.role === 'FOREMAN' || session?.user?.role === 'CREW';
     const isAdmin = session?.user?.role === 'admin' || session?.user?.role === 'backoffice';
 

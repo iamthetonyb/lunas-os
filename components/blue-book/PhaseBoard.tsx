@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import type { LotPhase } from '@/types/blue-book';
 
 type Props = {
@@ -11,6 +12,7 @@ type Props = {
 };
 
 export function PhaseBoard({ phases, lot, onPhaseOverride, onServiceToggle }: Props) {
+    const { t } = useTranslation();
     const [expanded, setExpanded] = useState<string | null>(null);
 
     if (!phases.length) return null;
@@ -44,7 +46,7 @@ export function PhaseBoard({ phases, lot, onPhaseOverride, onServiceToggle }: Pr
                                     ? 'bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-700'
                                     : 'bg-gray-100 dark:bg-gray-800 text-gray-400 dark:text-gray-500 border border-gray-200 dark:border-gray-700'
                             } ${expanded === phase.code ? 'ring-2 ring-blue-400 ring-offset-1 dark:ring-offset-slate-900' : ''}`}
-                            title={`${phase.title}: ${svcDone}/${svcTotal} services`}
+                            title={`${phase.title}: ${svcDone}/${svcTotal} ${t('blueBook.services')}`}
                         >
                             {phase.shorthand}
                             {svcTotal > 0 && (
@@ -86,7 +88,7 @@ export function PhaseBoard({ phases, lot, onPhaseOverride, onServiceToggle }: Pr
                                     : 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 hover:bg-green-100 dark:hover:bg-green-900/30 hover:text-green-700 dark:hover:text-green-400'
                             }`}
                         >
-                            {expandedPhase.isComplete ? 'Mark Incomplete' : 'Mark Complete'}
+                            {expandedPhase.isComplete ? t('blueBook.markIncomplete') : t('blueBook.markComplete')}
                         </button>
                     </div>
                     {expandedPhase.services.map((svc) => (
@@ -119,7 +121,7 @@ export function PhaseBoard({ phases, lot, onPhaseOverride, onServiceToggle }: Pr
                             </span>
                             {svc.entries.length > 0 && (
                                 <span className="text-[10px] text-gray-400 ml-auto">
-                                    {svc.entries.length} {svc.entries.length === 1 ? 'entry' : 'entries'}
+                                    {svc.entries.length} {svc.entries.length === 1 ? t('blueBook.entry') : t('blueBook.entries')}
                                 </span>
                             )}
                         </button>

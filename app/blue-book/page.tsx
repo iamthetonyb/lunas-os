@@ -3,7 +3,7 @@
 import { useState, useCallback, useEffect, useMemo } from 'react';
 import { useQuery, useMutation } from 'convex/react';
 import { api } from '@/convex/_generated/api';
-import { useSession } from 'next-auth/react';
+import { useConvexUser } from '@/hooks/useConvexUser';
 import { toast } from 'sonner';
 import type { Id } from '@/convex/_generated/dataModel';
 import type { BlueBookEntry, PhaseDefinition } from '@/types/blue-book';
@@ -55,7 +55,7 @@ const DEFAULT_PHASES: PhaseDefinition[] = [
 ];
 
 export default function BlueBookPage() {
-    const { data: session } = useSession();
+    const { data: session } = useConvexUser();
     const {
         filters,
         rawSearch,

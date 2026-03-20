@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { useChat } from '@ai-sdk/react';
 import { DefaultChatTransport } from 'ai';
-import { useSession } from 'next-auth/react';
+import { useConvexUser } from '@/hooks/useConvexUser';
 import { usePathname } from 'next/navigation';
 import { useTranslation } from 'react-i18next';
 
@@ -25,7 +25,7 @@ export default function AIChatPanel({ onClose }: { onClose: () => void }) {
     const recognitionRef = useRef<any>(null);
     const inputRef = useRef<HTMLInputElement>(null);
 
-    const { data: session } = useSession();
+    const { data: session } = useConvexUser();
     const pathname = usePathname();
     const transport = useMemo(
         () =>

@@ -4,7 +4,7 @@ import { Controller, useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useTranslation } from 'react-i18next';
-import { useQuery, useMutation } from 'convex/react';
+import { useQuery, useMutation, useConvex } from 'convex/react';
 import { api } from '@/convex/_generated/api';
 import { Id } from '@/convex/_generated/dataModel';
 import { useRouter } from 'next/navigation';
@@ -12,9 +12,11 @@ import { toast } from 'sonner';
 import {
   useEffect,
   useMemo,
+  useState,
+  useCallback,
 } from 'react';
 import dayjs from 'dayjs';
-import { useSession } from 'next-auth/react';
+import { useConvexUser } from '@/hooks/useConvexUser';
 import { SearchableSelect, SearchableMultiSelect } from './searchable-select';
 import { getFriendlyName } from '@/lib/utils/community-display';
 
@@ -99,8 +101,15 @@ export function IntakeForm() {
   }, [allUsers]);
 
   const createJobRequest = useMutation(api.mutations.createJobRequest);
+  const convex = useConvex();
 
-  const { data: session } = useSession();
+  const [duplicateWarning, setDuplicateWarning] = useState<{
+    duplicates: string[];
+    existingJobCount: number;
+    formData: FormData;
+  } | null>(null);
+
+  const { data: session } = useConvexUser();
   const isContractor = session?.user?.role === 'FOREMAN' || session?.user?.role === 'CREW';
 
   const {
@@ -318,20 +327,11 @@ export function IntakeForm() {
     }
   }, [foremanContactData, setValue]);
 
-  const onSubmit = handleSubmit(async (data) => {
+  const submitJobRequest = useCallback(async (data: FormData, forceExtraWork = false) => {
     const requiresNotes = data.serviceIds.some(
       (serviceId) => serviceOptionMap.get(serviceId)?.requiresNotes
     );
-    if (requiresNotes && (!data.notes || !data.notes.trim())) {
-      setError('notes', {
-        type: 'manual',
-        message: 'Notes are required when Extra Work is selected.',
-      });
-      return;
-    }
-    clearErrors('notes');
     try {
-      // Build the services array from selected service IDs
       const serviceEntries = data.serviceIds.map((serviceId) => {
         const svc = services.find((s: any) => s._id === serviceId);
         return {
@@ -353,17 +353,56 @@ export function IntakeForm() {
         requestedBy: data.requestedBy,
         contactPhone: data.contact,
         contactEmail: undefined,
-        isExtraWork: requiresNotes ? true : undefined,
+        isExtraWork: forceExtraWork || requiresNotes ? true : undefined,
         services: serviceEntries,
       });
 
-      // No need for SWR mutate — Convex reactivity auto-updates all listeners
-      toast.success('Job request created successfully!');
+      toast.success(t('intake.submitSuccess', 'Job request created successfully!'));
       router.push('/intake');
     } catch (error) {
       console.error('Error creating job request:', error);
-      toast.error('Failed to create job request. Please try again.');
+      toast.error(t('intake.submitError', 'Failed to create job request. Please try again.'));
     }
+  }, [services, serviceOptionMap, createJobRequest, router, t]);
+
+  const onSubmit = handleSubmit(async (data) => {
+    const requiresNotes = data.serviceIds.some(
+      (serviceId) => serviceOptionMap.get(serviceId)?.requiresNotes
+    );
+    if (requiresNotes && (!data.notes || !data.notes.trim())) {
+      setError('notes', {
+        type: 'manual',
+        message: 'Notes are required when Extra Work is selected.',
+      });
+      return;
+    }
+    clearErrors('notes');
+
+    // Check for duplicate services at the same community + lot
+    const serviceNames = data.serviceIds
+      .map((serviceId) => services.find((s: any) => s._id === serviceId)?.name ?? '')
+      .filter(Boolean);
+
+    try {
+      const dupCheck = await convex.query(api.jobRequests.checkDuplicateServices, {
+        communityId: data.communityId as Id<"communities">,
+        lot: data.lot,
+        serviceNames,
+      });
+
+      if (dupCheck.hasDuplicates) {
+        setDuplicateWarning({
+          duplicates: dupCheck.duplicates,
+          existingJobCount: dupCheck.existingJobCount ?? 0,
+          formData: data,
+        });
+        return;
+      }
+    } catch (err) {
+      console.warn('Duplicate check failed, proceeding with submission:', err);
+    }
+
+    await submitJobRequest(data);
   });
 
   return (
@@ -662,6 +701,67 @@ export function IntakeForm() {
           {isSubmitting ? t('intake.submitting') : t('intake.submitIntake')}
         </button>
       </div>
+
+      {/* Duplicate Service Warning Dialog */}
+      {duplicateWarning && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div className="bg-white rounded-xl shadow-2xl max-w-md w-full mx-4 p-6">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center flex-shrink-0">
+                <svg className="w-5 h-5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                </svg>
+              </div>
+              <h3 className="text-lg font-semibold text-gray-900">
+                {t('intake.duplicateWarningTitle', 'Duplicate Services Detected')}
+              </h3>
+            </div>
+
+            <p className="text-sm text-gray-600 mb-3">
+              {t('intake.duplicateWarningBody', {
+                count: duplicateWarning.existingJobCount,
+                defaultValue: `This lot already has {{count}} existing job(s) with the same services:`,
+              })}
+            </p>
+
+            <ul className="mb-4 space-y-1">
+              {duplicateWarning.duplicates.map((name) => (
+                <li key={name} className="flex items-center gap-2 text-sm text-amber-700 bg-amber-50 px-3 py-1.5 rounded">
+                  <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01" />
+                  </svg>
+                  {name}
+                </li>
+              ))}
+            </ul>
+
+            <p className="text-sm text-gray-500 mb-5">
+              {t('intake.duplicateWarningExtra', 'Submitting will mark this as Extra Work and must be invoiced separately.')}
+            </p>
+
+            <div className="flex gap-3 justify-end">
+              <button
+                type="button"
+                onClick={() => setDuplicateWarning(null)}
+                className="px-4 py-2 text-sm font-medium text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+              >
+                {t('common.cancel')}
+              </button>
+              <button
+                type="button"
+                onClick={async () => {
+                  const data = duplicateWarning.formData;
+                  setDuplicateWarning(null);
+                  await submitJobRequest(data, true);
+                }}
+                className="px-4 py-2 text-sm font-medium text-white bg-amber-600 rounded-lg hover:bg-amber-700 transition-colors"
+              >
+                {t('intake.confirmExtraWork', 'Confirm as Extra Work')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </form>
   );
 }

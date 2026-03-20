@@ -9,6 +9,7 @@ import { Dialog, Transition } from '@headlessui/react';
 import { useTranslation } from 'react-i18next';
 import { ConfirmationDialog } from '@/components/ConfirmationDialog';
 import { toast } from 'sonner';
+import { Pagination } from '@/components/ui/pagination';
 
 type AdminUser = {
   id: string;
@@ -329,6 +330,15 @@ export default function UsersPage() {
     return [...data.users].sort((a, b) => (a.name || '').localeCompare(b.name || ''));
   }, [data?.users]);
 
+  const [userPage, setUserPage] = useState(1);
+  const userPageSize = 20;
+  const userTotal = sortedUsers.length;
+  const userTotalPages = Math.ceil(userTotal / userPageSize);
+  const paginatedUsers = useMemo(() => {
+    const start = (userPage - 1) * userPageSize;
+    return sortedUsers.slice(start, start + userPageSize);
+  }, [sortedUsers, userPage]);
+
   const handleMembershipSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!membership.userId || !membership.orgId) return;
@@ -449,7 +459,7 @@ export default function UsersPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100">
-                  {sortedUsers.map((user) => (
+                  {paginatedUsers.map((user) => (
                     <tr key={user.id}>
                       <td className="px-4 py-3 text-gray-900">{user.name || '—'}</td>
                       <td className="px-4 py-3 text-gray-900">{user.email}</td>
@@ -482,6 +492,14 @@ export default function UsersPage() {
                   ))}
                 </tbody>
               </table>
+              <Pagination
+                page={userPage}
+                totalPages={userTotalPages}
+                total={userTotal}
+                pageSize={userPageSize}
+                onPageChange={setUserPage}
+                noun={t('users.title', 'users')}
+              />
             </div>
           )}
         </section>

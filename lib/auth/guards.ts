@@ -1,6 +1,6 @@
 import 'server-only';
 
-import { auth } from '@/auth';
+import { auth, currentUser } from '@clerk/nextjs/server';
 import { getConvexClient } from '@/lib/convex/http-client';
 import { api } from '@/convex/_generated/api';
 
@@ -25,11 +25,16 @@ export class ForbiddenError extends Error {
 }
 
 export async function requireSession() {
-  const session = await auth();
-  if (!session?.user?.email) {
+  const { userId } = await auth();
+  if (!userId) {
     throw new UnauthorizedError();
   }
-  return session;
+  const clerkUser = await currentUser();
+  const email = clerkUser?.emailAddresses?.[0]?.emailAddress;
+  if (!email) {
+    throw new UnauthorizedError();
+  }
+  return { user: { email, name: clerkUser?.fullName ?? email } };
 }
 
 export async function getMembership(userEmail: string) {

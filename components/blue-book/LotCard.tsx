@@ -1,5 +1,6 @@
 'use client';
 
+import { useTranslation } from 'react-i18next';
 import type { LotSummary } from '@/types/blue-book';
 import { PhaseBoard } from './PhaseBoard';
 
@@ -11,6 +12,7 @@ type Props = {
 };
 
 export function LotCard({ lot, onEditEntry, onPhaseOverride, onServiceToggle }: Props) {
+    const { t } = useTranslation();
     const totalAmount = lot.entries.reduce((sum, e) => {
         const amt = parseFloat(e.amount ?? '0');
         return sum + (isNaN(amt) ? 0 : amt);
@@ -21,7 +23,7 @@ export function LotCard({ lot, onEditEntry, onPhaseOverride, onServiceToggle }: 
             <div className="flex items-center justify-between mb-2">
                 <div className="flex items-center gap-2">
                     <span className="text-sm font-semibold text-gray-900 dark:text-white">
-                        Lot {lot.lot}
+                        {t('blueBook.lotLabel')} {lot.lot}
                     </span>
                     {lot.modelPlanCode && (
                         <span className="text-xs px-2 py-0.5 bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded">
@@ -37,7 +39,7 @@ export function LotCard({ lot, onEditEntry, onPhaseOverride, onServiceToggle }: 
                         </span>
                     )}
                     <span className="text-xs text-gray-400">
-                        {lot.entries.length} entries
+                        {lot.entries.length} {t('blueBook.entries')}
                     </span>
                 </div>
             </div>
@@ -55,12 +57,12 @@ export function LotCard({ lot, onEditEntry, onPhaseOverride, onServiceToggle }: 
                     <table className="min-w-full text-xs">
                         <thead>
                             <tr className="text-left text-gray-500 dark:text-gray-400">
-                                <th className="pr-2 py-1">Service</th>
-                                <th className="pr-2 py-1">Start</th>
-                                <th className="pr-2 py-1">Status</th>
-                                <th className="pr-2 py-1">Foreman</th>
-                                <th className="pr-2 py-1">Amount</th>
-                                <th className="pr-2 py-1">Check</th>
+                                <th className="pr-2 py-1">{t('blueBook.serviceHeader')}</th>
+                                <th className="pr-2 py-1">{t('blueBook.startHeader')}</th>
+                                <th className="pr-2 py-1">{t('blueBook.statusHeader')}</th>
+                                <th className="pr-2 py-1">{t('blueBook.foremanHeader')}</th>
+                                <th className="pr-2 py-1">{t('blueBook.amountHeader')}</th>
+                                <th className="pr-2 py-1">{t('blueBook.checkHeader')}</th>
                                 <th className="py-1"></th>
                             </tr>
                         </thead>
@@ -86,7 +88,7 @@ export function LotCard({ lot, onEditEntry, onPhaseOverride, onServiceToggle }: 
                                             onClick={() => onEditEntry(entry.id)}
                                             className="text-blue-600 dark:text-blue-400 hover:underline"
                                         >
-                                            Edit
+                                            {t('blueBook.edit')}
                                         </button>
                                     </td>
                                 </tr>

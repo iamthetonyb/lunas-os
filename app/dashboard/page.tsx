@@ -4,13 +4,13 @@ import { PageHeader } from '@/components/page-header';
 import Link from 'next/link';
 import { useQuery } from 'convex/react';
 import { api } from '@/convex/_generated/api';
-import { useSession } from 'next-auth/react';
+import { useConvexUser } from '@/hooks/useConvexUser';
 import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 
 export default function DashboardPage() {
   const { t } = useTranslation();
-  const { data: session } = useSession();
+  const { data: session } = useConvexUser();
   const orgRole = (session?.user as any)?.orgRole;
 
   const canAccessBlueBook = orgRole === 'admin' || orgRole === 'backoffice';

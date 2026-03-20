@@ -1,5 +1,6 @@
 'use client';
 
+import { useTranslation } from 'react-i18next';
 import type { BlueBookSort } from '@/types/blue-book';
 
 type Props = {
@@ -27,6 +28,7 @@ export function BlueBookToolbar({
     onStatusChange,
     onReset,
 }: Props) {
+    const { t } = useTranslation();
     return (
         <div className="flex flex-wrap items-center gap-3 mb-4">
             {/* Search */}
@@ -35,7 +37,7 @@ export function BlueBookToolbar({
                     type="text"
                     value={search}
                     onChange={(e) => onSearchChange(e.target.value)}
-                    placeholder="Search lot, PO, check #..."
+                    placeholder={t('blueBook.searchPlaceholder')}
                     className="w-full pl-9 pr-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-slate-700 text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-blue-500 transition-colors"
                 />
                 <svg
@@ -54,9 +56,9 @@ export function BlueBookToolbar({
                 onChange={(e) => onSortChange(e.target.value as BlueBookSort)}
                 className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-slate-700 text-sm text-gray-700 dark:text-gray-300"
             >
-                <option value="community">Sort: Community</option>
-                <option value="startDate">Sort: Start Date</option>
-                <option value="checkDate">Sort: Check Date</option>
+                <option value="community">{t('blueBook.sortCommunity')}</option>
+                <option value="startDate">{t('blueBook.sortStartDate')}</option>
+                <option value="checkDate">{t('blueBook.sortCheckDate')}</option>
             </select>
 
             {/* Status filter */}
@@ -65,11 +67,11 @@ export function BlueBookToolbar({
                 onChange={(e) => onStatusChange(e.target.value || null)}
                 className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-slate-700 text-sm text-gray-700 dark:text-gray-300"
             >
-                <option value="">All Statuses</option>
-                <option value="PENDING">Pending</option>
-                <option value="SCHEDULED">Scheduled</option>
-                <option value="DISPATCHED">Dispatched</option>
-                <option value="COMPLETE">Complete</option>
+                <option value="">{t('blueBook.allStatuses')}</option>
+                <option value="PENDING">{t('blueBook.pending')}</option>
+                <option value="SCHEDULED">{t('blueBook.scheduled')}</option>
+                <option value="DISPATCHED">{t('blueBook.dispatched')}</option>
+                <option value="COMPLETE">{t('blueBook.complete')}</option>
             </select>
 
             {/* Date range */}
@@ -79,15 +81,15 @@ export function BlueBookToolbar({
                     value={startDateFrom ?? ""}
                     onChange={(e) => onDateRangeChange(e.target.value || null, startDateTo)}
                     className="px-2 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-slate-700 text-sm text-gray-700 dark:text-gray-300"
-                    title="From date"
+                    title={t('blueBook.fromDate')}
                 />
-                <span className="text-gray-400 text-xs">to</span>
+                <span className="text-gray-400 text-xs">{t('blueBook.to')}</span>
                 <input
                     type="date"
                     value={startDateTo ?? ""}
                     onChange={(e) => onDateRangeChange(startDateFrom, e.target.value || null)}
                     className="px-2 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-slate-700 text-sm text-gray-700 dark:text-gray-300"
-                    title="To date"
+                    title={t('blueBook.toDate')}
                 />
             </div>
 
@@ -96,7 +98,7 @@ export function BlueBookToolbar({
                 onClick={onReset}
                 className="px-3 py-2 text-sm text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 transition-colors"
             >
-                Reset
+                {t('blueBook.reset')}
             </button>
         </div>
     );

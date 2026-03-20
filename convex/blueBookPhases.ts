@@ -211,11 +211,12 @@ export const setOverride = mutation({
             .first();
 
         if (existing) {
-            await ctx.db.patch(existing._id, {
-                phaseComplete: args.phaseComplete,
-                serviceOverrides: args.serviceOverrides,
-                updatedAt: now,
-            });
+            // Only patch fields that were actually provided — avoid clearing
+            // serviceOverrides when only phaseComplete was changed (and vice versa)
+            const patch: Record<string, unknown> = { updatedAt: now };
+            if (args.phaseComplete !== undefined) patch.phaseComplete = args.phaseComplete;
+            if (args.serviceOverrides !== undefined) patch.serviceOverrides = args.serviceOverrides;
+            await ctx.db.patch(existing._id, patch);
             return { id: existing._id };
         }
 

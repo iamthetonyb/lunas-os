@@ -3,9 +3,10 @@
 import { useMemo, useState } from 'react';
 import { useQuery, useMutation } from 'convex/react';
 import { api } from '@/convex/_generated/api';
-import { useSession } from 'next-auth/react';
+import { useConvexUser } from '@/hooks/useConvexUser';
 import { useTranslation } from 'react-i18next';
 import { useRouter } from 'next/navigation';
+import { Pagination } from '@/components/ui/pagination';
 
 type JobRequest = {
   id: string;
@@ -26,13 +27,23 @@ type JobRequest = {
 
 export default function ExtraWorkPage() {
   const { t } = useTranslation();
-  const { data: session } = useSession();
+  const { data: session } = useConvexUser();
   const router = useRouter();
   const isContractor = session?.user?.role === 'FOREMAN' || session?.user?.role === 'CREW';
 
   // Convex reactive query - no polling needed
   const jobs = useQuery(api.jobRequests.list, { isExtraWork: true }) as JobRequest[] | undefined;
   const isLoading = jobs === undefined;
+
+  const [page, setPage] = useState(1);
+  const pageSize = 15;
+  const total = jobs?.length ?? 0;
+  const totalPages = Math.ceil(total / pageSize);
+  const paginatedJobs = useMemo(() => {
+    if (!jobs) return [];
+    const start = (page - 1) * pageSize;
+    return jobs.slice(start, start + pageSize);
+  }, [jobs, page]);
 
   // Convex mutation for updates
   const updateJobRequest = useMutation(api.jobRequests.update);
@@ -111,7 +122,7 @@ export default function ExtraWorkPage() {
             {!isLoading && (!jobs || jobs.length === 0) && (
               <tr><td colSpan={7} className="px-4 py-6 text-center text-gray-500">{t('extraWork.noExtraWork')}</td></tr>
             )}
-            {jobs?.map((job) => {
+            {paginatedJobs.map((job) => {
               const isDuplicate = duplicateKeys.has(`${job.communityName}:${job.lot}`);
 
               return (
@@ -208,6 +219,14 @@ export default function ExtraWorkPage() {
             })}
           </tbody>
         </table>
+        <Pagination
+          page={page}
+          totalPages={totalPages}
+          total={total}
+          pageSize={pageSize}
+          onPageChange={setPage}
+          noun={t('extraWork.title', 'extra work items')}
+        />
       </div>
     </main>
   );

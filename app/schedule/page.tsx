@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useEffect, useMemo, useState, Fragment } from 'react';
 import { useQuery, useMutation } from 'convex/react';
 import { api } from '@/convex/_generated/api';
-import { useSession } from 'next-auth/react';
+import { useConvexUser } from '@/hooks/useConvexUser';
 import { ScheduleKanban } from '@/components/schedule-kanban';
 import { getFriendlyName } from '@/lib/utils/community-display';
 import { Dialog, Transition } from '@headlessui/react';
@@ -151,7 +151,7 @@ function resolveForemanForJob(job: UpcomingJob): ForemanConfig | typeof UNASSIGN
 
 export default function SchedulePage() {
   const { t } = useTranslation();
-  const { data: session } = useSession();
+  const { data: session } = useConvexUser();
 
   // Fix for Hydration Mismatch: Initialize with empty string or stable value, then update on mount
   const [date, setDate] = useState('');
