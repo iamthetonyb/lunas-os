@@ -7,6 +7,7 @@ import { ModelPlansCrud } from '@/components/model-plans-crud';
 import { RatesCrud } from '@/components/rates-crud';
 import { BuildersCrud } from '@/components/builders-crud';
 import { Suspense } from 'react';
+import { useTranslation } from 'react-i18next';
 
 function classNames(...classes: string[]) {
   return classes.filter(Boolean).join(' ');
@@ -21,6 +22,7 @@ function LoadingSpinner() {
 }
 
 export default function ContractsPage() {
+  const { t } = useTranslation();
   const tabs = [
     {
       name: 'Builders',
@@ -51,8 +53,8 @@ export default function ContractsPage() {
   return (
     <>
       <PageHeader
-        title="Contracts & Configuration"
-        description="Manage services, model plans, and pricing rates"
+        title={t('contracts.title')}
+        description={t('contracts.description')}
         action={
           <div className="flex items-center gap-2 px-4 py-2 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
             <span className="text-blue-600 dark:text-blue-400">📄</span>

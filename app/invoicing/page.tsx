@@ -6,8 +6,10 @@ import { api } from '@/convex/_generated/api';
 import { Id } from '@/convex/_generated/dataModel';
 import { useState } from 'react';
 import Link from 'next/link';
+import { useTranslation } from 'react-i18next';
 
 export default function InvoicingPage() {
+  const { t } = useTranslation();
   const [builderId, setBuilderId] = useState<string | null>(null);
   const builders = useQuery(api.queries.getBuilders, {});
   const blueBookEntries = useQuery(
@@ -45,11 +47,11 @@ export default function InvoicingPage() {
   return (
     <>
       <PageHeader
-        title="Invoicing"
-        description="Generate and manage invoices"
+        title={t('invoicing.title')}
+        description={t('invoicing.description')}
         action={
           <button className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
-            + New Invoice
+            + {t('invoicing.createInvoice')}
           </button>
         }
       />
@@ -57,16 +59,16 @@ export default function InvoicingPage() {
         {/* Build Invoice Section */}
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
           <h3 className="text-lg font-semibold text-gray-900 mb-4 pb-2 border-b border-gray-200">
-            💰 Build New Invoice
+            {t('invoicing.buildNewInvoice')}
           </h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Select Builder</label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">{t('invoicing.selectBuilder')}</label>
               <select
                 onChange={(e) => setBuilderId(e.target.value || null)}
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
               >
-                <option value="">-- Select Builder --</option>
+                <option value="">-- {t('invoicing.selectBuilder')} --</option>
                 {Array.isArray(builders) && builders.map((builder: any) => (
                   <option key={builder._id} value={builder._id}>
                     {builder.name}
@@ -81,8 +83,8 @@ export default function InvoicingPage() {
                 className="w-full px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {entries && entries.length > 0
-                  ? `Build Draft (${entries.length} entries)`
-                  : 'Build Draft Invoice'}
+                  ? `${t('invoicing.buildDraft')} (${entries.length})`
+                  : t('invoicing.buildDraftInvoice')}
               </button>
             </div>
           </div>
@@ -91,29 +93,29 @@ export default function InvoicingPage() {
         {/* Invoices Table */}
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
           <div className="px-6 py-4 border-b border-gray-200">
-            <h3 className="text-lg font-semibold text-gray-900">Recent Invoices</h3>
+            <h3 className="text-lg font-semibold text-gray-900">{t('invoicing.recentInvoices')}</h3>
           </div>
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
                 <tr>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Invoice ID
+                    {t('invoicing.invoiceNumber')}
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Builder
+                    {t('common.builder')}
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Date
+                    {t('common.date')}
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Amount
+                    {t('common.amount')}
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Status
+                    {t('common.status')}
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Actions
+                    {t('common.actions')}
                   </th>
                 </tr>
               </thead>
@@ -148,14 +150,14 @@ export default function InvoicingPage() {
                     <td className="px-6 py-4 whitespace-nowrap text-sm">
                       <div className="flex gap-3">
                         <button className="text-blue-600 hover:text-blue-800 font-medium">
-                          View
+                          {t('invoicing.view')}
                         </button>
                         <button className="text-gray-600 hover:text-gray-800 font-medium">
-                          PDF
+                          {t('invoicing.pdf')}
                         </button>
                         {invoice.status === 'Draft' && (
                           <button className="text-green-600 hover:text-green-800 font-medium">
-                            Send
+                            {t('invoicing.send')}
                           </button>
                         )}
                       </div>

@@ -7,6 +7,7 @@ import { api } from '@/convex/_generated/api';
 import { Id } from '@/convex/_generated/dataModel';
 import { useSession } from 'next-auth/react';
 import { toast } from 'sonner';
+import { useTranslation } from 'react-i18next';
 
 const PAGE_SIZE = 25;
 
@@ -191,6 +192,7 @@ function areServiceOverridesEqual(
 }
 
 export default function BlueBookPage() {
+  const { t } = useTranslation();
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState('');
   const [sort, setSort] = useState<'checkDate' | 'startDate'>('startDate');
@@ -1191,10 +1193,10 @@ export default function BlueBookPage() {
 
   if (error) return (
     <>
-      <PageHeader title="Blue Book" description="Project tracking and management" />
+      <PageHeader title={t('blueBook.title')} description={t('blueBook.description')} />
       <main className="px-6 py-6">
         <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4">
-          <p className="text-red-600 dark:text-red-400">Failed to load data</p>
+          <p className="text-red-600 dark:text-red-400">{t('blueBook.failedToLoad')}</p>
         </div>
       </main>
     </>
@@ -1202,7 +1204,7 @@ export default function BlueBookPage() {
 
   return (
     <>
-      <PageHeader title="Blue Book" description="Project tracking and management" />
+      <PageHeader title={t('blueBook.title')} description={t('blueBook.description')} />
       <main className="px-6 py-6">
         <div className="mb-6 flex flex-wrap items-center gap-3">
           <button
@@ -1212,7 +1214,7 @@ export default function BlueBookPage() {
               }`}
             onClick={() => setActiveBuilderId('all')}
           >
-            All Builders
+            {t('blueBook.allBuilders')}
           </button>
           {tabBuilderIds.map((builderId) => {
             const builder = availableBuilders.find((b) => b.id === builderId);
@@ -1238,7 +1240,7 @@ export default function BlueBookPage() {
             type="search"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search by lot, invoice, category, or check #"
+            placeholder={t('common.search')}
             className="flex-1 rounded-lg border border-gray-300 px-4 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:bg-slate-900 dark:text-white"
           />
           <select
@@ -1246,8 +1248,8 @@ export default function BlueBookPage() {
             onChange={(e) => setSort(e.target.value as 'checkDate' | 'startDate')}
             className="rounded-lg border border-gray-300 px-4 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:bg-slate-900 dark:text-white"
           >
-            <option value="checkDate">Sort by Check Date</option>
-            <option value="startDate">Sort by Start Date</option>
+            <option value="checkDate">{t('blueBook.sortByCheckDate')}</option>
+            <option value="startDate">{t('blueBook.sortByStartDate')}</option>
           </select>
         </div>
 
@@ -1258,19 +1260,19 @@ export default function BlueBookPage() {
             onClick={() => setIsCreatingManual(true)}
             className="rounded-lg bg-green-600 px-4 py-2 font-semibold text-white hover:bg-green-700 whitespace-nowrap"
           >
-            + Manual Entry
+            + {t('blueBook.manualEntry')}
           </button>
         </div>
 
         {isLoading && (
           <div className="bg-white dark:bg-slate-800 rounded-lg border border-gray-200 dark:border-slate-700 p-6 shadow-sm">
-            <p className="text-gray-600 dark:text-gray-400">Loading entries...</p>
+            <p className="text-gray-600 dark:text-gray-400">{t('common.loading')}</p>
           </div>
         )}
 
         {!isLoading && communityGroups.length === 0 && (
           <div className="bg-white dark:bg-slate-800 rounded-lg border border-gray-200 dark:border-slate-700 p-6 shadow-sm">
-            <p className="text-gray-600 dark:text-gray-400">No entries match your criteria.</p>
+            <p className="text-gray-600 dark:text-gray-400">{t('blueBook.noEntries')}</p>
           </div>
         )}
 
@@ -1363,7 +1365,7 @@ export default function BlueBookPage() {
                           >
                             <div>
                               <p className="text-sm font-semibold text-gray-900 dark:text-white">
-                                Lot {lot.lotLabel}
+                                {t('common.lot')} {lot.lotLabel}
                               </p>
                               <p className="text-xs text-gray-500 dark:text-gray-400">
                                 {`Next activity: ${nextActivityLabel} \u00B7 ${phaseStatusText}`}
@@ -1380,17 +1382,17 @@ export default function BlueBookPage() {
                                 <div className="rounded-lg border border-gray-200 p-4 dark:border-slate-700">
                                   <div className="flex items-center justify-between">
                                     <div className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
-                                      Model Plan
+                                      {t('blueBook.modelPlan')}
                                     </div>
                                     {isSavingPlan && (
                                       <span className="text-xs text-blue-600 dark:text-blue-300">
-                                        Saving...
+                                        {t('blueBook.saving')}
                                       </span>
                                     )}
                                   </div>
                                   <div className="mt-3">
                                     <label className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
-                                      Select Plan
+                                      {t('blueBook.selectPlan')}
                                       <select
                                         className="mt-2 w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:border-slate-700 dark:bg-slate-900 dark:text-white"
                                         value={effectivePlanId ?? ''}
@@ -1399,7 +1401,7 @@ export default function BlueBookPage() {
                                         }
                                         disabled={isSavingPlan || planOptions.length === 0}
                                       >
-                                        <option value="">Unassigned</option>
+                                        <option value="">{t('common.unassigned')}</option>
                                         {planOptions.map((plan) => (
                                           <option key={plan.id} value={plan.id}>
                                             {plan.code
@@ -1411,7 +1413,7 @@ export default function BlueBookPage() {
                                     </label>
                                     {planOptions.length === 0 && (
                                       <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
-                                        No model plans available for this builder.
+                                        {t('blueBook.noModelPlans')}
                                       </p>
                                     )}
                                     {planError && (
@@ -1435,12 +1437,12 @@ export default function BlueBookPage() {
 
                                 <div className="rounded-lg border border-gray-200 p-4 dark:border-slate-700 md:col-span-1 xl:col-span-2">
                                   <div className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
-                                    Phases
+                                    {t('blueBook.phases')}
                                   </div>
                                   <div className="mt-3 space-y-2">
                                     {lot.phases.length === 0 ? (
                                       <p className="rounded-md border border-dashed border-gray-300 px-3 py-2 text-xs italic text-gray-500 dark:border-slate-600 dark:text-gray-400">
-                                        No phases configured for this lot.
+                                        {t('blueBook.noPhasesConfigured')}
                                       </p>
                                     ) : (
                                       lot.phases.map((phase) => {
@@ -1486,7 +1488,7 @@ export default function BlueBookPage() {
                                               <div className="space-y-1 border-l border-dashed border-gray-200 pl-3 dark:border-slate-600">
                                                 {phase.services.length === 0 ? (
                                                   <p className="text-xs italic text-gray-400">
-                                                    No services tracked for this phase.
+                                                    {t('blueBook.noServicesTracked')}
                                                   </p>
                                                 ) : (
                                                   phase.services.map((service) => {
@@ -1567,21 +1569,21 @@ export default function BlueBookPage() {
                                 </div>
                                 <div className="mt-6 rounded-lg border border-gray-200 dark:border-slate-700 col-span-full">
                                   <div className="flex items-center justify-between border-b border-gray-200 px-4 py-2 text-xs font-semibold uppercase tracking-wide text-gray-500 dark:border-slate-700 dark:text-gray-400">
-                                    <span>Invoices &amp; Checks</span>
+                                    <span>{t('blueBook.invoicesAndChecks')}</span>
                                     <span>{lot.entries.length} item{lot.entries.length === 1 ? '' : 's'}</span>
                                   </div>
                                   <div className="overflow-x-auto">
                                     <table className="min-w-full divide-y divide-gray-200 text-sm dark:divide-slate-700">
                                       <thead className="bg-gray-50 text-left text-xs font-semibold uppercase tracking-wide text-gray-500 dark:bg-slate-900 dark:text-gray-400">
                                         <tr>
-                                          <th className="px-4 py-2">Check #</th>
-                                          <th className="px-4 py-2">Check Date</th>
-                                          <th className="px-4 py-2">Category</th>
-                                          <th className="px-4 py-2">Crew</th>
-                                          <th className="px-4 py-2">Invoice</th>
-                                          <th className="px-4 py-2">Amount</th>
-                                          <th className="px-4 py-2">Status</th>
-                                          <th className="px-4 py-2 text-right">Actions</th>
+                                          <th className="px-4 py-2">{t('blueBook.checkNumber')}</th>
+                                          <th className="px-4 py-2">{t('blueBook.checkDate')}</th>
+                                          <th className="px-4 py-2">{t('blueBook.category')}</th>
+                                          <th className="px-4 py-2">{t('common.crew')}</th>
+                                          <th className="px-4 py-2">{t('invoicing.invoice')}</th>
+                                          <th className="px-4 py-2">{t('common.amount')}</th>
+                                          <th className="px-4 py-2">{t('common.status')}</th>
+                                          <th className="px-4 py-2 text-right">{t('common.actions')}</th>
                                         </tr>
                                       </thead>
                                       <tbody className="divide-y divide-gray-200 dark:divide-slate-700">
@@ -1632,7 +1634,7 @@ export default function BlueBookPage() {
                                                 className="text-sm font-semibold text-blue-600 hover:text-blue-700 dark:text-blue-400"
                                                 onClick={() => setEditingEntry(entry)}
                                               >
-                                                Edit
+                                                {t('common.edit')}
                                               </button>
                                               {/* Delete button - available to all authorized users */}
                                               <button
@@ -1674,14 +1676,14 @@ export default function BlueBookPage() {
               disabled={!canPrev}
               className="rounded-lg border border-gray-300 px-4 py-2 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-600"
             >
-              Previous
+              {t('common.previous')}
             </button>
             <button
               onClick={() => setPage((p) => (canNext ? p + 1 : p))}
               disabled={!canNext}
               className="rounded-lg border border-gray-300 px-4 py-2 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-600"
             >
-              Next
+              {t('common.next')}
             </button>
           </div>
         </div>
@@ -1695,10 +1697,10 @@ export default function BlueBookPage() {
               <div className="mb-4 flex items-center justify-between">
                 <div>
                   <div className="flex items-center gap-2">
-                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Edit Entry</h3>
+                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white">{t('blueBook.editEntry')}</h3>
                     {editingEntry.source === 'manual' && (
                       <span className="inline-flex items-center gap-1 rounded-full bg-purple-100 px-2 py-1 text-xs font-semibold text-purple-800 dark:bg-purple-900 dark:text-purple-200">
-                        Manual Entry
+                        {t('blueBook.manualEntry')}
                       </span>
                     )}
                   </div>
@@ -1710,13 +1712,13 @@ export default function BlueBookPage() {
                   onClick={() => setEditingEntry(null)}
                   className="text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400"
                 >
-                  Close
+                  {t('common.close')}
                 </button>
               </div>
               <form className="space-y-4 text-sm" onSubmit={handleSave}>
                 <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                   <label className="flex flex-col gap-1">
-                    <span className="text-gray-600 dark:text-gray-300">Lot</span>
+                    <span className="text-gray-600 dark:text-gray-300">{t('common.lot')}</span>
                     <input
                       className="rounded-lg border border-gray-300 px-3 py-2 dark:bg-slate-800 dark:text-white"
                       value={formState.lot}
@@ -1724,7 +1726,7 @@ export default function BlueBookPage() {
                     />
                   </label>
                   <label className="flex flex-col gap-1">
-                    <span className="text-gray-600 dark:text-gray-300">Start Date</span>
+                    <span className="text-gray-600 dark:text-gray-300">{t('blueBook.startDate')}</span>
                     <input
                       type="date"
                       className="rounded-lg border border-gray-300 px-3 py-2 dark:bg-slate-800 dark:text-white"
@@ -1733,18 +1735,18 @@ export default function BlueBookPage() {
                     />
                   </label>
                   <label className="flex flex-col gap-1">
-                    <span className="text-gray-600 dark:text-gray-300">Status</span>
+                    <span className="text-gray-600 dark:text-gray-300">{t('common.status')}</span>
                     <select
                       className="rounded-lg border border-gray-300 px-3 py-2 dark:bg-slate-800 dark:text-white"
                       value={formState.status}
                       onChange={(e) => setFormState((prev) => ({ ...prev, status: e.target.value }))}
                     >
-                      <option value="PENDING">Pending</option>
-                      <option value="COMPLETE">Complete</option>
+                      <option value="PENDING">{t('status.pending')}</option>
+                      <option value="COMPLETE">{t('common.complete')}</option>
                     </select>
                   </label>
                   <label className="flex flex-col gap-1">
-                    <span className="text-gray-600 dark:text-gray-300">Amount</span>
+                    <span className="text-gray-600 dark:text-gray-300">{t('common.amount')}</span>
                     <input
                       type="number"
                       step="0.01"
@@ -1754,7 +1756,7 @@ export default function BlueBookPage() {
                     />
                   </label>
                   <label className="flex flex-col gap-1">
-                    <span className="text-gray-600 dark:text-gray-300">Invoice #</span>
+                    <span className="text-gray-600 dark:text-gray-300">{t('blueBook.invoiceNumber')}</span>
                     <input
                       className="rounded-lg border border-gray-300 px-3 py-2 dark:bg-slate-800 dark:text-white"
                       value={formState.invoiceNumber}
@@ -1762,7 +1764,7 @@ export default function BlueBookPage() {
                     />
                   </label>
                   <label className="flex flex-col gap-1">
-                    <span className="text-gray-600 dark:text-gray-300">Check #</span>
+                    <span className="text-gray-600 dark:text-gray-300">{t('blueBook.checkNumber')}</span>
                     <input
                       className="rounded-lg border border-gray-300 px-3 py-2 dark:bg-slate-800 dark:text-white"
                       value={formState.checkNumber}
@@ -1770,7 +1772,7 @@ export default function BlueBookPage() {
                     />
                   </label>
                   <label className="flex flex-col gap-1">
-                    <span className="text-gray-600 dark:text-gray-300">Check Date</span>
+                    <span className="text-gray-600 dark:text-gray-300">{t('blueBook.checkDate')}</span>
                     <input
                       type="date"
                       className="rounded-lg border border-gray-300 px-3 py-2 dark:bg-slate-800 dark:text-white"
@@ -1779,7 +1781,7 @@ export default function BlueBookPage() {
                     />
                   </label>
                   <label className="flex flex-col gap-1">
-                    <span className="text-gray-600 dark:text-gray-300">Account Category</span>
+                    <span className="text-gray-600 dark:text-gray-300">{t('blueBook.accountCategory')}</span>
                     <input
                       className="rounded-lg border border-gray-300 px-3 py-2 dark:bg-slate-800 dark:text-white"
                       value={formState.accountCategoryName}
@@ -1789,7 +1791,7 @@ export default function BlueBookPage() {
                     />
                   </label>
                   <label className="flex flex-col gap-1">
-                    <span className="text-gray-600 dark:text-gray-300">Category Code</span>
+                    <span className="text-gray-600 dark:text-gray-300">{t('blueBook.categoryCode')}</span>
                     <input
                       className="rounded-lg border border-gray-300 px-3 py-2 dark:bg-slate-800 dark:text-white"
                       value={formState.accountCategoryCode}
@@ -1808,7 +1810,7 @@ export default function BlueBookPage() {
                     onClick={() => handleDelete()}
                     disabled={saving}
                   >
-                    {saving ? 'Deleting...' : 'Delete Entry'}
+                    {saving ? t('blueBook.deleting') : t('blueBook.deleteEntry')}
                   </button>
                   <div className="flex gap-3 ml-auto">
                     <button
@@ -1817,14 +1819,14 @@ export default function BlueBookPage() {
                       onClick={() => setEditingEntry(null)}
                       disabled={saving}
                     >
-                      Cancel
+                      {t('common.cancel')}
                     </button>
                     <button
                       type="submit"
                       className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
                       disabled={saving}
                     >
-                      {saving ? 'Saving...' : 'Save Changes'}
+                      {saving ? t('blueBook.saving') : t('settings.saveChanges')}
                     </button>
                   </div>
                 </div>
@@ -1840,63 +1842,63 @@ export default function BlueBookPage() {
             <div className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-2xl dark:bg-slate-900 max-h-[90vh] overflow-y-auto">
               <div className="mb-4 flex items-center justify-between">
                 <div>
-                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Create Manual Entry</h3>
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white">{t('blueBook.createManualEntry')}</h3>
                   <p className="text-sm text-gray-500 dark:text-gray-400">
-                    Add a new Blue Book entry manually
+                    {t('blueBook.addNewEntry')}
                   </p>
                 </div>
                 <button
                   onClick={() => setIsCreatingManual(false)}
                   className="text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400"
                 >
-                  Close
+                  {t('common.close')}
                 </button>
               </div>
               <form className="space-y-4 text-sm" onSubmit={handleCreateManual}>
                 <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                   <label className="flex flex-col gap-1 md:col-span-2">
-                    <span className="text-gray-600 dark:text-gray-300">Builder *</span>
+                    <span className="text-gray-600 dark:text-gray-300">{t('common.builder')} *</span>
                     <select
                       required
                       className="rounded-lg border border-gray-300 px-3 py-2 dark:bg-slate-800 dark:text-white"
                       value={formState.builderId}
                       onChange={(e) => setFormState((prev) => ({ ...prev, builderId: e.target.value, communityId: '' }))}
                     >
-                      <option value="">Select Builder</option>
+                      <option value="">{t('blueBook.selectBuilder')}</option>
                       {availableBuilders.map((b) => (
                         <option key={b.id} value={b.id}>{b.name}</option>
                       ))}
                     </select>
                   </label>
                   <label className="flex flex-col gap-1 md:col-span-2">
-                    <span className="text-gray-600 dark:text-gray-300">Community *</span>
+                    <span className="text-gray-600 dark:text-gray-300">{t('common.community')} *</span>
                     <select
                       required
                       className="rounded-lg border border-gray-300 px-3 py-2 dark:bg-slate-800 dark:text-white"
                       value={formState.communityId}
                       onChange={(e) => setFormState((prev) => ({ ...prev, communityId: e.target.value }))}
                     >
-                      <option value="">Select Community</option>
+                      <option value="">{t('blueBook.selectCommunity')}</option>
                       {communities.filter(c => !formState.builderId || c.builderId === formState.builderId).map((c) => (
                         <option key={c.id} value={c.id}>{c.name}</option>
                       ))}
                     </select>
                   </label>
                   <label className="flex flex-col gap-1 md:col-span-2">
-                    <span className="text-gray-600 dark:text-gray-300">Service (Optional)</span>
+                    <span className="text-gray-600 dark:text-gray-300">{t('blueBook.serviceOptional')}</span>
                     <select
                       className="rounded-lg border border-gray-300 px-3 py-2 dark:bg-slate-800 dark:text-white"
                       value={formState.serviceId}
                       onChange={(e) => setFormState((prev) => ({ ...prev, serviceId: e.target.value }))}
                     >
-                      <option value="">Select Service</option>
+                      <option value="">{t('blueBook.selectService')}</option>
                       {services.map((s) => (
                         <option key={s.id} value={s.id}>{s.name} {s.code ? `(${s.code})` : ''}</option>
                       ))}
                     </select>
                   </label>
                   <label className="flex flex-col gap-1">
-                    <span className="text-gray-600 dark:text-gray-300">Lot</span>
+                    <span className="text-gray-600 dark:text-gray-300">{t('common.lot')}</span>
                     <input
                       className="rounded-lg border border-gray-300 px-3 py-2 dark:bg-slate-800 dark:text-white"
                       value={formState.lot}
@@ -1904,7 +1906,7 @@ export default function BlueBookPage() {
                     />
                   </label>
                   <label className="flex flex-col gap-1">
-                    <span className="text-gray-600 dark:text-gray-300">Start Date</span>
+                    <span className="text-gray-600 dark:text-gray-300">{t('blueBook.startDate')}</span>
                     <input
                       type="date"
                       className="rounded-lg border border-gray-300 px-3 py-2 dark:bg-slate-800 dark:text-white"
@@ -1913,18 +1915,18 @@ export default function BlueBookPage() {
                     />
                   </label>
                   <label className="flex flex-col gap-1">
-                    <span className="text-gray-600 dark:text-gray-300">Status</span>
+                    <span className="text-gray-600 dark:text-gray-300">{t('common.status')}</span>
                     <select
                       className="rounded-lg border border-gray-300 px-3 py-2 dark:bg-slate-800 dark:text-white"
                       value={formState.status}
                       onChange={(e) => setFormState((prev) => ({ ...prev, status: e.target.value }))}
                     >
-                      <option value="PENDING">Pending</option>
-                      <option value="COMPLETE">Complete</option>
+                      <option value="PENDING">{t('status.pending')}</option>
+                      <option value="COMPLETE">{t('common.complete')}</option>
                     </select>
                   </label>
                   <label className="flex flex-col gap-1">
-                    <span className="text-gray-600 dark:text-gray-300">Amount</span>
+                    <span className="text-gray-600 dark:text-gray-300">{t('common.amount')}</span>
                     <input
                       type="number"
                       step="0.01"
@@ -1934,7 +1936,7 @@ export default function BlueBookPage() {
                     />
                   </label>
                   <label className="flex flex-col gap-1">
-                    <span className="text-gray-600 dark:text-gray-300">Invoice #</span>
+                    <span className="text-gray-600 dark:text-gray-300">{t('blueBook.invoiceNumber')}</span>
                     <input
                       className="rounded-lg border border-gray-300 px-3 py-2 dark:bg-slate-800 dark:text-white"
                       value={formState.invoiceNumber}
@@ -1942,7 +1944,7 @@ export default function BlueBookPage() {
                     />
                   </label>
                   <label className="flex flex-col gap-1">
-                    <span className="text-gray-600 dark:text-gray-300">Check #</span>
+                    <span className="text-gray-600 dark:text-gray-300">{t('blueBook.checkNumber')}</span>
                     <input
                       className="rounded-lg border border-gray-300 px-3 py-2 dark:bg-slate-800 dark:text-white"
                       value={formState.checkNumber}
@@ -1950,7 +1952,7 @@ export default function BlueBookPage() {
                     />
                   </label>
                   <label className="flex flex-col gap-1">
-                    <span className="text-gray-600 dark:text-gray-300">Check Date</span>
+                    <span className="text-gray-600 dark:text-gray-300">{t('blueBook.checkDate')}</span>
                     <input
                       type="date"
                       className="rounded-lg border border-gray-300 px-3 py-2 dark:bg-slate-800 dark:text-white"
@@ -1959,7 +1961,7 @@ export default function BlueBookPage() {
                     />
                   </label>
                   <label className="flex flex-col gap-1">
-                    <span className="text-gray-600 dark:text-gray-300">Account Category</span>
+                    <span className="text-gray-600 dark:text-gray-300">{t('blueBook.accountCategory')}</span>
                     <input
                       className="rounded-lg border border-gray-300 px-3 py-2 dark:bg-slate-800 dark:text-white"
                       value={formState.accountCategoryName}
@@ -1969,7 +1971,7 @@ export default function BlueBookPage() {
                     />
                   </label>
                   <label className="flex flex-col gap-1">
-                    <span className="text-gray-600 dark:text-gray-300">Category Code</span>
+                    <span className="text-gray-600 dark:text-gray-300">{t('blueBook.categoryCode')}</span>
                     <input
                       className="rounded-lg border border-gray-300 px-3 py-2 dark:bg-slate-800 dark:text-white"
                       value={formState.accountCategoryCode}
@@ -1987,14 +1989,14 @@ export default function BlueBookPage() {
                     onClick={() => setIsCreatingManual(false)}
                     disabled={saving}
                   >
-                    Cancel
+                    {t('common.cancel')}
                   </button>
                   <button
                     type="submit"
                     className="rounded-lg bg-green-600 px-4 py-2 text-sm font-semibold text-white hover:bg-green-700 disabled:cursor-not-allowed disabled:opacity-50"
                     disabled={saving}
                   >
-                    {saving ? 'Creating...' : 'Create Entry'}
+                    {saving ? t('blueBook.creating') : t('blueBook.createEntry')}
                   </button>
                 </div>
               </form>

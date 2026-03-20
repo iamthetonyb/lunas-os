@@ -10,6 +10,7 @@ import { getFriendlyName } from '@/lib/utils/community-display';
 import { ConfirmationModal } from '@/components/ui/confirmation-modal';
 import { useState } from 'react';
 import { toast } from 'sonner';
+import { useTranslation } from 'react-i18next';
 
 type DispatchDetail = {
     id: string;
@@ -37,6 +38,7 @@ type DispatchJob = {
 
 export default function DispatchDetailPage({ params }: { params: Promise<{ id: string }> }) {
     const { id } = use(params);
+    const { t } = useTranslation();
     const { data: session } = useSession();
     const isContractor = session?.user?.role === 'FOREMAN' || session?.user?.role === 'CREW';
     const isAdmin = session?.user?.role === 'admin' || session?.user?.role === 'backoffice';
@@ -100,10 +102,10 @@ export default function DispatchDetailPage({ params }: { params: Promise<{ id: s
     if (isLoading) {
         return (
             <>
-                <PageHeader title="Dispatch Details" description="Loading..." />
+                <PageHeader title={t('dispatch.title')} description={t('common.loading')} />
                 <main className="px-6 py-6">
                     <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-8 text-center">
-                        <p className="text-gray-500">Loading dispatch details...</p>
+                        <p className="text-gray-500">{t('common.loading')}</p>
                     </div>
                 </main>
             </>
@@ -114,11 +116,11 @@ export default function DispatchDetailPage({ params }: { params: Promise<{ id: s
         return (
             <>
                 <PageHeader
-                    title="Dispatch Details"
+                    title={t('dispatch.title')}
                     description="Error loading dispatch"
                     action={
                         <Link href="/dispatch" className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700">
-                            ← Back to Dispatch
+                            {t('common.back')}
                         </Link>
                     }
                 />
@@ -142,29 +144,29 @@ export default function DispatchDetailPage({ params }: { params: Promise<{ id: s
                 description={`${dispatch.jobs?.length || 0} jobs assigned`}
                 action={
                     <Link href="/dispatch" className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700">
-                        ← Back to Dispatch
+                        {t('common.back')}
                     </Link>
                 }
             />
             <main className="px-6 py-6">
                 {/* Dispatch Summary */}
                 <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
-                    <h2 className="text-lg font-semibold text-gray-900 mb-4">Dispatch Summary</h2>
+                    <h2 className="text-lg font-semibold text-gray-900 mb-4">{t('dispatch.title')}</h2>
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                         <div>
-                            <p className="text-sm text-gray-500">Crew</p>
+                            <p className="text-sm text-gray-500">{t('common.crew')}</p>
                             <p className="text-lg font-semibold text-blue-600">{dispatch.crewName}</p>
                         </div>
                         <div>
-                            <p className="text-sm text-gray-500">Foreman</p>
+                            <p className="text-sm text-gray-500">{t('common.foreman')}</p>
                             <p className="text-lg font-semibold text-gray-900">{dispatch.foremanName || '—'}</p>
                         </div>
                         <div>
-                            <p className="text-sm text-gray-500">Service Date</p>
+                            <p className="text-sm text-gray-500">{t('dispatch.serviceDate')}</p>
                             <p className="text-lg font-semibold text-gray-900">{dateStr}</p>
                         </div>
                         <div>
-                            <p className="text-sm text-gray-500">Status</p>
+                            <p className="text-sm text-gray-500">{t('common.status')}</p>
                             <span className={`inline-flex px-3 py-1 rounded-full text-sm font-semibold ${dispatch.status === 'COMPLETE'
                                 ? 'bg-green-100 text-green-800'
                                 : dispatch.status === 'SENT' || dispatch.status === 'DISPATCHED'
@@ -177,7 +179,7 @@ export default function DispatchDetailPage({ params }: { params: Promise<{ id: s
                     </div>
                     {dispatch.notes && (
                         <div className="mt-4 p-3 bg-gray-50 rounded-lg">
-                            <p className="text-sm text-gray-500 mb-1">Notes</p>
+                            <p className="text-sm text-gray-500 mb-1">{t('common.notes')}</p>
                             <p className="text-gray-900">{dispatch.notes}</p>
                         </div>
                     )}
@@ -186,7 +188,7 @@ export default function DispatchDetailPage({ params }: { params: Promise<{ id: s
                 {/* Jobs List */}
                 <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
                     <div className="px-6 py-4 border-b border-gray-200">
-                        <h2 className="text-lg font-semibold text-gray-900">Assigned Jobs</h2>
+                        <h2 className="text-lg font-semibold text-gray-900">{t('dispatch.yourAssignedJobs')}</h2>
                     </div>
 
                     {!dispatch.jobs || dispatch.jobs.length === 0 ? (
@@ -198,14 +200,14 @@ export default function DispatchDetailPage({ params }: { params: Promise<{ id: s
                             <table className="min-w-full divide-y divide-gray-200">
                                 <thead className="bg-gray-50">
                                     <tr>
-                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Community</th>
-                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Builder</th>
-                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Lot</th>
-                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Service</th>
-                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Foreman</th>
-                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Walk Time</th>
-                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
-                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
+                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">{t('common.community')}</th>
+                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">{t('common.builder')}</th>
+                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">{t('common.lot')}</th>
+                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">{t('common.service')}</th>
+                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">{t('common.foreman')}</th>
+                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">{t('schedule.walkTime')}</th>
+                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">{t('common.status')}</th>
+                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">{t('common.actions')}</th>
                                     </tr>
                                 </thead>
                                 <tbody className="bg-white divide-y divide-gray-200">
@@ -273,9 +275,9 @@ export default function DispatchDetailPage({ params }: { params: Promise<{ id: s
                 isOpen={completeModal.isOpen}
                 onClose={() => setCompleteModal({ isOpen: false, jobId: null })}
                 onConfirm={handleMarkCompleteConfirm}
-                title="Mark Job Complete"
+                title={t('schedule.markComplete')}
                 message="Are you sure you want to mark this job as complete?"
-                confirmText="Complete"
+                confirmText={t('common.complete')}
                 variant="primary"
             />
 
@@ -285,7 +287,7 @@ export default function DispatchDetailPage({ params }: { params: Promise<{ id: s
                 onConfirm={handleDeleteConfirm}
                 title="Remove Job from Dispatch"
                 message="Are you sure you want to remove this job from this dispatch batch? This will also remove any associated Blue Book entries."
-                confirmText="Delete"
+                confirmText={t('common.delete')}
                 variant="danger"
             />
         </>

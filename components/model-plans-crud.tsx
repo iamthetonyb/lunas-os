@@ -8,6 +8,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useQuery, useMutation } from 'convex/react';
 import { api } from '@/convex/_generated/api';
 import { Id } from '@/convex/_generated/dataModel';
+import { useTranslation } from 'react-i18next';
 
 const schema = z.object({
   name: z.string().min(1, 'Name is required'),
@@ -34,6 +35,7 @@ interface Builder {
 }
 
 export function ModelPlansCrud() {
+  const { t } = useTranslation();
   const modelPlans = useQuery(api.queries.getModelPlans) as ModelPlan[] | undefined;
   const builders = useQuery(api.queries.getBuilders) as Builder[] | undefined;
   const createModelPlan = useMutation(api.mutations.createModelPlan);
@@ -152,13 +154,13 @@ export function ModelPlansCrud() {
                     Code
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                    Builder
+                    {t('common.builder')}
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                     Square Footage
                   </th>
                   <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                    Actions
+                    {t('common.actions')}
                   </th>
                 </tr>
               </thead>
@@ -196,7 +198,7 @@ export function ModelPlansCrud() {
                           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                           </svg>
-                          Edit
+                          {t('common.edit')}
                         </button>
                         <button
                           onClick={() => handleDelete(plan._id)}
@@ -209,14 +211,14 @@ export function ModelPlansCrud() {
                                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                                 <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                               </svg>
-                              Deleting...
+                              {t('common.loading')}
                             </>
                           ) : (
                             <>
                               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                               </svg>
-                              Delete
+                              {t('common.delete')}
                             </>
                           )}
                         </button>
@@ -298,7 +300,7 @@ export function ModelPlansCrud() {
 
                     <div>
                       <label htmlFor="builderId" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                        Builder
+                        {t('common.builder')}
                       </label>
                       <select
                         id="builderId"
@@ -343,7 +345,7 @@ export function ModelPlansCrud() {
                         }}
                         className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 font-medium transition-colors"
                       >
-                        Cancel
+                        {t('common.cancel')}
                       </button>
                       <button
                         type="submit"
@@ -356,14 +358,14 @@ export function ModelPlansCrud() {
                               <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                               <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                             </svg>
-                            Saving...
+                            {t('common.loading')}
                           </>
                         ) : (
                           <>
                             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                             </svg>
-                            Save Model Plan
+                            {t('common.save')}
                           </>
                         )}
                       </button>

@@ -3,6 +3,7 @@
 import { PageHeader } from '@/components/page-header';
 import Link from 'next/link';
 import dynamic from 'next/dynamic';
+import { useTranslation } from 'react-i18next';
 
 // Lazy load the form and disable Server-Side Rendering (SSR) for it
 const IntakeForm = dynamic(
@@ -11,14 +12,15 @@ const IntakeForm = dynamic(
 );
 
 export default function NewIntakePage() {
+  const { t } = useTranslation();
   return (
     <>
       <PageHeader
-        title="New Intake"
-        description="Create a new job intake request"
+        title={t('intake.newIntake')}
+        description={t('intake.formTitle')}
         action={
           <Link href="/intake" className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700">
-            ← Back to Intakes
+            {t('common.back')}
           </Link>
         }
       />

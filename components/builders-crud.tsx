@@ -5,11 +5,13 @@ import { useQuery, useMutation } from 'convex/react';
 import { api } from '@/convex/_generated/api';
 import { Id } from '@/convex/_generated/dataModel';
 import { toast } from 'sonner';
+import { useTranslation } from 'react-i18next';
 
 type Builder = { _id: Id<"builders">; name: string };
 type Community = { _id: Id<"communities">; name: string; builderId?: Id<"builders"> | null };
 
 export function BuildersCrud() {
+    const { t } = useTranslation();
     const builders = useQuery(api.queries.getBuilders) ?? [];
     const communities = useQuery(api.queries.getCommunities) ?? [];
     const loadingBuilders = builders === undefined;
@@ -140,7 +142,7 @@ export function BuildersCrud() {
 
                 {/* Builders List */}
                 {loadingBuilders ? (
-                    <p className="text-gray-500 text-sm">Loading...</p>
+                    <p className="text-gray-500 text-sm">{t('common.loading')}</p>
                 ) : (
                     <div className="space-y-2 max-h-[400px] overflow-y-auto">
                         {builders.map((builder) => (
@@ -161,8 +163,8 @@ export function BuildersCrud() {
                                             onKeyDown={(e) => e.key === 'Enter' && handleUpdateBuilder(builder._id)}
                                             autoFocus
                                         />
-                                        <button onClick={() => handleUpdateBuilder(builder._id)} className="text-green-600 text-xs">Save</button>
-                                        <button onClick={() => setEditingBuilderId(null)} className="text-gray-500 text-xs">Cancel</button>
+                                        <button onClick={() => handleUpdateBuilder(builder._id)} className="text-green-600 text-xs">{t('common.save')}</button>
+                                        <button onClick={() => setEditingBuilderId(null)} className="text-gray-500 text-xs">{t('common.cancel')}</button>
                                     </div>
                                 ) : (
                                     <>
@@ -177,13 +179,13 @@ export function BuildersCrud() {
                                                 onClick={() => { setEditingBuilderId(builder._id); setEditingBuilderName(builder.name); }}
                                                 className="px-2 py-1 text-xs text-blue-600 hover:bg-blue-50 rounded"
                                             >
-                                                Edit
+                                                {t('common.edit')}
                                             </button>
                                             <button
                                                 onClick={() => handleDeleteBuilder(builder._id, builder.name)}
                                                 className="px-2 py-1 text-xs text-red-600 hover:bg-red-50 rounded"
                                             >
-                                                Delete
+                                                {t('common.delete')}
                                             </button>
                                         </div>
                                     </>
@@ -229,7 +231,7 @@ export function BuildersCrud() {
 
                 {/* Communities List */}
                 {loadingCommunities ? (
-                    <p className="text-gray-500 text-sm">Loading...</p>
+                    <p className="text-gray-500 text-sm">{t('common.loading')}</p>
                 ) : filteredCommunities.length === 0 ? (
                     <p className="text-gray-500 text-sm">
                         {selectedBuilderId ? 'No communities for this builder' : 'Select a builder to filter'}
@@ -251,8 +253,8 @@ export function BuildersCrud() {
                                             onKeyDown={(e) => e.key === 'Enter' && handleUpdateCommunity(community._id)}
                                             autoFocus
                                         />
-                                        <button onClick={() => handleUpdateCommunity(community._id)} className="text-green-600 text-xs">Save</button>
-                                        <button onClick={() => setEditingCommunityId(null)} className="text-gray-500 text-xs">Cancel</button>
+                                        <button onClick={() => handleUpdateCommunity(community._id)} className="text-green-600 text-xs">{t('common.save')}</button>
+                                        <button onClick={() => setEditingCommunityId(null)} className="text-gray-500 text-xs">{t('common.cancel')}</button>
                                     </div>
                                 ) : (
                                     <>
@@ -267,13 +269,13 @@ export function BuildersCrud() {
                                                 onClick={() => { setEditingCommunityId(community._id); setEditingCommunityName(community.name); }}
                                                 className="px-2 py-1 text-xs text-blue-600 hover:bg-blue-50 rounded"
                                             >
-                                                Edit
+                                                {t('common.edit')}
                                             </button>
                                             <button
                                                 onClick={() => handleDeleteCommunity(community._id, community.name)}
                                                 className="px-2 py-1 text-xs text-red-600 hover:bg-red-50 rounded"
                                             >
-                                                Delete
+                                                {t('common.delete')}
                                             </button>
                                         </div>
                                     </>

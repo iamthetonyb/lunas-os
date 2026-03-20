@@ -362,7 +362,7 @@ export function IntakeForm() {
       {/* Builder & Community Section */}
       <div className="bg-white border-2 border-gray-200 rounded-lg p-6">
         <h3 className="text-lg font-semibold text-gray-900 mb-4 pb-2 border-b border-gray-200">
-          Builder & Location Information
+          {t('intake.builderLocation')}
         </h3>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -484,7 +484,7 @@ export function IntakeForm() {
       {/* Services Section */}
       <div className="bg-white border-2 border-gray-200 rounded-lg p-6">
         <h3 className="text-lg font-semibold text-gray-900 mb-4 pb-2 border-b border-gray-200">
-          Services Required <span className="text-red-500">*</span>
+          {t('intake.services')} <span className="text-red-500">*</span>
         </h3>
 
         <Controller
@@ -508,7 +508,7 @@ export function IntakeForm() {
       {/* Schedule Section */}
       <div className="bg-white border-2 border-gray-200 rounded-lg p-6">
         <h3 className="text-lg font-semibold text-gray-900 mb-4 pb-2 border-b border-gray-200">
-          Schedule Information
+          {t('intake.scheduleInfo')}
         </h3>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -551,7 +551,7 @@ export function IntakeForm() {
       {/* Contact Information Section */}
       <div className="bg-white border-2 border-gray-200 rounded-lg p-6">
         <h3 className="text-lg font-semibold text-gray-900 mb-4 pb-2 border-b border-gray-200">
-          Contact Information
+          {t('intake.contactInfo')}
         </h3>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -610,7 +610,7 @@ export function IntakeForm() {
       {/* Notes Section */}
       <div className="bg-white border-2 border-gray-200 rounded-lg p-6">
         <h3 className="text-lg font-semibold text-gray-900 mb-4 pb-2 border-b border-gray-200">
-          Additional Notes
+          {t('intake.additionalNotes')}
         </h3>
 
         <div>
@@ -627,7 +627,7 @@ export function IntakeForm() {
           />
           {extraWorkSelected && (
             <p className="mt-1 text-xs text-red-500">
-              Notes are required when submitting Extra Work.
+              {t('intake.notesRequired')}
             </p>
           )}
           {errors.notes && (
@@ -643,14 +643,14 @@ export function IntakeForm() {
           onClick={() => window.history.back()}
           className="px-6 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 font-medium transition-colors"
         >
-          Cancel
+          {t('common.cancel')}
         </button>
         <button
           type="submit"
           disabled={isSubmitting}
           className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium transition-colors disabled:bg-blue-400 disabled:cursor-not-allowed"
         >
-          {isSubmitting ? 'Submitting...' : 'Submit Intake Request'}
+          {isSubmitting ? t('intake.submitting') : t('intake.submitIntake')}
         </button>
       </div>
     </form>

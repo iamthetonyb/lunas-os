@@ -10,6 +10,7 @@ import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import Link from 'next/link';
+import { useTranslation } from 'react-i18next';
 
 const schema = z.object({
   status: z.enum(['COMPLETE', 'NOT_DONE']),
@@ -23,6 +24,7 @@ type FormData = z.infer<typeof schema>;
 export default function FieldTicketPage({ params }: { params: Promise<{ assignmentId: string }> }) {
   // Unwrap params using React.use() for Next.js 15
   const { assignmentId } = use(params);
+  const { t } = useTranslation();
 
   const assignment = useQuery(
     api.assignmentFunctions.getById,
@@ -64,7 +66,7 @@ export default function FieldTicketPage({ params }: { params: Promise<{ assignme
 
   if (error) return (
     <>
-      <PageHeader title="Field Ticket" description={`Assignment ${assignmentId}`} />
+      <PageHeader title={t('dispatch.fieldTicket')} description={`Assignment ${assignmentId}`} />
       <main className="px-6 py-6">
         <div className="bg-red-50 border border-red-200 rounded-lg p-4">
           <p className="text-red-600">Failed to load assignment</p>
@@ -75,10 +77,10 @@ export default function FieldTicketPage({ params }: { params: Promise<{ assignme
 
   if (!assignment) return (
     <>
-      <PageHeader title="Field Ticket" description={`Assignment ${assignmentId}`} />
+      <PageHeader title={t('dispatch.fieldTicket')} description={`Assignment ${assignmentId}`} />
       <main className="px-6 py-6">
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-          <p className="text-gray-600">Loading assignment...</p>
+          <p className="text-gray-600">{t('common.loading')}</p>
         </div>
       </main>
     </>
@@ -87,11 +89,11 @@ export default function FieldTicketPage({ params }: { params: Promise<{ assignme
   return (
     <>
       <PageHeader
-        title="Field Ticket"
+        title={t('dispatch.fieldTicket')}
         description={`Assignment ID: ${assignment.id}`}
         action={
           <Link href="/schedule" className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700">
-            ← Back to Schedule
+            {t('common.back')}
           </Link>
         }
       />
@@ -101,19 +103,19 @@ export default function FieldTicketPage({ params }: { params: Promise<{ assignme
             <h3 className="text-lg font-semibold text-gray-900 mb-4">Ticket Status</h3>
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Status</label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">{t('common.status')}</label>
                 <select
                   {...register('status')}
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                 >
-                  <option value="COMPLETE">Complete</option>
-                  <option value="NOT_DONE">Not Complete</option>
+                  <option value="COMPLETE">{t('common.complete')}</option>
+                  <option value="NOT_DONE">{t('common.notComplete')}</option>
                 </select>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Windows</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">{t('schedule.windows')}</label>
                   <input
                     type="number"
                     {...register('windows', { valueAsNumber: true })}
@@ -122,7 +124,7 @@ export default function FieldTicketPage({ params }: { params: Promise<{ assignme
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Tubs</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">{t('schedule.tubs')}</label>
                   <input
                     type="number"
                     {...register('tubs', { valueAsNumber: true })}
@@ -133,7 +135,7 @@ export default function FieldTicketPage({ params }: { params: Promise<{ assignme
               </div>
 
               <div>
-                <label htmlFor="notes" className="block text-sm font-medium text-gray-700 mb-2">Notes</label>
+                <label htmlFor="notes" className="block text-sm font-medium text-gray-700 mb-2">{t('common.notes')}</label>
                 <textarea
                   id="notes"
                   {...register('notes')}
@@ -149,7 +151,7 @@ export default function FieldTicketPage({ params }: { params: Promise<{ assignme
             <h3 className="text-lg font-semibold text-gray-900 mb-4">Signatures</h3>
             <div className="space-y-6">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Foreman Signature</label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">{t('schedule.signatureForeman')}</label>
                 <div className="border border-gray-300 rounded-lg overflow-hidden">
                   <SignatureCanvas
                     ref={foremanSigRef}
@@ -170,7 +172,7 @@ export default function FieldTicketPage({ params }: { params: Promise<{ assignme
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Customer Signature</label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">{t('schedule.signatureCustomer')}</label>
                 <div className="border border-gray-300 rounded-lg overflow-hidden">
                   <SignatureCanvas
                     ref={customerSigRef}
@@ -197,13 +199,13 @@ export default function FieldTicketPage({ params }: { params: Promise<{ assignme
               href="/schedule"
               className="px-6 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 font-medium"
             >
-              Cancel
+              {t('common.cancel')}
             </Link>
             <button
               type="submit"
               className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium"
             >
-              Submit Ticket
+              {t('common.submit')}
             </button>
           </div>
         </form>

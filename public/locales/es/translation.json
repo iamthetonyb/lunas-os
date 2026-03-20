@@ -136,7 +136,13 @@
         "submitIntake": "Enviar Ingesta",
         "intakeSubmitted": "Ingesta enviada exitosamente",
         "intakeUpdated": "Ingesta actualizada exitosamente",
-        "intakeDeleted": "Ingesta eliminada exitosamente"
+        "intakeDeleted": "Ingesta eliminada exitosamente",
+        "builderLocation": "Información del Constructor y Ubicación",
+        "scheduleInfo": "Información del Horario",
+        "contactInfo": "Información de Contacto",
+        "additionalNotes": "Notas Adicionales",
+        "submitting": "Enviando...",
+        "notesRequired": "Las notas son obligatorias al enviar Trabajo Extra."
     },
     "dispatch": {
         "title": "Despacho",
@@ -151,7 +157,11 @@
         "deleteBatch": "Eliminar Lote",
         "deleteConfirm": "¿Estás seguro de que deseas eliminar este lote de despacho?",
         "noBatches": "No hay lotes de despacho para esta fecha.",
-        "createBatch": "Primero despacha trabajos desde la página de Horario."
+        "createBatch": "Primero despacha trabajos desde la página de Horario.",
+        "yourAssignedJobs": "Tus trabajos asignados",
+        "newJob": "Nuevo Trabajo",
+        "serviceDate": "Fecha de Servicio",
+        "viewDetails": "Ver Detalles"
     },
     "schedule": {
         "title": "Horario",
@@ -169,7 +179,22 @@
         "markComplete": "Marcar Completo",
         "dispatched": "Despachado",
         "rescheduled": "Reprogramado",
-        "extraWork": "Trabajo Extra"
+        "extraWork": "Trabajo Extra",
+        "autoDraft": "Auto-Asignar",
+        "upcomingServices": "Servicios Próximos",
+        "manageBlueBook": "Administrar Libro Azul",
+        "allForemen": "Todos los Capataces",
+        "noServices": "No hay servicios programados en esta ventana.",
+        "noServicesForForeman": "No hay servicios programados para el capataz seleccionado en esta ventana.",
+        "dispatchJob": "Despachar Trabajo",
+        "assignedForeman": "Capataz Asignado",
+        "notSelected": "No seleccionado - usa el menú desplegable primero",
+        "selectCrewMember": "Seleccionar Miembro de Cuadrilla",
+        "chooseCrewMember": "Elegir miembro de cuadrilla...",
+        "rescheduleJob": "Reprogramar Trabajo",
+        "selectNewDate": "Seleccionar Nueva Fecha",
+        "nextBusinessDayHint": "Siguiente día hábil auto-seleccionado. Cambia si es necesario.",
+        "confirmReschedule": "Confirmar Reprogramación"
     },
     "blueBook": {
         "title": "Libro Azul",
@@ -191,7 +216,33 @@
         "noEntries": "No se encontraron entradas",
         "filterByBuilder": "Filtrar por constructor",
         "filterByCommunity": "Filtrar por comunidad",
-        "filterByStatus": "Filtrar por estado"
+        "filterByStatus": "Filtrar por estado",
+        "failedToLoad": "Error al cargar datos",
+        "allBuilders": "Todos los Constructores",
+        "sortByCheckDate": "Ordenar por Fecha de Cheque",
+        "sortByStartDate": "Ordenar por Fecha de Inicio",
+        "manualEntry": "Entrada Manual",
+        "modelPlan": "Plan Modelo",
+        "saving": "Guardando...",
+        "selectPlan": "Seleccionar Plan",
+        "noModelPlans": "No hay planes modelo disponibles para este constructor.",
+        "phases": "Fases",
+        "noPhasesConfigured": "No hay fases configuradas para este lote.",
+        "noServicesTracked": "No hay servicios rastreados para esta fase.",
+        "invoicesAndChecks": "Facturas y Cheques",
+        "accountCategory": "Categoría de Cuenta",
+        "categoryCode": "Código de Categoría",
+        "editEntry": "Editar Entrada",
+        "deleteEntry": "Eliminar Entrada",
+        "deleting": "Eliminando...",
+        "createManualEntry": "Crear Entrada Manual",
+        "addNewEntry": "Agregar una nueva entrada al Libro Azul manualmente",
+        "selectBuilder": "Seleccionar Constructor",
+        "selectCommunity": "Seleccionar Comunidad",
+        "serviceOptional": "Servicio (Opcional)",
+        "selectService": "Seleccionar Servicio",
+        "creating": "Creando...",
+        "createEntry": "Crear Entrada"
     },
     "extraWork": {
         "title": "Trabajo Extra",
@@ -199,7 +250,12 @@
         "noExtraWork": "No se encontraron órdenes de trabajo extra",
         "flaggedAs": "Marcado como trabajo extra",
         "originalPO": "OC Original",
-        "additionalNotes": "Notas Adicionales"
+        "additionalNotes": "Notas Adicionales",
+        "price": "Precio",
+        "accessRestricted": "Acceso Restringido",
+        "accessRestrictedMessage": "La página de Trabajo Extra solo es accesible para personal administrativo.",
+        "approved": "Aprobado",
+        "billed": "Facturado"
     },
     "users": {
         "title": "Usuarios",
@@ -211,7 +267,28 @@
         "noUsers": "No se encontraron usuarios",
         "admin": "Administrador",
         "backOffice": "Oficina",
-        "contractor": "Contratista"
+        "contractor": "Contratista",
+        "createNewUser": "Crear Nuevo Usuario",
+        "createUser": "Crear Usuario",
+        "newPassword": "Nueva Contraseña (dejar en blanco para mantener la actual)",
+        "confirmPassword": "Confirmar Contraseña",
+        "saving": "Guardando...",
+        "currentUsers": "Usuarios Actuales",
+        "memberships": "Membresías",
+        "noOrgAccess": "Sin acceso a organización",
+        "assignOrgRole": "Asignar Rol de Organización",
+        "user": "Usuario",
+        "selectUser": "Seleccionar usuario...",
+        "organization": "Organización",
+        "selectOrg": "Seleccionar org...",
+        "saveAccess": "Guardar Acceso",
+        "organizations": "Organizaciones",
+        "slug": "Identificador",
+        "editOrganization": "Editar Organización",
+        "createOrganization": "Crear Nueva Organización",
+        "orgName": "Nombre de Org",
+        "updateOrg": "Actualizar Org",
+        "createOrg": "Crear Org"
     },
     "settings": {
         "title": "Configuración",
@@ -224,7 +301,11 @@
         "english": "Inglés",
         "spanish": "Español",
         "saveChanges": "Guardar Cambios",
-        "changesSaved": "Configuración guardada exitosamente"
+        "changesSaved": "Configuración guardada exitosamente",
+        "generalSettings": "Configuración General",
+        "displayName": "Nombre para Mostrar",
+        "contactPreference": "¿Cómo prefieres ser contactado para actualizaciones de trabajo y despachos?",
+        "saving": "Guardando..."
     },
     "contracts": {
         "title": "Contratos",
@@ -255,7 +336,15 @@
         "sent": "Enviada",
         "paid": "Pagada",
         "void": "Anulada",
-        "noInvoices": "No se encontraron facturas"
+        "noInvoices": "No se encontraron facturas",
+        "buildNewInvoice": "Crear Nueva Factura",
+        "selectBuilder": "Seleccionar Constructor",
+        "buildDraft": "Crear Borrador",
+        "buildDraftInvoice": "Crear Borrador de Factura",
+        "recentInvoices": "Facturas Recientes",
+        "view": "Ver",
+        "pdf": "PDF",
+        "send": "Enviar"
     },
     "status": {
         "pending": "Pendiente",

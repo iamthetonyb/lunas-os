@@ -558,13 +558,13 @@ export default function UsersPage() {
                           onClick={() => handleEditOrg(org)}
                           className="text-blue-600 hover:text-blue-800 font-medium"
                         >
-                          Edit
+                          {t('common.edit')}
                         </button>
                         <button
                           onClick={() => handleDeleteOrg(org.id)}
                           className="text-red-600 hover:text-red-800 font-medium"
                         >
-                          Delete
+                          {t('common.delete')}
                         </button>
                       </div>
                     </td>
@@ -575,11 +575,11 @@ export default function UsersPage() {
           </div>
 
           <h4 className="text-md font-semibold text-gray-900 mb-4">
-            {editingOrg ? 'Edit Organization' : 'Create New Organization'}
+            {editingOrg ? t('users.editOrganization') : t('users.createOrganization')}
           </h4>
           <form onSubmit={handleOrgSubmit} className="flex flex-col gap-3 md:flex-row md:items-end">
             <div className="flex-1">
-              <label className="text-sm font-medium text-gray-700">Org Name</label>
+              <label className="text-sm font-medium text-gray-700">{t('users.orgName')}</label>
               <input
                 className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 bg-white text-gray-900"
                 placeholder="e.g., Pulte Phoenix"
@@ -594,7 +594,7 @@ export default function UsersPage() {
                 className={`rounded-lg px-4 py-2 text-sm font-semibold text-white disabled:opacity-50 ${editingOrg ? 'bg-blue-600 hover:bg-blue-700' : 'bg-green-600 hover:bg-green-700'
                   }`}
               >
-                {editingOrg ? 'Update Org' : 'Create Org'}
+                {editingOrg ? t('users.updateOrg') : t('users.createOrg')}
               </button>
               {editingOrg && (
                 <button
@@ -605,7 +605,7 @@ export default function UsersPage() {
                   }}
                   className="rounded-lg bg-gray-200 px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-300"
                 >
-                  Cancel
+                  {t('common.cancel')}
                 </button>
               )}
             </div>

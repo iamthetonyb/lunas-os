@@ -136,7 +136,13 @@
         "submitIntake": "Submit Intake",
         "intakeSubmitted": "Intake submitted successfully",
         "intakeUpdated": "Intake updated successfully",
-        "intakeDeleted": "Intake deleted successfully"
+        "intakeDeleted": "Intake deleted successfully",
+        "builderLocation": "Builder & Location Information",
+        "scheduleInfo": "Schedule Information",
+        "contactInfo": "Contact Information",
+        "additionalNotes": "Additional Notes",
+        "submitting": "Submitting...",
+        "notesRequired": "Notes are required when submitting Extra Work."
     },
     "dispatch": {
         "title": "Dispatch",
@@ -151,7 +157,11 @@
         "deleteBatch": "Delete Batch",
         "deleteConfirm": "Are you sure you want to delete this dispatch batch?",
         "noBatches": "No dispatch batches for this date.",
-        "createBatch": "Dispatch jobs from the Schedule page first."
+        "createBatch": "Dispatch jobs from the Schedule page first.",
+        "yourAssignedJobs": "Your assigned jobs",
+        "newJob": "New Job",
+        "serviceDate": "Service Date",
+        "viewDetails": "View Details"
     },
     "schedule": {
         "title": "Schedule",
@@ -169,7 +179,22 @@
         "markComplete": "Mark Complete",
         "dispatched": "Dispatched",
         "rescheduled": "Rescheduled",
-        "extraWork": "Extra Work"
+        "extraWork": "Extra Work",
+        "autoDraft": "Auto-Draft",
+        "upcomingServices": "Upcoming Services",
+        "manageBlueBook": "Manage Blue Book",
+        "allForemen": "All Foremen",
+        "noServices": "No services scheduled in this window.",
+        "noServicesForForeman": "No services scheduled for the selected foreman in this window.",
+        "dispatchJob": "Dispatch Job",
+        "assignedForeman": "Assigned Foreman",
+        "notSelected": "Not selected - use table dropdown first",
+        "selectCrewMember": "Select Crew Member",
+        "chooseCrewMember": "Choose crew member...",
+        "rescheduleJob": "Reschedule Job",
+        "selectNewDate": "Select New Date",
+        "nextBusinessDayHint": "Next business day auto-selected. Change if needed.",
+        "confirmReschedule": "Confirm Reschedule"
     },
     "blueBook": {
         "title": "Blue Book",
@@ -191,7 +216,33 @@
         "noEntries": "No entries found",
         "filterByBuilder": "Filter by builder",
         "filterByCommunity": "Filter by community",
-        "filterByStatus": "Filter by status"
+        "filterByStatus": "Filter by status",
+        "failedToLoad": "Failed to load data",
+        "allBuilders": "All Builders",
+        "sortByCheckDate": "Sort by Check Date",
+        "sortByStartDate": "Sort by Start Date",
+        "manualEntry": "Manual Entry",
+        "modelPlan": "Model Plan",
+        "saving": "Saving...",
+        "selectPlan": "Select Plan",
+        "noModelPlans": "No model plans available for this builder.",
+        "phases": "Phases",
+        "noPhasesConfigured": "No phases configured for this lot.",
+        "noServicesTracked": "No services tracked for this phase.",
+        "invoicesAndChecks": "Invoices & Checks",
+        "accountCategory": "Account Category",
+        "categoryCode": "Category Code",
+        "editEntry": "Edit Entry",
+        "deleteEntry": "Delete Entry",
+        "deleting": "Deleting...",
+        "createManualEntry": "Create Manual Entry",
+        "addNewEntry": "Add a new Blue Book entry manually",
+        "selectBuilder": "Select Builder",
+        "selectCommunity": "Select Community",
+        "serviceOptional": "Service (Optional)",
+        "selectService": "Select Service",
+        "creating": "Creating...",
+        "createEntry": "Create Entry"
     },
     "extraWork": {
         "title": "Extra Work",
@@ -199,7 +250,12 @@
         "noExtraWork": "No extra work orders found",
         "flaggedAs": "Flagged as extra work",
         "originalPO": "Original PO",
-        "additionalNotes": "Additional Notes"
+        "additionalNotes": "Additional Notes",
+        "price": "Price",
+        "accessRestricted": "Access Restricted",
+        "accessRestrictedMessage": "The Extra Work page is only accessible to admin and back office staff.",
+        "approved": "Approved",
+        "billed": "Billed"
     },
     "users": {
         "title": "Users",
@@ -211,7 +267,28 @@
         "noUsers": "No users found",
         "admin": "Admin",
         "backOffice": "Back Office",
-        "contractor": "Contractor"
+        "contractor": "Contractor",
+        "createNewUser": "Create New User",
+        "createUser": "Create User",
+        "newPassword": "New Password (leave blank to keep current)",
+        "confirmPassword": "Confirm Password",
+        "saving": "Saving...",
+        "currentUsers": "Current Users",
+        "memberships": "Memberships",
+        "noOrgAccess": "No org access",
+        "assignOrgRole": "Assign Org Role",
+        "user": "User",
+        "selectUser": "Select user...",
+        "organization": "Organization",
+        "selectOrg": "Select org...",
+        "saveAccess": "Save Access",
+        "organizations": "Organizations",
+        "slug": "Slug",
+        "editOrganization": "Edit Organization",
+        "createOrganization": "Create New Organization",
+        "orgName": "Org Name",
+        "updateOrg": "Update Org",
+        "createOrg": "Create Org"
     },
     "settings": {
         "title": "Settings",
@@ -224,7 +301,11 @@
         "english": "English",
         "spanish": "Spanish",
         "saveChanges": "Save Changes",
-        "changesSaved": "Settings saved successfully"
+        "changesSaved": "Settings saved successfully",
+        "generalSettings": "General Settings",
+        "displayName": "Display Name",
+        "contactPreference": "How would you prefer to be contacted for job updates and dispatches?",
+        "saving": "Saving..."
     },
     "contracts": {
         "title": "Contracts",
@@ -255,7 +336,15 @@
         "sent": "Sent",
         "paid": "Paid",
         "void": "Void",
-        "noInvoices": "No invoices found"
+        "noInvoices": "No invoices found",
+        "buildNewInvoice": "Build New Invoice",
+        "selectBuilder": "Select Builder",
+        "buildDraft": "Build Draft",
+        "buildDraftInvoice": "Build Draft Invoice",
+        "recentInvoices": "Recent Invoices",
+        "view": "View",
+        "pdf": "PDF",
+        "send": "Send"
     },
     "status": {
         "pending": "Pending",

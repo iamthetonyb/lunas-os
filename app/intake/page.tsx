@@ -10,6 +10,7 @@ import { Dialog, Transition } from '@headlessui/react';
 import { EditIntakeModal } from '@/components/edit-intake-modal';
 import { useSession } from 'next-auth/react';
 import { toast } from 'sonner';
+import { useTranslation } from 'react-i18next';
 
 // Helper: Parse ISO date string as local date (avoids UTC midnight -> previous day issue)
 const formatDateLocal = (dateStr: string | null | undefined): string => {
@@ -69,6 +70,7 @@ function IntakeDetailModal({
   onEdit: () => void;
   onDelete: () => void;
 }) {
+  const { t } = useTranslation();
   if (!intake) return null;
 
   return (
@@ -99,7 +101,7 @@ function IntakeDetailModal({
             >
               <Dialog.Panel className="w-full max-w-2xl transform overflow-hidden rounded-2xl bg-white p-6 text-left align-middle shadow-xl transition-all">
                 <Dialog.Title as="h3" className="text-lg font-medium leading-6 text-gray-900">
-                  Intake Details
+                  {t('intake.title')}
                 </Dialog.Title>
                 <div className="mt-4 space-y-6">
                   <div>
@@ -107,11 +109,11 @@ function IntakeDetailModal({
                       Location & Plan
                     </h4>
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-2">
-                      <DetailItem label="Community" value={intake.communityName} />
-                      <DetailItem label="Builder" value={intake.builderName} />
-                      <DetailItem label="Lot" value={intake.lot} />
-                      <DetailItem label="Address" value={intake.address} />
-                      <DetailItem label="Model/Plan" value={intake.modelPlanName} />
+                      <DetailItem label={t('common.community')} value={intake.communityName} />
+                      <DetailItem label={t('common.builder')} value={intake.builderName} />
+                      <DetailItem label={t('common.lot')} value={intake.lot} />
+                      <DetailItem label={t('common.address')} value={intake.address} />
+                      <DetailItem label={t('intake.modelPlan')} value={intake.modelPlanName} />
                     </div>
                   </div>
 
@@ -121,19 +123,19 @@ function IntakeDetailModal({
                     </h4>
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-2">
                       <DetailItem
-                        label="Due Date"
+                        label={t('intake.dueDate')}
                         value={formatDateLocal(intake.dueDate)}
                       />
-                      <DetailItem label="PO Number" value={intake.poNumber} />
-                      <DetailItem label="Requested By" value={intake.requestedBy} />
-                      <DetailItem label="Contact Phone" value={intake.contactPhone} />
-                      <DetailItem label="Contact Email" value={intake.contactEmail} />
+                      <DetailItem label={t('intake.poNumber')} value={intake.poNumber} />
+                      <DetailItem label={t('intake.requestedBy')} value={intake.requestedBy} />
+                      <DetailItem label={t('common.phone')} value={intake.contactPhone} />
+                      <DetailItem label={t('common.email')} value={intake.contactEmail} />
                     </div>
                   </div>
 
                   <div>
                     <h4 className="text-base font-semibold text-gray-800 border-b pb-2">
-                      Services
+                      {t('intake.services')}
                     </h4>
                     <ul className="space-y-2 mt-2">
                       {intake.services.map((service, index) => (
@@ -155,7 +157,7 @@ function IntakeDetailModal({
                   {intake.notes && (
                     <div>
                       <h4 className="text-base font-semibold text-gray-800 border-b pb-2">
-                        Notes
+                        {t('common.notes')}
                       </h4>
                       <p className="text-base text-gray-700 whitespace-pre-wrap mt-2">
                         {intake.notes}
@@ -171,7 +173,7 @@ function IntakeDetailModal({
                     onClick={onDelete}
                     disabled={!intake.id}
                   >
-                    Delete
+                    {t('common.delete')}
                   </button>
                   <div className="flex gap-2">
                     <button
@@ -179,14 +181,14 @@ function IntakeDetailModal({
                       className="inline-flex justify-center rounded-md border border-transparent bg-gray-100 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-200"
                       onClick={onClose}
                     >
-                      Close
+                      {t('common.close')}
                     </button>
                     <button
                       type="button"
                       className="inline-flex justify-center rounded-md border border-transparent bg-blue-100 px-4 py-2 text-sm font-medium text-blue-900 hover:bg-blue-200"
                       onClick={onEdit}
                     >
-                      Edit
+                      {t('common.edit')}
                     </button>
                   </div>
                 </div>
@@ -200,6 +202,7 @@ function IntakeDetailModal({
 }
 
 function RecentIntakes({ onIntakeSelect, onDelete, onEdit }: { onIntakeSelect: (intake: RecentIntake) => void, onDelete: (intakeId: string) => void, onEdit: (intake: RecentIntake) => void }) {
+  const { t } = useTranslation();
   const [page, setPage] = useState(1);
   const data = useQuery(api.jobRequests.getRecent, { page, limit: 10 });
 
@@ -221,12 +224,12 @@ function RecentIntakes({ onIntakeSelect, onDelete, onEdit }: { onIntakeSelect: (
         <table className="min-w-full divide-y divide-gray-200 text-sm">
           <thead className="bg-gray-50">
             <tr>
-              <th className="px-4 py-2 text-left font-semibold text-gray-500">Community</th>
-              <th className="px-4 py-2 text-left font-semibold text-gray-500">Builder</th>
-              <th className="px-4 py-2 text-left font-semibold text-gray-500">Lot</th>
-              <th className="px-4 py-2 text-left font-semibold text-gray-500">Due Date</th>
-              <th className="px-4 py-2 text-left font-semibold text-gray-500">Services</th>
-              <th className="px-4 py-2 text-left font-semibold text-gray-500">Actions</th>
+              <th className="px-4 py-2 text-left font-semibold text-gray-500">{t('common.community')}</th>
+              <th className="px-4 py-2 text-left font-semibold text-gray-500">{t('common.builder')}</th>
+              <th className="px-4 py-2 text-left font-semibold text-gray-500">{t('common.lot')}</th>
+              <th className="px-4 py-2 text-left font-semibold text-gray-500">{t('intake.dueDate')}</th>
+              <th className="px-4 py-2 text-left font-semibold text-gray-500">{t('intake.services')}</th>
+              <th className="px-4 py-2 text-left font-semibold text-gray-500">{t('common.actions')}</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100 bg-white">
@@ -254,7 +257,7 @@ function RecentIntakes({ onIntakeSelect, onDelete, onEdit }: { onIntakeSelect: (
                       }}
                       className="text-blue-600 hover:underline"
                     >
-                      Edit
+                      {t('common.edit')}
                     </button>
                     <button
                       onClick={(e) => {
@@ -263,7 +266,7 @@ function RecentIntakes({ onIntakeSelect, onDelete, onEdit }: { onIntakeSelect: (
                       }}
                       className="text-red-600 hover:underline"
                     >
-                      Delete
+                      {t('common.delete')}
                     </button>
                   </div>
                 </td>
@@ -284,7 +287,7 @@ function RecentIntakes({ onIntakeSelect, onDelete, onEdit }: { onIntakeSelect: (
             disabled={page === 1}
             className="px-3 py-1 border border-gray-300 rounded-md text-sm font-medium disabled:opacity-50 hover:bg-white"
           >
-            Previous
+            {t('common.previous')}
           </button>
           <span className="text-sm text-gray-700">
             Page {page} of {totalPages}
@@ -294,7 +297,7 @@ function RecentIntakes({ onIntakeSelect, onDelete, onEdit }: { onIntakeSelect: (
             disabled={page === totalPages}
             className="px-3 py-1 border border-gray-300 rounded-md text-sm font-medium disabled:opacity-50 hover:bg-white"
           >
-            Next
+            {t('common.next')}
           </button>
         </div>
       </div>
@@ -303,6 +306,7 @@ function RecentIntakes({ onIntakeSelect, onDelete, onEdit }: { onIntakeSelect: (
 }
 
 export default function IntakePage() {
+  const { t } = useTranslation();
   const { data: session } = useSession();
 
   const removeIntake = useMutation(api.jobRequests.remove);
@@ -364,20 +368,20 @@ export default function IntakePage() {
   return (
     <>
       <PageHeader
-        title="Intake"
-        description="Manage job intake and new project submissions"
+        title={t('intake.title')}
+        description={t('intake.formTitle')}
         action={
           <Link
             href="/intake/new"
             className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-blue-700"
           >
-            + New Intake
+            + {t('intake.newIntake')}
           </Link>
         }
       />
       <main className="px-6 py-6">
         <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Recent Intakes</h3>
+          <h3 className="text-lg font-semibold text-gray-900 mb-4">{t('dashboard.recentIntakes')}</h3>
           <RecentIntakes onIntakeSelect={handleIntakeSelect} onDelete={handleDelete} onEdit={handleEditFromTable} />
         </div>
       </main>
