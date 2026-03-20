@@ -95,43 +95,16 @@ export const getScheduleJobs = query({
         endDate: v.string(),
     },
     handler: async (ctx, args) => {
-        // Use index to narrow down by scheduledDate range first
-        const byScheduled = await ctx.db
-            .query("jobRequestServices")
-            .withIndex("by_scheduledDate", (q) =>
-                q.gte("scheduledDate", args.startDate).lte("scheduledDate", args.endDate)
-            )
-            .collect();
+        // Single-pass: fetch all jobRequestServices and filter by effective date.
+        // effectiveDate = rescheduledDate (if set) ?? scheduledDate
+        // This prevents showing a job on its original date after rescheduling.
+        const allJrs = await ctx.db.query("jobRequestServices").collect();
 
-        // Also get rescheduled jobs that may have different dates
-        const byStatus = await ctx.db
-            .query("jobRequestServices")
-            .withIndex("by_status", (q) => q.eq("status", "SCHEDULED"))
-            .collect();
-
-        const rescheduled = byStatus.filter((jrs) => {
-            if (!jrs.rescheduledDate) return false;
-            return jrs.rescheduledDate >= args.startDate && jrs.rescheduledDate <= args.endDate;
-        });
-
-        // Merge and deduplicate
-        const jobMap = new Map<string, typeof byScheduled[0]>();
-        for (const jrs of byScheduled) jobMap.set(jrs._id, jrs);
-        for (const jrs of rescheduled) jobMap.set(jrs._id, jrs);
-
-        // Also include PENDING/DISPATCHED/COMPLETE that fall in date range
-        const allInRange = await ctx.db
-            .query("jobRequestServices")
-            .collect();
-        for (const jrs of allInRange) {
-            if (jobMap.has(jrs._id)) continue;
+        const jobServices = allJrs.filter((jrs) => {
+            if (jrs.status === "COMPLETE") return false; // skip completed unless needed
             const effectiveDate = jrs.rescheduledDate ?? jrs.scheduledDate ?? "";
-            if (effectiveDate >= args.startDate && effectiveDate <= args.endDate) {
-                jobMap.set(jrs._id, jrs);
-            }
-        }
-
-        const jobServices = Array.from(jobMap.values());
+            return effectiveDate >= args.startDate && effectiveDate <= args.endDate;
+        });
 
         // BATCH-LOAD: Collect all unique IDs, fetch once, build maps
         const jobRequestIds = [...new Set(jobServices.map((jrs) => jrs.jobRequestId))];

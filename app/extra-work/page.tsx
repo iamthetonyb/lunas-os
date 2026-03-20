@@ -5,6 +5,7 @@ import { useQuery, useMutation } from 'convex/react';
 import { api } from '@/convex/_generated/api';
 import { useSession } from 'next-auth/react';
 import { useTranslation } from 'react-i18next';
+import { useRouter } from 'next/navigation';
 
 type JobRequest = {
   id: string;
@@ -26,7 +27,7 @@ type JobRequest = {
 export default function ExtraWorkPage() {
   const { t } = useTranslation();
   const { data: session } = useSession();
-  // Redirect contractors away (handled by UI message or middleware, but user requested specific behavior here)
+  const router = useRouter();
   const isContractor = session?.user?.role === 'FOREMAN' || session?.user?.role === 'CREW';
 
   // Convex reactive query - no polling needed
@@ -76,9 +77,18 @@ export default function ExtraWorkPage() {
       {/* ... Header ... */}
       <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
         <div>
-          <h1 className="text-2xl font-semibold text-gray-900">{t('extraWork.title')}</h1>
-          <p className="text-gray-500">{t('extraWork.description')}</p>
+          <h1 className="text-2xl font-semibold text-gray-900 dark:text-white">{t('extraWork.title')}</h1>
+          <p className="text-gray-500 dark:text-gray-400">{t('extraWork.description')}</p>
         </div>
+        <button
+          onClick={() => router.push('/intake/new?extraWork=true')}
+          className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors shadow-sm flex items-center gap-1.5"
+        >
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+          </svg>
+          Extra Work
+        </button>
       </div>
 
       <div className="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">

@@ -134,6 +134,67 @@ export const resolve = query({
 /**
  * Backfill: resolve + create alias for future lookups.
  */
+/**
+ * Deduplicate communities: merge duplicates with same normalizedName.
+ * Keeps the one with a builderId (or the oldest). Updates all references.
+ */
+export const deduplicateCommunities = mutation({
+    args: {},
+    handler: async (ctx) => {
+        const all = await ctx.db.query("communities").collect();
+        const active = all.filter((c) => c.active !== false);
+
+        // Group by normalized name
+        const byName = new Map<string, typeof active>();
+        for (const c of active) {
+            const key = (c.normalizedName ?? c.name.toLowerCase().trim());
+            if (!byName.has(key)) byName.set(key, []);
+            byName.get(key)!.push(c);
+        }
+
+        let merged = 0;
+        for (const [, dupes] of byName) {
+            if (dupes.length <= 1) continue;
+
+            // Pick the canonical one: prefer with builderId, then oldest
+            dupes.sort((a, b) => {
+                if (a.builderId && !b.builderId) return -1;
+                if (!a.builderId && b.builderId) return 1;
+                return (a.createdAt ?? 0) - (b.createdAt ?? 0);
+            });
+            const keep = dupes[0];
+            const toRemove = dupes.slice(1);
+
+            for (const dup of toRemove) {
+                // Re-point jobRequests
+                const jrs = await ctx.db.query("jobRequests")
+                    .filter((q) => q.eq(q.field("communityId"), dup._id))
+                    .collect();
+                for (const jr of jrs) {
+                    await ctx.db.patch(jr._id, { communityId: keep._id });
+                }
+
+                // Re-point blueBookEntries
+                const bbs = await ctx.db.query("blueBookEntries")
+                    .filter((q) => q.eq(q.field("communityId"), dup._id))
+                    .collect();
+                for (const bb of bbs) {
+                    await ctx.db.patch(bb._id, {
+                        communityId: keep._id,
+                        communityName: keep.name,
+                    });
+                }
+
+                // Soft-delete the duplicate
+                await ctx.db.patch(dup._id, { active: false });
+                merged++;
+            }
+        }
+
+        return { merged, message: `Merged ${merged} duplicate communities` };
+    },
+});
+
 export const resolveAndAlias = mutation({
     args: {
         rawName: v.string(),
