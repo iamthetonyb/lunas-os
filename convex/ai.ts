@@ -1,23 +1,55 @@
 /**
  * AI-related Convex functions:
+ * - RAG knowledge base (ingest + search)
  * - Decision logging for autonomous actions
  * - AI message persistence
- *
- * RAG setup: Once convex.config.ts is deployed and types regenerated,
- * uncomment the RAG imports and functions below.
  */
-import { mutation, query } from "./_generated/server";
+import { action, mutation, query } from "./_generated/server";
+import { components } from "./_generated/api";
 import { v } from "convex/values";
+import { RAG } from "@convex-dev/rag";
+import { openai } from "@ai-sdk/openai";
 
-// ── RAG Setup (enable after `npx convex dev` regenerates types) ──────
-// import { components } from "./_generated/api";
-// import { RAG } from "@convex-dev/rag";
-// import { openai } from "@ai-sdk/openai";
-//
-// const rag = new RAG(components.rag, {
-//     textEmbeddingModel: openai.embedding("text-embedding-3-small"),
-//     embeddingDimension: 1536,
-// });
+// ── RAG Setup ────────────────────────────────────────────────────────
+const rag = new RAG(components.rag, {
+    textEmbeddingModel: openai.embedding("text-embedding-3-small"),
+    embeddingDimension: 1536,
+});
+
+// ── RAG Knowledge Base ───────────────────────────────────────────────
+
+export const ingestKnowledge = action({
+    args: {
+        text: v.string(),
+        namespace: v.optional(v.string()),
+    },
+    handler: async (ctx, { text, namespace }) => {
+        await rag.add(ctx, {
+            namespace: namespace ?? "operations",
+            text,
+        });
+        return { success: true };
+    },
+});
+
+export const searchKnowledge = action({
+    args: {
+        query: v.string(),
+        namespace: v.optional(v.string()),
+        limit: v.optional(v.number()),
+    },
+    handler: async (ctx, args) => {
+        const result = await rag.search(ctx, {
+            namespace: args.namespace ?? "operations",
+            query: args.query,
+            limit: args.limit ?? 8,
+        });
+        return {
+            text: result.text,
+            count: result.results.length,
+        };
+    },
+});
 
 // ── Decision Logging ─────────────────────────────────────────────────
 
