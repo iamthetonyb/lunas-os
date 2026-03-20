@@ -71,7 +71,7 @@ export async function handleMessage(
         system: systemPrompt,
         messages: history,
         tools,
-        stopWhen: stepCountIs(5),
+        stopWhen: stepCountIs(10),
     });
 
     const responseText =
