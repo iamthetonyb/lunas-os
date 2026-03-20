@@ -7,6 +7,7 @@ import { useTheme } from 'next-themes';
 import Image from 'next/image';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { LanguageToggle } from './language-toggle';
 
 const baseNavigation = [
   { key: 'Dashboard', tKey: 'navigation.dashboard', href: '/dashboard', icon: '📊' },
@@ -70,7 +71,7 @@ export function Navigation() {
             <div className="h-10 w-30 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
           )}
         </div>
-        <p className="text-xs text-gray-500 dark:text-gray-400 text-center">Construction Cleanup</p>
+        <p className="text-xs text-gray-500 dark:text-gray-400 text-center">{t('navigation.constructionCleanup')}</p>
       </div>
 
       {/* Navigation Items - Grows to fill space */}
@@ -98,18 +99,19 @@ export function Navigation() {
 
       {/* Theme Toggle & User Section - Stays at bottom */}
       <div className="border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-slate-800">
-        {/* Theme Toggle */}
+        {/* Theme + Language Controls */}
         {mounted && (
-          <div className="px-6 py-3 border-b border-gray-200 dark:border-gray-700">
-            <button
-              onClick={toggleTheme}
-              className="w-full flex items-center justify-between px-4 py-2 bg-gray-100 dark:bg-gray-700 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors text-sm font-medium text-gray-700 dark:text-gray-200"
-            >
-              <span className="flex items-center gap-2">
+          <div className="px-6 py-3 border-b border-gray-200 dark:border-gray-700 space-y-2">
+            <div className="flex items-center justify-between gap-2">
+              <button
+                onClick={toggleTheme}
+                className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-gray-100 dark:bg-gray-700 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors text-sm font-medium text-gray-700 dark:text-gray-200"
+              >
                 <span>{currentTheme === 'dark' ? '🌙' : '☀️'}</span>
-                <span>{currentTheme === 'dark' ? t('navigation.darkMode', 'Dark Mode On') : t('navigation.lightMode', 'Light Mode On')}</span>
-              </span>
-            </button>
+                <span className="text-xs">{currentTheme === 'dark' ? t('navigation.darkMode', 'Dark') : t('navigation.lightMode', 'Light')}</span>
+              </button>
+              <LanguageToggle />
+            </div>
           </div>
         )}
 

@@ -6,6 +6,7 @@ import { useQuery, useMutation } from 'convex/react';
 import { api } from '@/convex/_generated/api';
 import { Id } from '@/convex/_generated/dataModel';
 import { Dialog, Transition } from '@headlessui/react';
+import { useTranslation } from 'react-i18next';
 
 type AdminUser = {
   id: string;
@@ -43,6 +44,7 @@ function UserModal({
   user: AdminUser | null;
   onSuccess: () => void;
 }) {
+  const { t } = useTranslation();
   const isEdit = !!user;
   const createUser = useMutation(api.mutations.createUser);
   const updateUser = useMutation(api.mutations.updateUser);
@@ -170,7 +172,7 @@ function UserModal({
             >
               <Dialog.Panel className="w-full max-w-md transform overflow-hidden rounded-2xl bg-white p-6 text-left align-middle shadow-xl transition-all">
                 <Dialog.Title as="h3" className="text-lg font-medium leading-6 text-gray-900 mb-4">
-                  {isEdit ? 'Edit User' : 'Create New User'}
+                  {isEdit ? t('users.editUser') : t('users.createNewUser')}
                 </Dialog.Title>
 
                 <form onSubmit={handleSubmit} className="space-y-4">
@@ -182,7 +184,7 @@ function UserModal({
 
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Name *
+                      {t('common.name')} *
                     </label>
                     <input
                       type="text"
@@ -195,7 +197,7 @@ function UserModal({
 
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Email *
+                      {t('common.email')} *
                     </label>
                     <input
                       type="email"
@@ -208,7 +210,7 @@ function UserModal({
 
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Phone
+                      {t('common.phone')}
                     </label>
                     <input
                       type="tel"
@@ -221,7 +223,7 @@ function UserModal({
 
                   <div>
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                      Preferred Contact Method
+                      {t('settings.preferredContact')}
                     </label>
                     <div className="flex gap-4">
                       {['email', 'call', 'text'].map((method) => (
@@ -241,7 +243,7 @@ function UserModal({
 
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                      {isEdit ? 'New Password (leave blank to keep current)' : 'Password *'}
+                      {isEdit ? t('users.newPassword') : `${t('common.password')} *`}
                     </label>
                     <input
                       type="password"
@@ -254,7 +256,7 @@ function UserModal({
 
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Confirm Password
+                      {t('users.confirmPassword')}
                     </label>
                     <input
                       type="password"
@@ -272,14 +274,14 @@ function UserModal({
                       className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
                       disabled={isSubmitting}
                     >
-                      Cancel
+                      {t('common.cancel')}
                     </button>
                     <button
                       type="submit"
                       disabled={isSubmitting}
                       className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
                     >
-                      {isSubmitting ? 'Saving...' : isEdit ? 'Save Changes' : 'Create User'}
+                      {isSubmitting ? t('users.saving') : isEdit ? t('settings.saveChanges') : t('users.createUser')}
                     </button>
                   </div>
                 </form>
@@ -293,6 +295,7 @@ function UserModal({
 }
 
 export default function UsersPage() {
+  const { t } = useTranslation();
   const data = useQuery(api.userFunctions.listWithOrgs);
   const isLoading = data === undefined;
 
@@ -411,31 +414,31 @@ export default function UsersPage() {
   return (
     <>
       <PageHeader
-        title="Users"
-        description="Manage system users and permissions"
+        title={t('users.title')}
+        description={t('users.description')}
         action={
           <button
             onClick={handleCreateUser}
             className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700"
           >
-            + Create User
+            + {t('users.createUser')}
           </button>
         }
       />
       <main className="px-6 py-6 space-y-6">
         <section className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Current Users</h3>
-          {isLoading && <p className="text-gray-600">Loading...</p>}
+          <h3 className="text-lg font-semibold text-gray-900 mb-4">{t('users.currentUsers')}</h3>
+          {isLoading && <p className="text-gray-600">{t('common.loading')}</p>}
           {!isLoading && (
             <div className="overflow-x-auto">
               <table className="min-w-full divide-y divide-gray-200 text-sm">
                 <thead className="bg-gray-50">
                   <tr>
-                    <th className="px-4 py-2 text-left font-semibold text-gray-500">Name</th>
-                    <th className="px-4 py-2 text-left font-semibold text-gray-500">Email</th>
-                    <th className="px-4 py-2 text-left font-semibold text-gray-500">Phone</th>
-                    <th className="px-4 py-2 text-left font-semibold text-gray-500">Memberships</th>
-                    <th className="px-4 py-2 text-left font-semibold text-gray-500">Actions</th>
+                    <th className="px-4 py-2 text-left font-semibold text-gray-500">{t('common.name')}</th>
+                    <th className="px-4 py-2 text-left font-semibold text-gray-500">{t('common.email')}</th>
+                    <th className="px-4 py-2 text-left font-semibold text-gray-500">{t('common.phone')}</th>
+                    <th className="px-4 py-2 text-left font-semibold text-gray-500">{t('users.memberships')}</th>
+                    <th className="px-4 py-2 text-left font-semibold text-gray-500">{t('common.actions')}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100">
@@ -446,7 +449,7 @@ export default function UsersPage() {
                       <td className="px-4 py-3 text-gray-900">{user.phone || '—'}</td>
                       <td className="px-4 py-3 text-gray-900">
                         {user.memberships.length === 0 ? (
-                          <span className="text-xs text-gray-500">No org access</span>
+                          <span className="text-xs text-gray-500">{t('users.noOrgAccess')}</span>
                         ) : (
                           <div className="flex flex-wrap gap-2">
                             {user.memberships.map((membership) => (
@@ -465,7 +468,7 @@ export default function UsersPage() {
                           onClick={() => handleEditUser(user)}
                           className="text-blue-600 hover:text-blue-800 font-medium text-sm"
                         >
-                          Edit
+                          {t('common.edit')}
                         </button>
                       </td>
                     </tr>
@@ -477,16 +480,16 @@ export default function UsersPage() {
         </section>
 
         <section className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Assign Org Role</h3>
+          <h3 className="text-lg font-semibold text-gray-900 mb-4">{t('users.assignOrgRole')}</h3>
           <form onSubmit={handleMembershipSubmit} className="grid grid-cols-1 gap-4 md:grid-cols-4">
             <div>
-              <label className="text-sm font-medium text-gray-700">User</label>
+              <label className="text-sm font-medium text-gray-700">{t('users.user')}</label>
               <select
                 className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2"
                 value={membership.userId}
                 onChange={(e) => setMembership((prev) => ({ ...prev, userId: e.target.value }))}
               >
-                <option value="">Select user...</option>
+                <option value="">{t('users.selectUser')}</option>
                 {sortedUsers.map((user) => (
                   <option key={user.id} value={user.id}>
                     {user.name || user.email}
@@ -495,13 +498,13 @@ export default function UsersPage() {
               </select>
             </div>
             <div>
-              <label className="text-sm font-medium text-gray-700">Organization</label>
+              <label className="text-sm font-medium text-gray-700">{t('users.organization')}</label>
               <select
                 className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2"
                 value={membership.orgId}
                 onChange={(e) => setMembership((prev) => ({ ...prev, orgId: e.target.value }))}
               >
-                <option value="">Select org...</option>
+                <option value="">{t('users.selectOrg')}</option>
                 {data?.orgs.map((org) => (
                   <option key={org.id} value={org.id}>
                     {org.name}
@@ -510,15 +513,15 @@ export default function UsersPage() {
               </select>
             </div>
             <div>
-              <label className="text-sm font-medium text-gray-700">Role</label>
+              <label className="text-sm font-medium text-gray-700">{t('common.role')}</label>
               <select
                 className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2"
                 value={membership.role}
                 onChange={(e) => setMembership((prev) => ({ ...prev, role: e.target.value as 'admin' | 'backoffice' | 'contractor' }))}
               >
-                <option value="admin">Admin</option>
-                <option value="backoffice">Back Office</option>
-                <option value="contractor">Contractor</option>
+                <option value="admin">{t('users.admin')}</option>
+                <option value="backoffice">{t('users.backOffice')}</option>
+                <option value="contractor">{t('users.contractor')}</option>
               </select>
             </div>
             <div className="flex items-end">
@@ -527,21 +530,21 @@ export default function UsersPage() {
                 disabled={busy || !membership.userId || !membership.orgId}
                 className="w-full rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-50"
               >
-                Save Access
+                {t('users.saveAccess')}
               </button>
             </div>
           </form>
         </section>
 
         <section className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Organizations</h3>
+          <h3 className="text-lg font-semibold text-gray-900 mb-4">{t('users.organizations')}</h3>
           <div className="overflow-x-auto mb-6">
             <table className="min-w-full divide-y divide-gray-200 text-sm">
               <thead className="bg-gray-50">
                 <tr>
-                  <th className="px-4 py-2 text-left font-semibold text-gray-500">Name</th>
-                  <th className="px-4 py-2 text-left font-semibold text-gray-500">Slug</th>
-                  <th className="px-4 py-2 text-right font-semibold text-gray-500">Actions</th>
+                  <th className="px-4 py-2 text-left font-semibold text-gray-500">{t('common.name')}</th>
+                  <th className="px-4 py-2 text-left font-semibold text-gray-500">{t('users.slug')}</th>
+                  <th className="px-4 py-2 text-right font-semibold text-gray-500">{t('common.actions')}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">

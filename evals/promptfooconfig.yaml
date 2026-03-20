@@ -1,0 +1,189 @@
+# LUNAS AI Evaluation Harness
+# Run: npx promptfoo@latest eval -c evals/promptfooconfig.yaml
+# View: npx promptfoo@latest view
+description: 'LUNAS AI - Construction Cleanup Operations Assistant'
+
+prompts:
+  - file://prompts/system.txt
+
+providers:
+  - id: file://providers/lunas-provider.mjs
+    label: 'LUNAS AI (GPT-5.4 Nano via OpenRouter)'
+    config:
+      userName: 'Test Admin'
+      userRole: 'ADMIN'
+      currentPage: 'schedule'
+
+defaultTest:
+  assert:
+    # AI should never claim it can't access data
+    - type: not-contains
+      value: "I can't access"
+    - type: not-contains
+      value: "I don't have access"
+    # Latency guard: 10s max
+    - type: latency
+      threshold: 10000
+    # Cost guard: $0.05 max per call
+    - type: cost
+      threshold: 0.05
+
+tests:
+  # ── Schedule Queries ───────────────────────────────────────
+  - vars:
+      prompt: "What's on the schedule for tomorrow?"
+    assert:
+      - type: contains-any
+        value: ['schedule', 'job', 'assigned', 'nothing scheduled', 'no jobs']
+      - type: not-contains
+        value: "I don't know"
+
+  - vars:
+      prompt: 'Show me all jobs for next Monday through Friday'
+    assert:
+      - type: javascript
+        value: 'return output.length > 20;'
+
+  - vars:
+      prompt: "Who's working today?"
+    assert:
+      - type: contains-any
+        value: ['schedule', 'Anahi', 'Blanca', 'Chayo', 'Francisco', 'Raudel', 'no jobs', 'nothing']
+
+  # ── Foreman Assignment ─────────────────────────────────────
+  - vars:
+      prompt: 'Assign Anahi to the Clean Final at Caprock lot 42'
+    assert:
+      - type: icontains
+        value: 'Anahi'
+
+  - vars:
+      prompt: 'Assign Johnny to a job'
+    assert:
+      # Johnny is not a valid foreman — AI must reject or clarify
+      - type: not-icontains
+        value: 'successfully assigned'
+      - type: contains-any
+        value: ['valid', 'available', 'foremen', 'Anahi', 'Blanca', 'not a recognized']
+
+  # ── Crew Assignment ────────────────────────────────────────
+  - vars:
+      prompt: 'Assign crew Carmen to the next pending job'
+    assert:
+      - type: icontains
+        value: 'Carmen'
+
+  # ── Knowledge Base (RAG) ───────────────────────────────────
+  - vars:
+      prompt: 'Which foreman usually handles Caprock community?'
+    assert:
+      - type: llm-rubric
+        value: 'Response should reference specific foreman names and ideally cite historical patterns or percentages. Should not just guess.'
+
+  - vars:
+      prompt: 'What is standard pricing for a final clean?'
+    assert:
+      - type: contains-any
+        value: ['$', 'pricing', 'rate', 'per', 'depends', 'sqft', 'square']
+
+  # ── Job Requests / Intakes ────────────────────────────────
+  - vars:
+      prompt: 'Show me pending intakes'
+    assert:
+      - type: contains-any
+        value: ['intake', 'job', 'pending', 'request', 'none', 'no pending']
+
+  - vars:
+      prompt: 'Create a new intake for Pulte at Caprock lot 42, final clean needed by Friday'
+    assert:
+      - type: contains-any
+        value: ['created', 'submitted', 'intake', 'Caprock', 'Pulte']
+
+  # ── Dispatch ───────────────────────────────────────────────
+  - vars:
+      prompt: 'Show dispatch batches for today'
+    assert:
+      - type: contains-any
+        value: ['dispatch', 'batch', 'no batches', 'none', 'today']
+
+  # ── Reschedule ─────────────────────────────────────────────
+  - vars:
+      prompt: 'Reschedule the Delamar lot 15 job to next Wednesday because of rain'
+    assert:
+      - type: contains-any
+        value: ['reschedule', 'Wednesday', 'moved', 'rain']
+
+  # ── Entity Lookups ─────────────────────────────────────────
+  - vars:
+      prompt: 'List all builders'
+    assert:
+      - type: contains-any
+        value: ['Pulte', 'builder', 'Default']
+
+  - vars:
+      prompt: 'What communities does Pulte have?'
+    assert:
+      - type: contains-any
+        value: ['Caprock', 'Delamar', 'communit', 'Pulte']
+
+  - vars:
+      prompt: 'What services does Lunas offer?'
+    assert:
+      - type: contains-any
+        value: ['Clean', 'Power Wash', 'Window', 'service']
+
+  - vars:
+      prompt: 'Show me all crews and their capacity'
+    assert:
+      - type: contains-any
+        value: ['Carmen', 'Luis', 'crew', 'capacity']
+
+  # ── Audit & Performance ───────────────────────────────────
+  - vars:
+      prompt: 'How well is the AI performing?'
+    assert:
+      - type: contains-any
+        value: ['approval', 'confidence', 'performance', 'decision', 'metric']
+
+  # ── Bilingual ─────────────────────────────────────────────
+  - vars:
+      prompt: 'Muestra el horario de manana'
+    assert:
+      - type: llm-rubric
+        value: 'Response should be in Spanish since the user wrote in Spanish'
+
+  - vars:
+      prompt: 'Asigna a Blanca al trabajo en Caprock lote 10'
+    assert:
+      - type: icontains
+        value: 'Blanca'
+
+  # ── Multi-Step Tool Chains ────────────────────────────────
+  - vars:
+      prompt: 'Look up who usually handles Delamar community, then assign them to the next pending Delamar job'
+    assert:
+      - type: llm-rubric
+        value: 'Response should show the AI looked up historical patterns AND attempted an assignment. Multi-step reasoning required.'
+
+  # ── Edge Cases ─────────────────────────────────────────────
+  - vars:
+      prompt: 'Delete all jobs'
+    assert:
+      # Should refuse destructive operations
+      - type: not-icontains
+        value: 'deleted all'
+      - type: contains-any
+        value: ["can't", "cannot", "don't", "won't", "not able", "not supported"]
+
+  - vars:
+      prompt: 'What is the meaning of life?'
+    assert:
+      # Should stay on topic or gracefully redirect
+      - type: llm-rubric
+        value: 'Response should redirect to construction operations topics or politely indicate this is outside its scope'
+
+  - vars:
+      prompt: 'Assign Anahi to lot 42 in a community that does not exist called Fakeville'
+    assert:
+      - type: llm-rubric
+        value: 'Response should indicate the community was not found or ask for clarification rather than creating a bad assignment'

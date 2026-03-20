@@ -6,8 +6,10 @@ import { useQuery } from 'convex/react';
 import { api } from '@/convex/_generated/api';
 import { useSession } from 'next-auth/react';
 import { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 
 export default function DashboardPage() {
+  const { t } = useTranslation();
   const { data: session } = useSession();
   const orgRole = (session?.user as any)?.orgRole;
 
@@ -44,17 +46,17 @@ export default function DashboardPage() {
   }).length;
 
   const stats = [
-    { name: 'Active Jobs', value: (activeJobCount ?? 0).toString(), change: (activeJobCount ?? 0) > 0 ? `+${activeJobCount}` : '0', icon: '📋' },
-    { name: 'Pending Intakes', value: (pendingIntakeCount ?? 0).toString(), change: (pendingIntakeCount ?? 0) > 0 ? `+${pendingIntakeCount}` : '0', icon: '📝' },
-    { name: 'Scheduled Today', value: (scheduledTodayCount ?? 0).toString(), change: '0', icon: '📅' },
-    { name: 'Dispatch Batches', value: (dispatchBatches?.length ?? 0).toString(), change: (dispatchBatches?.length ?? 0) > 0 ? `+${dispatchBatches?.length}` : '0', icon: '🚀' },
+    { name: t('dashboard.activeJobs'), value: (activeJobCount ?? 0).toString(), change: (activeJobCount ?? 0) > 0 ? `+${activeJobCount}` : '0', icon: '📋' },
+    { name: t('dashboard.pendingIntakes'), value: (pendingIntakeCount ?? 0).toString(), change: (pendingIntakeCount ?? 0) > 0 ? `+${pendingIntakeCount}` : '0', icon: '📝' },
+    { name: t('dashboard.scheduledToday'), value: (scheduledTodayCount ?? 0).toString(), change: '0', icon: '📅' },
+    { name: t('dashboard.dispatchBatches'), value: (dispatchBatches?.length ?? 0).toString(), change: (dispatchBatches?.length ?? 0) > 0 ? `+${dispatchBatches?.length}` : '0', icon: '🚀' },
   ];
 
   return (
     <>
       <PageHeader
-        title="Dashboard"
-        description="Welcome to Lunas OS - Construction Cleanup Management"
+        title={t('dashboard.title')}
+        description={t('dashboard.description')}
       />
 
       <main className="px-6 py-6">
@@ -81,27 +83,27 @@ export default function DashboardPage() {
             <div className="lg:col-span-1">
               <div className="bg-gradient-to-br from-blue-500 to-blue-700 dark:from-blue-600 dark:to-blue-900 rounded-lg shadow-lg p-6 text-white">
                 <div className="flex items-center justify-between mb-4">
-                  <h2 className="text-xl font-bold">Blue Book</h2>
+                  <h2 className="text-xl font-bold">{t('dashboard.blueBook')}</h2>
                   <Link
                     href="/blue-book"
                     className="text-sm bg-white/20 hover:bg-white/30 px-3 py-1 rounded-full transition-colors backdrop-blur-sm"
                   >
-                    View All
+                    {t('common.viewAll')}
                   </Link>
                 </div>
                 <div className="space-y-3">
                   <div className="bg-white/10 backdrop-blur-sm rounded-lg p-4">
-                    <p className="text-sm opacity-90 mb-1">Total Jobs</p>
+                    <p className="text-sm opacity-90 mb-1">{t('dashboard.totalJobs')}</p>
                     <p className="text-3xl font-bold">{blueBookEntries.length}</p>
                   </div>
                   <div className="bg-white/10 backdrop-blur-sm rounded-lg p-4">
-                    <p className="text-sm opacity-90 mb-1">Active</p>
+                    <p className="text-sm opacity-90 mb-1">{t('dashboard.activeJobs')}</p>
                     <p className="text-2xl font-bold">
                       {blueBookEntries.filter((e: any) => e.status !== 'COMPLETE').length}
                     </p>
                   </div>
                   <div className="bg-white/10 backdrop-blur-sm rounded-lg p-4">
-                    <p className="text-sm opacity-90 mb-1">Completed</p>
+                    <p className="text-sm opacity-90 mb-1">{t('dashboard.completed')}</p>
                     <p className="text-2xl font-bold">
                       {blueBookEntries.filter((e: any) => e.status === 'COMPLETE').length}
                     </p>
@@ -115,17 +117,17 @@ export default function DashboardPage() {
             <div className="lg:col-span-1">
               <div className="bg-gradient-to-br from-indigo-500 to-indigo-700 dark:from-indigo-600 dark:to-indigo-900 rounded-lg shadow-lg p-6 text-white h-full">
                 <div className="flex items-center justify-between mb-4">
-                  <h2 className="text-xl font-bold">My Upcoming Schedule</h2>
+                  <h2 className="text-xl font-bold">{t('dashboard.mySchedule')}</h2>
                   <Link
                     href="/schedule"
                     className="text-sm bg-white/20 hover:bg-white/30 px-3 py-1 rounded-full transition-colors backdrop-blur-sm"
                   >
-                    View Full Schedule
+                    {t('dashboard.viewFullSchedule')}
                   </Link>
                 </div>
                 {myAssignments.length === 0 ? (
                   <div className="bg-white/10 backdrop-blur-sm rounded-lg p-6 text-center">
-                    <p className="text-sm opacity-90">No jobs assigned yet for the upcoming days.</p>
+                    <p className="text-sm opacity-90">{t('dashboard.noAssignments')}</p>
                   </div>
                 ) : (
                   <div className="space-y-3 max-h-[400px] overflow-y-auto pr-1 custom-scrollbar">
@@ -141,7 +143,7 @@ export default function DashboardPage() {
                       </div>
                     ))}
                     {myAssignments.length > 5 && (
-                      <p className="text-[10px] text-center opacity-70 mt-2">+ {myAssignments.length - 5} more assignments</p>
+                      <p className="text-[10px] text-center opacity-70 mt-2">{t('dashboard.moreAssignments', { count: myAssignments.length - 5 })}</p>
                     )}
                   </div>
                 )}
@@ -152,10 +154,10 @@ export default function DashboardPage() {
           {/* Recent Intake Submissions */}
           <div className={canAccessBlueBook ? 'lg:col-span-2' : ''}>
             <div className="bg-white dark:bg-slate-800 rounded-lg shadow-sm border border-gray-200 dark:border-slate-700 p-6">
-              <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Recent Intakes</h2>
+              <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">{t('dashboard.recentIntakes')}</h2>
               {intakeList.length === 0 ? (
                 <p className="text-sm text-gray-500 dark:text-gray-400">
-                  No recent intake submissions yet. Complete the intake form to see them here.
+                  {t('dashboard.noIntakes')}
                 </p>
               ) : (
                 <div className="space-y-4">
@@ -171,7 +173,7 @@ export default function DashboardPage() {
                           </p>
                           <p className="text-xs text-gray-500 dark:text-gray-400">
                             Lot {intake.lot} &middot;{' '}
-                            {intake.services?.length ? intake.services.map((s: any) => s.serviceName ?? s).join(', ') : 'Services pending'}
+                            {intake.services?.length ? intake.services.map((s: any) => s.serviceName ?? s).join(', ') : t('common.servicesPending')}
                           </p>
                         </div>
                         <span className="text-xs font-medium text-blue-600 dark:text-blue-300 bg-blue-50 dark:bg-blue-900/30 px-2 py-1 rounded-full">
@@ -180,16 +182,16 @@ export default function DashboardPage() {
                       </div>
                       <div className="flex flex-wrap items-center gap-4 text-xs text-gray-500 dark:text-gray-400">
                         <span>
-                          Due{' '}
+                          {t('common.due')}{' '}
                           {intake.dueDate
                             ? new Date(intake.dueDate).toLocaleDateString()
                             : 'TBD'}
                         </span>
                         <span>
-                          Submitted{' '}
+                          {t('common.submitted')}{' '}
                           {intake.createdAt
                             ? new Date(intake.createdAt).toLocaleString()
-                            : 'Just now'}
+                            : t('common.justNow')}
                         </span>
                       </div>
                     </div>
@@ -204,25 +206,25 @@ export default function DashboardPage() {
         {canAccessBlueBook && (
           <div>
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Recent Blue Book Entries</h2>
+              <h2 className="text-lg font-semibold text-gray-900 dark:text-white">{t('dashboard.recentBlueBook')}</h2>
               <Link
                 href="/blue-book"
                 className="text-sm text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 font-medium transition-colors"
               >
-                View All Entries
+                {t('common.viewAllEntries')}
               </Link>
             </div>
             <div className="bg-white dark:bg-slate-800 rounded-lg shadow-sm border border-gray-200 dark:border-slate-700 overflow-hidden">
               {blueBookEntries.length === 0 ? (
                 <div className="p-8 text-center">
                   <div className="text-5xl mb-3">📘</div>
-                  <p className="text-gray-600 dark:text-gray-400 mb-2">No Blue Book entries yet</p>
-                  <p className="text-sm text-gray-500 dark:text-gray-500">Start tracking your construction projects!</p>
+                  <p className="text-gray-600 dark:text-gray-400 mb-2">{t('dashboard.noBlueBook')}</p>
+                  <p className="text-sm text-gray-500 dark:text-gray-500">{t('dashboard.startTracking')}</p>
                   <Link
                     href="/blue-book"
                     className="inline-block mt-4 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
                   >
-                    Create First Entry
+                    {t('dashboard.createFirstEntry')}
                   </Link>
                 </div>
               ) : (
@@ -230,13 +232,13 @@ export default function DashboardPage() {
                   <table className="min-w-full divide-y divide-gray-200 dark:divide-slate-700">
                     <thead className="bg-gray-50 dark:bg-slate-900">
                       <tr>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Builder</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Community</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Lot</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Category</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Start Date</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Amount</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Status</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">{t('common.builder')}</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">{t('common.community')}</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">{t('common.lot')}</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">{t('blueBook.category')}</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">{t('blueBook.startDate')}</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">{t('common.amount')}</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">{t('common.status')}</th>
                       </tr>
                     </thead>
                     <tbody className="bg-white dark:bg-slate-800 divide-y divide-gray-200 dark:divide-slate-700">

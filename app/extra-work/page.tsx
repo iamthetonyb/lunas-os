@@ -4,6 +4,7 @@ import { useMemo, useState } from 'react';
 import { useQuery, useMutation } from 'convex/react';
 import { api } from '@/convex/_generated/api';
 import { useSession } from 'next-auth/react';
+import { useTranslation } from 'react-i18next';
 
 type JobRequest = {
   id: string;
@@ -23,6 +24,7 @@ type JobRequest = {
 };
 
 export default function ExtraWorkPage() {
+  const { t } = useTranslation();
   const { data: session } = useSession();
   // Redirect contractors away (handled by UI message or middleware, but user requested specific behavior here)
   const isContractor = session?.user?.role === 'FOREMAN' || session?.user?.role === 'CREW';
@@ -38,8 +40,8 @@ export default function ExtraWorkPage() {
     return (
       <main className="px-6 py-6 space-y-6">
         <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-6 text-center">
-          <h2 className="text-lg font-semibold text-yellow-800 mb-2">Access Restricted</h2>
-          <p className="text-yellow-700">The Extra Work page is only accessible to admin and back office staff.</p>
+          <h2 className="text-lg font-semibold text-yellow-800 mb-2">{t('extraWork.accessRestricted')}</h2>
+          <p className="text-yellow-700">{t('extraWork.accessRestrictedMessage')}</p>
         </div>
       </main>
     );
@@ -59,8 +61,8 @@ export default function ExtraWorkPage() {
       {/* ... Header ... */}
       <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
         <div>
-          <h1 className="text-2xl font-semibold text-gray-900">Extra Work</h1>
-          <p className="text-gray-500">Track and manage extra work job requests.</p>
+          <h1 className="text-2xl font-semibold text-gray-900">{t('extraWork.title')}</h1>
+          <p className="text-gray-500">{t('extraWork.description')}</p>
         </div>
       </div>
 
@@ -68,21 +70,21 @@ export default function ExtraWorkPage() {
         <table className="min-w-full divide-y divide-gray-200 text-sm">
           <thead className="bg-gray-50">
             <tr>
-              <th className="px-4 py-2 text-left font-semibold text-gray-500">Due Date</th>
-              <th className="px-4 py-2 text-left font-semibold text-gray-500">Builder / Community</th>
-              <th className="px-4 py-2 text-left font-semibold text-gray-500">Lot / Address</th>
-              <th className="px-4 py-2 text-left font-semibold text-gray-500">Services</th>
-              <th className="px-4 py-2 text-left font-semibold text-gray-500">Price</th>
-              <th className="px-4 py-2 text-left font-semibold text-gray-500">Notes</th>
-              <th className="px-4 py-2 text-left font-semibold text-gray-500">Status</th>
+              <th className="px-4 py-2 text-left font-semibold text-gray-500">{t('common.due')} {t('common.date')}</th>
+              <th className="px-4 py-2 text-left font-semibold text-gray-500">{t('common.builder')} / {t('common.community')}</th>
+              <th className="px-4 py-2 text-left font-semibold text-gray-500">{t('common.lot')} / {t('common.address')}</th>
+              <th className="px-4 py-2 text-left font-semibold text-gray-500">{t('common.service')}</th>
+              <th className="px-4 py-2 text-left font-semibold text-gray-500">{t('extraWork.price')}</th>
+              <th className="px-4 py-2 text-left font-semibold text-gray-500">{t('common.notes')}</th>
+              <th className="px-4 py-2 text-left font-semibold text-gray-500">{t('common.status')}</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
             {isLoading && (
-              <tr><td colSpan={7} className="px-4 py-6 text-center text-gray-500">Loading...</td></tr>
+              <tr><td colSpan={7} className="px-4 py-6 text-center text-gray-500">{t('common.loading')}</td></tr>
             )}
             {!isLoading && (!jobs || jobs.length === 0) && (
-              <tr><td colSpan={7} className="px-4 py-6 text-center text-gray-500">No extra work requests found.</td></tr>
+              <tr><td colSpan={7} className="px-4 py-6 text-center text-gray-500">{t('extraWork.noExtraWork')}</td></tr>
             )}
             {jobs?.map((job) => {
               const svcName = (s: any) => s.serviceName || s.name || '';
@@ -114,7 +116,7 @@ export default function ExtraWorkPage() {
                   <td className="px-4 py-3 text-gray-900">
                     <div className="space-y-1">
                       <div className="flex items-center gap-1">
-                        <span className="text-xs text-gray-400">Lot:</span>
+                        <span className="text-xs text-gray-400">{t('common.lot')}:</span>
                         <input
                           type="text"
                           defaultValue={job.lot}
@@ -126,7 +128,7 @@ export default function ExtraWorkPage() {
                         type="text"
                         defaultValue={job.address || ''}
                         className="w-full px-1 py-0.5 border rounded text-[10px]"
-                        placeholder="Address"
+                        placeholder={t('common.address')}
                         onBlur={(e) => handleUpdate(job.id, 'address', e.target.value)}
                       />
                     </div>
@@ -148,7 +150,7 @@ export default function ExtraWorkPage() {
                           type="number"
                           defaultValue={job.amount || ''}
                           className="w-20 px-1 py-0.5 border rounded text-xs"
-                          placeholder="Price"
+                          placeholder={t('extraWork.price')}
                           onBlur={(e) => handleUpdate(job.id, 'amount', e.target.value)}
                         />
                       </div>
@@ -156,7 +158,7 @@ export default function ExtraWorkPage() {
                         type="text"
                         defaultValue={job.poNumber || ''}
                         className="w-full px-1 py-0.5 border rounded text-[10px]"
-                        placeholder="Invoice #"
+                        placeholder={t('blueBook.invoiceNumber')}
                         onBlur={(e) => handleUpdate(job.id, 'poNumber', e.target.value)}
                       />
                     </div>
@@ -166,7 +168,7 @@ export default function ExtraWorkPage() {
                       defaultValue={job.notes || ''}
                       rows={2}
                       className="w-full px-2 py-1 border rounded text-xs resize-none"
-                      placeholder="Notes..."
+                      placeholder={t('common.notes')}
                       onBlur={(e) => handleUpdate(job.id, 'notes', e.target.value)}
                     />
                   </td>
@@ -176,11 +178,11 @@ export default function ExtraWorkPage() {
                       className="w-28 px-1 py-1 border rounded text-xs"
                       onChange={(e) => handleUpdate(job.id, 'status', e.target.value)}
                     >
-                      <option value="PENDING">Pending</option>
-                      <option value="APPROVED">Approved</option>
-                      <option value="COMPLETED">Completed</option>
-                      <option value="BILLED">Billed</option>
-                      <option value="PAID">Paid</option>
+                      <option value="PENDING">{t('status.pending')}</option>
+                      <option value="APPROVED">{t('extraWork.approved')}</option>
+                      <option value="COMPLETED">{t('status.completed')}</option>
+                      <option value="BILLED">{t('extraWork.billed')}</option>
+                      <option value="PAID">{t('invoicing.paid')}</option>
                     </select>
                   </td>
                 </tr>

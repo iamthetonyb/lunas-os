@@ -1,0 +1,138 @@
+# LUNAS-Nano Distillation Pipeline Config
+#
+# Combines patterns from:
+#   - nanochat: depth-dial training, BPE tokenization, SFT + RL stages
+#   - 0wav: 3-stage curriculum, quality weighting, ensemble distillation
+#   - ATLAS: eval-driven feedback, scorer weight auto-tuning
+#
+# Pipeline: Export → Prepare → Pretrain → SFT → Quantize → Deploy → Eval → Loop
+
+# ── Model Architecture ───────────────────────────────────────────────
+model:
+  name: lunas-nano
+  # nanochat depth dial — controls model size
+  # depth 12 = GPT-1 class (~5 min train), depth 24 = GPT-2 class (~3h train)
+  depth: 12  # Start small, scale up as data grows
+  # Everything else auto-calculated from depth (nanochat style)
+
+# ── Data Sources ─────────────────────────────────────────────────────
+data:
+  # Primary: exported from Convex decision logs + conversations
+  sft_decisions: training/sft_decisions.jsonl
+  sft_conversations: training/sft_conversations.jsonl
+  manifest: training/manifest.json
+
+  # Quality weighting (0wav curriculum style)
+  weights:
+    gold: 2.0       # confidence >= 0.95, human approved
+    high: 1.5       # confidence >= 0.85
+    standard: 1.0   # confidence >= 0.70
+    filtered: 0.0   # confidence < 0.70 (excluded)
+
+  # Minimum dataset size to trigger training
+  min_examples: 50
+  # Re-export interval (collect more data before next training run)
+  export_interval_days: 7
+
+# ── Training Stages ──────────────────────────────────────────────────
+training:
+  # Stage 1: Foundation (0wav curriculum stage 1)
+  # All examples equally weighted, learn general patterns
+  foundation:
+    epochs: 20
+    lr: 3e-4
+    batch_size: 32
+    weight_schedule: uniform  # All weights = 1.0
+
+  # Stage 2: Enrichment (0wav curriculum stage 2)
+  # Quality weights fade in via cosine ramp
+  enrichment:
+    epochs: 30
+    lr: 1e-4
+    batch_size: 32
+    weight_schedule: cosine_ramp  # uniform → quality-weighted
+
+  # Stage 3: Precision (0wav curriculum stage 3)
+  # Gold samples boosted, full quality weighting
+  precision:
+    epochs: 50
+    lr: 5e-5
+    batch_size: 16
+    weight_schedule: full_quality
+    gold_boost: 1.5  # Extra multiplier on gold samples
+
+  # Hardware targets
+  hardware:
+    # GPU batch training (Colab H100 / RunPod)
+    gpu:
+      type: H100
+      precision: bfloat16
+      estimated_time: "10-30 min for depth 12"
+    # CPU training fallback (Apple Silicon)
+    cpu:
+      type: M2
+      precision: float32
+      estimated_time: "2-4 hours for depth 12"
+
+# ── Quantization ─────────────────────────────────────────────────────
+quantization:
+  # GGUF for llama.cpp / Ollama deployment
+  format: gguf
+  method: q4_0  # 4-bit quantization — smallest, fast on CPU
+  # Alternative: q5_1 for better quality at slight size cost
+  output: training/lunas-nano.gguf
+
+# ── Deployment ───────────────────────────────────────────────────────
+deployment:
+  # Local CPU inference via Ollama
+  ollama:
+    model_name: lunas-nano
+    modelfile: training/Modelfile
+    # ollama create lunas-nano -f training/Modelfile
+    # ollama run lunas-nano
+
+  # Use cases for local model (cost = $0):
+  local_tasks:
+    - schedule_lookup     # "What's on the schedule?"
+    - entity_lookup       # "List builders/communities/crews"
+    - status_check        # "What's the status of job X?"
+    - simple_assignment   # High-confidence foreman suggestions
+
+  # Keep on cloud (GPT-5.4 Nano via OpenRouter):
+  cloud_tasks:
+    - multi_step_reasoning  # Complex operations
+    - write_operations      # Anything that mutates data
+    - rag_search            # Knowledge base queries
+    - low_confidence        # When local model is uncertain
+
+# ── Evaluation ───────────────────────────────────────────────────────
+evaluation:
+  # promptfoo eval after each training run
+  config: evals/promptfooconfig.yaml
+  redteam: evals/promptfoo-redteam.yaml
+  # Minimum pass rate to deploy
+  min_pass_rate: 0.90
+  # Compare local model vs cloud model
+  compare_providers:
+    - local: ollama/lunas-nano
+    - cloud: openai/gpt-5.4-nano
+
+# ── Evolution Loop (ATLAS-inspired) ─────────────────────────────────
+evolution:
+  # Automatic improvement cycle
+  interval: weekly  # Run every Sunday
+  steps:
+    1_export: "pnpm tsx scripts/export-training-data.ts"
+    2_analyze: "npx promptfoo eval -c evals/promptfooconfig.yaml"
+    3_train: "Upload to GPU → Run SFT pipeline → Download GGUF"
+    4_deploy: "ollama create lunas-nano -f training/Modelfile"
+    5_eval: "npx promptfoo eval --compare"
+    6_decide: "If new model > old model by 5%, swap. Otherwise keep old."
+
+  # Metrics to track
+  metrics:
+    - tool_selection_accuracy   # Does it pick the right tool?
+    - response_quality          # LLM-rubric score
+    - latency                   # Response time
+    - cost_per_query            # Token cost (local = $0)
+    - bilingual_accuracy        # EN/ES response quality

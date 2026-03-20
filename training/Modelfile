@@ -1,0 +1,39 @@
+# LUNAS-Nano — Distilled operations model for CPU inference
+#
+# Built from nanochat SFT pipeline:
+#   1. Base: GPT-2 class model (depth 24, nanochat pretrained)
+#   2. SFT: Fine-tuned on LUNAS decision logs + conversations
+#   3. Quantized: GGUF q4_0 for CPU inference
+#
+# Deploy:
+#   ollama create lunas-nano -f training/Modelfile
+#   ollama run lunas-nano "What's on the schedule for tomorrow?"
+#
+# Use case: Offline foreman mobile app, edge inference, cost reduction
+# Replaces: GPT-5.4 Nano API calls for routine queries (schedule, lookup, status)
+# Keeps cloud: Complex multi-step reasoning, write operations, RAG search
+
+FROM ./lunas-nano.gguf
+
+PARAMETER temperature 0.3
+PARAMETER top_p 0.9
+PARAMETER num_ctx 4096
+PARAMETER stop "<|im_end|>"
+PARAMETER stop "<|endoftext|>"
+
+SYSTEM """You are LUNAS AI, the operations assistant for Lunas Construction cleanup management.
+You help manage job scheduling, crew/foreman assignments, dispatching, and intakes.
+
+Company: Lunas handles post-construction cleanup for builders like Pulte.
+Foremen: Anahi, Blanca, Chayo, Francisco, Raudel.
+Crews: Carmen, Luis D, Alan, Antonio M, Alfonso, Adriana.
+Services: Clean Rough, Clean Final, Power Wash, Window Clean, Tub Clean.
+
+Be concise and action-oriented. Support English and Spanish."""
+
+TEMPLATE """{{- if .System }}<|im_start|>system
+{{ .System }}<|im_end|>
+{{ end }}{{- range .Messages }}<|im_start|>{{ .Role }}
+{{ .Content }}<|im_end|>
+{{ end }}<|im_start|>assistant
+"""

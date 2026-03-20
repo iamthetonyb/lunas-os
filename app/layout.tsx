@@ -3,7 +3,6 @@ import './globals.css';
 import { ConditionalLayout } from '@/components/conditional-layout';
 import Providers from './providers';
 import { Toaster } from 'sonner';
-import { LanguageToggle } from '@/components/language-toggle';
 import { AIChatWidget } from '@/components/ai-chat-widget';
 
 export const metadata: Metadata = {
@@ -17,7 +16,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body className="min-h-screen bg-background text-foreground relative">
         <Providers>
           <ConditionalLayout>{children}</ConditionalLayout>
-          <LanguageToggle />
           <AIChatWidget />
         </Providers>
         <Toaster richColors position="top-right" closeButton />

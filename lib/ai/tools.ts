@@ -357,5 +357,92 @@ export function createTools() {
                 );
             },
         }),
+
+        // ── Knowledge & Learning ────────────────────────────────────────
+
+        searchKnowledge: tool({
+            description:
+                "Search the operational knowledge base (RAG) for patterns, procedures, community-foreman affinities, pricing benchmarks, and historical insights. Use this before making suggestions based on past patterns.",
+            inputSchema: z.object({
+                query: z
+                    .string()
+                    .describe(
+                        "Natural language query to search for relevant knowledge"
+                    ),
+                namespace: z
+                    .string()
+                    .optional()
+                    .describe(
+                        "Knowledge namespace: operations (default), pricing, scheduling, communities"
+                    ),
+            }),
+            execute: async ({ query, namespace }) => {
+                const result = await client.action(api.ai.searchKnowledge, {
+                    query,
+                    namespace,
+                    limit: 5,
+                });
+                return result;
+            },
+        }),
+
+        logDecision: tool({
+            description:
+                "Log an autonomous decision to the audit trail. Use this AFTER making any write operation (assign, dispatch, reschedule, create intake) so every action is tracked.",
+            inputSchema: z.object({
+                action: z
+                    .string()
+                    .describe(
+                        "Action taken, e.g. auto_assign_foreman, create_intake, reschedule"
+                    ),
+                input: z
+                    .string()
+                    .describe("JSON string of what triggered the decision"),
+                output: z
+                    .string()
+                    .describe("JSON string of what was done"),
+                confidence: z
+                    .number()
+                    .optional()
+                    .describe("Confidence score 0-1"),
+            }),
+            execute: async ({ action, input, output, confidence }) => {
+                return await client.mutation(api.ai.logDecision, {
+                    action,
+                    input,
+                    output,
+                    confidence,
+                    source: "chat",
+                });
+            },
+        }),
+
+        getRecentDecisions: tool({
+            description:
+                "View recent AI decision logs — useful for reviewing what autonomous actions have been taken",
+            inputSchema: z.object({
+                limit: z
+                    .number()
+                    .optional()
+                    .describe("Number of decisions to return (default 10)"),
+            }),
+            execute: async ({ limit }) => {
+                return await client.query(api.ai.getRecentDecisions, {
+                    limit: limit ?? 10,
+                });
+            },
+        }),
+
+        analyzePerformance: tool({
+            description:
+                "Analyze AI performance — shows approval rates, confidence calibration, and evolution insights. Use when an admin asks 'how well is the AI doing?' or 'are the auto-assignments working?'",
+            inputSchema: z.object({}),
+            execute: async () => {
+                return await client.action(
+                    api.insights.analyzeEvolution,
+                    {}
+                );
+            },
+        }),
     };
 }

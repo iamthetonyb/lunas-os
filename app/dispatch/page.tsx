@@ -7,6 +7,7 @@ import { api } from '@/convex/_generated/api';
 import { useSession } from 'next-auth/react';
 import { ConfirmationModal } from '@/components/ui/confirmation-modal';
 import { useState, useEffect, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 
 type DispatchBatch = {
   id: string;
@@ -18,6 +19,7 @@ type DispatchBatch = {
 };
 
 export default function DispatchPage() {
+  const { t } = useTranslation();
   const { data: session } = useSession();
   const isContractor = session?.user?.role === 'FOREMAN' || session?.user?.role === 'CREW';
   const isAdmin = session?.user?.role === 'ADMIN';
@@ -85,13 +87,13 @@ export default function DispatchPage() {
   return (
     <>
       <PageHeader
-        title="Dispatch"
-        description={isContractor ? "Your assigned jobs" : "Manage crew dispatch and job batches"}
+        title={t('dispatch.title')}
+        description={isContractor ? t('dispatch.yourAssignedJobs') : t('dispatch.description')}
         action={
           <div className="flex items-center gap-2">
             {!isContractor && (
               <Link href="/intake" className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 whitespace-nowrap">
-                + New Job
+                + {t('dispatch.newJob')}
               </Link>
             )}
             <button
@@ -132,22 +134,22 @@ export default function DispatchPage() {
                 <thead className="bg-gray-50 dark:bg-slate-700/50">
                   <tr>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                      Crew
+                      {t('common.crew')}
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                      Foreman
+                      {t('common.foreman')}
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                      Service Date
+                      {t('dispatch.serviceDate')}
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                      Status
+                      {t('common.status')}
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                      Jobs
+                      {t('dispatch.jobCount')}
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                      Actions
+                      {t('common.actions')}
                     </th>
                   </tr>
                 </thead>
@@ -194,14 +196,14 @@ export default function DispatchPage() {
                               href={`/dispatch/${batch.id}`}
                               className="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 font-medium"
                             >
-                              View Details
+                              {t('dispatch.viewDetails')}
                             </Link>
                             {isAdmin && (
                               <button
                                 onClick={() => openDeleteModal(batch.id)}
                                 className="text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300 font-medium"
                               >
-                                Delete
+                                {t('common.delete')}
                               </button>
                             )}
                           </div>
@@ -220,9 +222,9 @@ export default function DispatchPage() {
         isOpen={deleteModal.isOpen}
         onClose={() => setDeleteModal({ isOpen: false, batchId: null })}
         onConfirm={handleDeleteConfirm}
-        title="Delete Dispatch Batch"
-        message="Are you sure you want to delete this dispatch batch? This action cannot be undone and will reset the assigned jobs."
-        confirmText="Delete"
+        title={t('dispatch.deleteBatch')}
+        message={t('dispatch.deleteConfirm')}
+        confirmText={t('common.delete')}
         variant="danger"
       />
     </>

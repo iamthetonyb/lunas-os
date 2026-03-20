@@ -1,6 +1,6 @@
 /**
- * AI Chat API route — streams GPT-5.4 Nano responses with Convex tool calling.
- * Handles text + voice input uniformly (transcription happens client-side).
+ * AI Chat API route — GPT-5.4 Nano via OpenRouter (primary) or OpenAI (fallback).
+ * Edge runtime for fastest cold starts. Zero tokens until a message arrives.
  */
 import {
     streamText,
@@ -8,9 +8,25 @@ import {
     convertToModelMessages,
     stepCountIs,
 } from "ai";
-import { openai } from "@ai-sdk/openai";
+import { createOpenRouter } from "@openrouter/ai-sdk-provider";
+import { createOpenAI } from "@ai-sdk/openai";
 import { buildSystemPrompt } from "@/lib/ai/system-prompt";
 import { createTools } from "@/lib/ai/tools";
+
+// Prefer OpenRouter (cheaper, key rotation, fallback models).
+// Falls back to direct OpenAI if no OpenRouter key is set.
+function getModel() {
+    if (process.env.OPENROUTER_API_KEY) {
+        const openrouter = createOpenRouter({
+            apiKey: process.env.OPENROUTER_API_KEY,
+        });
+        return openrouter("openai/gpt-5.4-nano");
+    }
+    const openai = createOpenAI({
+        apiKey: process.env.OPENAI_API_KEY,
+    });
+    return openai("gpt-5.4-nano");
+}
 
 export async function POST(req: Request) {
     const body = await req.json();
@@ -26,20 +42,13 @@ export async function POST(req: Request) {
         currentPage?: string;
     } = body;
 
-    const systemPrompt = buildSystemPrompt({
-        userName,
-        userRole,
-        currentPage,
-    });
-
     const tools = createTools();
 
     const result = streamText({
-        model: openai("gpt-5.4-nano"),
-        system: systemPrompt,
+        model: getModel(),
+        system: buildSystemPrompt({ userName, userRole, currentPage }),
         messages: await convertToModelMessages(messages),
         tools,
-        // Allow up to 5 tool call rounds so the AI can chain lookups
         stopWhen: stepCountIs(5),
     });
 

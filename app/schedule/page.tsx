@@ -12,6 +12,7 @@ import { Dialog, Transition } from '@headlessui/react';
 import { ConfirmationModal } from '@/components/ui/confirmation-modal';
 import { toast } from 'sonner';
 import { JobCard } from '@/components/schedule/job-card';
+import { useTranslation } from 'react-i18next';
 
 type ForemanConfig = {
   id: string;
@@ -27,7 +28,7 @@ const FOREMEN_DIRECTORY: ForemanConfig[] = [
   { id: 'francisco', name: 'Francisco', keywords: ['extra', 'service'] },
   { id: 'raudel', name: 'Raudel', keywords: ['final clean', 'touch'] },
 ].sort((a, b) => a.name.localeCompare(b.name));
-const UNASSIGNED_FOREMAN = { id: 'unassigned', name: 'Unassigned' };
+const UNASSIGNED_FOREMAN = { id: 'unassigned', name: 'Unassigned', nameKey: 'common.unassigned' as const };
 
 // Crew members loaded from Convex (see useQuery below)
 
@@ -147,6 +148,7 @@ function resolveForemanForJob(job: UpcomingJob): ForemanConfig | typeof UNASSIGN
 }
 
 export default function SchedulePage() {
+  const { t } = useTranslation();
   const { data: session } = useSession();
 
   // Fix for Hydration Mismatch: Initialize with empty string or stable value, then update on mount
@@ -473,17 +475,17 @@ export default function SchedulePage() {
   return (
     <>
       <PageHeader
-        title="Schedule"
-        description="Manage job scheduling and crew assignments"
+        title={t('schedule.title')}
+        description={t('schedule.description')}
         action={
           <div className="flex items-center gap-2">
             {!isContractor && (
               <button
                 onClick={handleAutoDraft}
                 className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 whitespace-nowrap text-sm font-medium transition-colors"
-                title="Auto-assign crews to unassigned jobs"
+                title={t('schedule.autoDraft')}
               >
-                Auto-Draft
+                {t('schedule.autoDraft')}
               </button>
             )}
             <div className="flex items-center bg-white dark:bg-slate-700 rounded-lg border border-gray-300 dark:border-slate-600 p-1">
@@ -518,7 +520,7 @@ export default function SchedulePage() {
         <div className="bg-white dark:bg-slate-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6 mb-6">
           <div className="flex items-center justify-between mb-4">
             <div>
-              <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Upcoming Services</h2>
+              <h2 className="text-lg font-semibold text-gray-900 dark:text-white">{t('schedule.upcomingServices')}</h2>
               <p className="text-sm text-gray-500 dark:text-gray-400">
                 Showing start dates from {scheduleRange.start} to {scheduleRange.end}
               </p>
@@ -528,7 +530,7 @@ export default function SchedulePage() {
                 href="/blue-book"
                 className="text-sm text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 font-medium"
               >
-                Manage Blue Book →
+                {t('schedule.manageBlueBook')}
               </Link>
             )}
           </div>
@@ -542,7 +544,7 @@ export default function SchedulePage() {
                   }`}
                 onClick={() => setActiveForemanId('all')}
               >
-                All Foremen ({decoratedJobs.length})
+                {t('schedule.allForemen')} ({decoratedJobs.length})
               </button>
             )}
             {foremanTabs.map((foreman) => (
@@ -560,10 +562,10 @@ export default function SchedulePage() {
             ))}
           </div>
           {decoratedJobs.length === 0 ? (
-            <p className="text-gray-600 dark:text-gray-400">No services scheduled in this window.</p>
+            <p className="text-gray-600 dark:text-gray-400">{t('schedule.noServices')}</p>
           ) : visibleJobs.length === 0 ? (
             <p className="text-gray-600 dark:text-gray-400">
-              No services scheduled for the selected foreman in this window.
+              {t('schedule.noServicesForForeman')}
             </p>
           ) : (
             <div className="overflow-x-auto">
@@ -571,13 +573,13 @@ export default function SchedulePage() {
                 <thead className="bg-gray-50 dark:bg-slate-800">
                   <tr>
                     {!isContractor && (
-                      <th className="px-4 py-2 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">Assign Foreman</th>
+                      <th className="px-4 py-2 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">{t('schedule.assignForeman')}</th>
                     )}
-                    <th className="px-4 py-2 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">Builder</th>
-                    <th className="px-4 py-2 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">Community</th>
-                    <th className="px-4 py-2 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">Services</th>
-                    <th className="px-4 py-2 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">Notes</th>
-                    <th className="px-4 py-2 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">Actions</th>
+                    <th className="px-4 py-2 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">{t('common.builder')}</th>
+                    <th className="px-4 py-2 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">{t('common.community')}</th>
+                    <th className="px-4 py-2 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">{t('schedule.service')}</th>
+                    <th className="px-4 py-2 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">{t('common.notes')}</th>
+                    <th className="px-4 py-2 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">{t('common.actions')}</th>
                   </tr>
                 </thead>
                 <tbody className="bg-white dark:bg-slate-900 divide-y divide-gray-200 dark:divide-slate-700">
@@ -630,14 +632,14 @@ export default function SchedulePage() {
               >
                 <Dialog.Panel className="w-full max-w-md rounded-lg bg-white dark:bg-slate-800 p-6 shadow-2xl">
                   <Dialog.Title className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-                    Dispatch Job
+                    {t('schedule.dispatchJob')}
                   </Dialog.Title>
 
                   {dispatchModal.job && (
                     <div className="mb-4 p-3 bg-gray-50 dark:bg-slate-700 rounded-lg text-sm text-gray-900 dark:text-gray-100">
-                      <p><strong>Community:</strong> {getFriendlyName(dispatchModal.job.communityName || '')}</p>
-                      <p><strong>Lot:</strong> {dispatchModal.job.lot || '—'}</p>
-                      <p><strong>Service:</strong> {dispatchModal.job.serviceDisplay}</p>
+                      <p><strong>{t('common.community')}:</strong> {getFriendlyName(dispatchModal.job.communityName || '')}</p>
+                      <p><strong>{t('common.lot')}:</strong> {dispatchModal.job.lot || '—'}</p>
+                      <p><strong>{t('common.service')}:</strong> {dispatchModal.job.serviceDisplay}</p>
                     </div>
                   )}
 
@@ -646,22 +648,22 @@ export default function SchedulePage() {
                     {dispatchModal.job && (
                       <div className="p-2 bg-blue-50 dark:bg-blue-900/30 rounded-lg">
                         <p className="text-sm text-gray-900 dark:text-gray-100">
-                          <strong>Assigned Foreman:</strong>{' '}
-                          {dispatchModal.job.assignedForemanName || 'Not selected - use table dropdown first'}
+                          <strong>{t('schedule.assignedForeman')}:</strong>{' '}
+                          {dispatchModal.job.assignedForemanName || t('schedule.notSelected')}
                         </p>
                       </div>
                     )}
 
                     <div>
                       <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                        Select Crew Member
+                        {t('schedule.selectCrewMember')}
                       </label>
                       <select
                         value={dispatchModal.selectedCrew}
                         onChange={(e) => setDispatchModal((prev) => ({ ...prev, selectedCrew: e.target.value }))}
                         className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-700 text-gray-900 dark:text-white"
                       >
-                        <option value="">Choose crew member...</option>
+                        <option value="">{t('schedule.chooseCrewMember')}</option>
                         {crewNames.map((crew: string) => (
                           <option key={crew} value={crew}>{crew}</option>
                         ))}
@@ -674,14 +676,14 @@ export default function SchedulePage() {
                       onClick={closeDispatchModal}
                       className="px-4 py-2 border border-gray-300 dark:border-slate-600 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-slate-700"
                     >
-                      Cancel
+                      {t('common.cancel')}
                     </button>
                     <button
                       onClick={handleDispatch}
                       disabled={!dispatchModal.selectedCrew}
                       className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                      Dispatch
+                      {t('schedule.dispatched')}
                     </button>
                   </div>
                 </Dialog.Panel>
@@ -719,20 +721,20 @@ export default function SchedulePage() {
               >
                 <Dialog.Panel className="w-full max-w-md rounded-lg bg-white dark:bg-slate-800 p-6 shadow-2xl">
                   <Dialog.Title className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-                    Reschedule Job
+                    {t('schedule.rescheduleJob')}
                   </Dialog.Title>
 
                   {rescheduleModal.job && (
                     <div className="mb-4 p-3 bg-gray-50 dark:bg-slate-700 rounded-lg text-sm text-gray-900 dark:text-gray-100">
-                      <p><strong>Community:</strong> {getFriendlyName(rescheduleModal.job.communityName || '')}</p>
-                      <p><strong>Lot:</strong> {rescheduleModal.job.lot || '—'}</p>
-                      <p><strong>Service:</strong> {rescheduleModal.job.serviceDisplay}</p>
+                      <p><strong>{t('common.community')}:</strong> {getFriendlyName(rescheduleModal.job.communityName || '')}</p>
+                      <p><strong>{t('common.lot')}:</strong> {rescheduleModal.job.lot || '—'}</p>
+                      <p><strong>{t('common.service')}:</strong> {rescheduleModal.job.serviceDisplay}</p>
                     </div>
                   )}
 
                   <div>
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                      Select New Date
+                      {t('schedule.selectNewDate')}
                     </label>
                     <input
                       type="date"
@@ -741,7 +743,7 @@ export default function SchedulePage() {
                       className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-purple-500 bg-white dark:bg-slate-700 text-gray-900 dark:text-white"
                     />
                     <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                      Next business day auto-selected. Change if needed.
+                      {t('schedule.nextBusinessDayHint')}
                     </p>
                   </div>
 
@@ -750,14 +752,14 @@ export default function SchedulePage() {
                       onClick={closeRescheduleModal}
                       className="px-4 py-2 border border-gray-300 dark:border-slate-600 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-slate-700"
                     >
-                      Cancel
+                      {t('common.cancel')}
                     </button>
                     <button
                       onClick={handleRescheduleConfirm}
                       disabled={!rescheduleModal.selectedDate}
                       className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                      Confirm Reschedule
+                      {t('schedule.confirmReschedule')}
                     </button>
                   </div>
                 </Dialog.Panel>
