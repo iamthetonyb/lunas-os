@@ -19,6 +19,14 @@ crons.daily(
     internal.scheduler.autoAssignJobs
 );
 
+// Daily dispatch — auto-batch assigned jobs and send to crews
+// Runs at 6 AM CST = 12:00 UTC, one hour after scheduler
+crons.daily(
+    "daily-dispatch",
+    { hourUTC: 12, minuteUTC: 0 },
+    internal["dispatch-agent"].autoDispatch
+);
+
 // Weekly insight pipeline — every Sunday at 2 AM UTC
 crons.weekly(
     "weekly-insight-pipeline",

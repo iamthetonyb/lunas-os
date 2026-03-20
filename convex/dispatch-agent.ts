@@ -1,0 +1,277 @@
+/**
+ * Dispatch Agent — auto-batches assigned jobs into dispatch batches.
+ *
+ * Runs daily at 6 AM CST (12 UTC), one hour after the Scheduler Agent.
+ * Groups today's assigned (but not yet dispatched) jobs by crew,
+ * creates batch records, and flags anomalies.
+ *
+ * Trust Level: L3 (Act with logging)
+ * See AGENTS.md lines 96-111 for spec.
+ */
+import { internalQuery, internalMutation, internalAction } from "./_generated/server";
+import { internal } from "./_generated/api";
+import { v } from "convex/values";
+
+// ── Internal Queries ────────────────────────────────────────────────
+
+/**
+ * Get jobs that are assigned (have foreman + crew) but not yet dispatched.
+ * Targets today and tomorrow.
+ */
+export const getReadyToDispatch = internalQuery({
+    args: {},
+    handler: async (ctx) => {
+        const now = new Date();
+        const today = now.toISOString().split("T")[0];
+        const tomorrow = new Date(now.getTime() + 24 * 60 * 60 * 1000)
+            .toISOString()
+            .split("T")[0];
+
+        const allJrs = await ctx.db.query("jobRequestServices").collect();
+
+        const ready = allJrs.filter((jrs) => {
+            // Must have foreman and crew assigned
+            if (!jrs.assignedForemanName || !jrs.assignedCrewName) return false;
+            // Must not already be dispatched or completed
+            if (jrs.status === "DISPATCHED" || jrs.status === "COMPLETE") return false;
+            // Scheduled for today or tomorrow
+            const date = jrs.rescheduledDate ?? jrs.scheduledDate ?? "";
+            return date === today || date === tomorrow;
+        });
+
+        // Enrich with job request data
+        const enriched = await Promise.all(
+            ready.map(async (jrs) => {
+                const jr = await ctx.db.get(jrs.jobRequestId);
+                if (!jr) return null;
+
+                const community = jr.communityId
+                    ? await ctx.db.get(jr.communityId)
+                    : null;
+
+                return {
+                    _id: jrs._id,
+                    serviceName: jrs.serviceName,
+                    foremanName: jrs.assignedForemanName!,
+                    crewName: jrs.assignedCrewName!,
+                    scheduledDate: jrs.rescheduledDate ?? jrs.scheduledDate ?? today,
+                    communityName: community?.name ?? null,
+                    lot: jr.lot ?? null,
+                    address: jr.address ?? null,
+                    jobRequestId: jrs.jobRequestId,
+                };
+            })
+        );
+
+        return enriched.filter(Boolean);
+    },
+});
+
+/**
+ * Check for anomalies: double-booked lots (same lot, same date, different jobs).
+ */
+export const detectAnomalies = internalQuery({
+    args: {},
+    handler: async (ctx) => {
+        const now = new Date();
+        const today = now.toISOString().split("T")[0];
+
+        const allJrs = await ctx.db.query("jobRequestServices").collect();
+
+        // Find today's active jobs
+        const todayJobs = allJrs.filter((jrs) => {
+            const date = jrs.rescheduledDate ?? jrs.scheduledDate ?? "";
+            return date === today && jrs.status !== "COMPLETE";
+        });
+
+        // Check for duplicate lots
+        const lotMap: Record<string, any[]> = {};
+        for (const jrs of todayJobs) {
+            const jr = await ctx.db.get(jrs.jobRequestId);
+            if (!jr?.lot) continue;
+
+            const community = jr.communityId
+                ? await ctx.db.get(jr.communityId)
+                : null;
+
+            const key = `${community?.name ?? "unknown"}-${jr.lot}`;
+            if (!lotMap[key]) lotMap[key] = [];
+            lotMap[key].push({
+                jobId: jrs._id,
+                service: jrs.serviceName,
+                foreman: jrs.assignedForemanName,
+                crew: jrs.assignedCrewName,
+            });
+        }
+
+        const anomalies = Object.entries(lotMap)
+            .filter(([, jobs]) => jobs.length > 1)
+            .map(([lot, jobs]) => ({
+                type: "double_booked_lot",
+                lot,
+                jobCount: jobs.length,
+                jobs,
+            }));
+
+        return anomalies;
+    },
+});
+
+// ── Internal Mutations ──────────────────────────────────────────────
+
+export const createBatchWithAssignments = internalMutation({
+    args: {
+        foremanName: v.string(),
+        crewName: v.string(),
+        serviceDate: v.string(),
+        jobIds: v.array(v.id("jobRequestServices")),
+    },
+    handler: async (ctx, args) => {
+        // Create the dispatch batch
+        const batchId = await ctx.db.insert("dispatchBatches", {
+            serviceDate: args.serviceDate,
+            status: "SENT",
+            crewName: args.crewName,
+            foremanName: args.foremanName,
+            createdAt: Date.now(),
+        });
+
+        // Create assignments and update job statuses
+        for (const jobId of args.jobIds) {
+            await ctx.db.insert("assignments", {
+                jobRequestServiceId: jobId,
+                dispatchBatchId: batchId,
+                status: "SENT",
+                createdAt: Date.now(),
+            });
+
+            await ctx.db.patch(jobId, {
+                status: "DISPATCHED",
+            });
+        }
+
+        return { batchId, jobCount: args.jobIds.length };
+    },
+});
+
+export const logDispatchDecision = internalMutation({
+    args: {
+        action: v.string(),
+        input: v.string(),
+        output: v.string(),
+        confidence: v.number(),
+    },
+    handler: async (ctx, args) => {
+        await ctx.db.insert("aiDecisionLog", {
+            action: args.action,
+            input: args.input,
+            output: args.output,
+            confidence: args.confidence,
+            source: "scheduled",
+            createdAt: Date.now(),
+        });
+    },
+});
+
+// ── Main Dispatch Action ────────────────────────────────────────────
+
+/**
+ * Auto-dispatch: group ready jobs by crew+date, create batches, flag anomalies.
+ */
+export const autoDispatch = internalAction({
+    args: {},
+    handler: async (ctx) => {
+        // 1. Get ready jobs
+        const readyJobs = await ctx.runQuery(
+            internal["dispatch-agent"].getReadyToDispatch
+        );
+
+        if (readyJobs.length === 0) {
+            await ctx.runMutation(internal["dispatch-agent"].logDispatchDecision, {
+                action: "dispatch_run",
+                input: JSON.stringify({ readyCount: 0 }),
+                output: JSON.stringify({ message: "No jobs ready to dispatch" }),
+                confidence: 1.0,
+            });
+            return {
+                dispatched: 0,
+                batches: [],
+                anomalies: [],
+                message: "No jobs ready to dispatch.",
+            };
+        }
+
+        // 2. Detect anomalies
+        const anomalies = await ctx.runQuery(
+            internal["dispatch-agent"].detectAnomalies
+        );
+
+        // 3. Group by crew + date
+        const groups: Record<
+            string,
+            { foremanName: string; crewName: string; date: string; jobIds: any[] }
+        > = {};
+
+        for (const job of readyJobs) {
+            const key = `${(job as any).crewName}|${(job as any).scheduledDate}`;
+            if (!groups[key]) {
+                groups[key] = {
+                    foremanName: (job as any).foremanName,
+                    crewName: (job as any).crewName,
+                    date: (job as any).scheduledDate,
+                    jobIds: [],
+                };
+            }
+            groups[key].jobIds.push((job as any)._id);
+        }
+
+        // 4. Create dispatch batches
+        const batches = [];
+        for (const group of Object.values(groups)) {
+            const result = await ctx.runMutation(
+                internal["dispatch-agent"].createBatchWithAssignments,
+                {
+                    foremanName: group.foremanName,
+                    crewName: group.crewName,
+                    serviceDate: group.date,
+                    jobIds: group.jobIds,
+                }
+            );
+            batches.push({
+                ...result,
+                foremanName: group.foremanName,
+                crewName: group.crewName,
+                date: group.date,
+            });
+        }
+
+        // 5. Log the dispatch run
+        await ctx.runMutation(internal["dispatch-agent"].logDispatchDecision, {
+            action: "auto_dispatch",
+            input: JSON.stringify({
+                readyCount: readyJobs.length,
+                groupCount: batches.length,
+                anomalyCount: anomalies.length,
+            }),
+            output: JSON.stringify({
+                batchesCreated: batches.length,
+                jobsDispatched: readyJobs.length,
+                anomalies: anomalies.length > 0 ? anomalies : "none",
+            }),
+            confidence: 1.0,
+        });
+
+        return {
+            dispatched: readyJobs.length,
+            batches: batches.map((b) => ({
+                batchId: b.batchId,
+                crew: b.crewName,
+                foreman: b.foremanName,
+                date: b.date,
+                jobs: b.jobCount,
+            })),
+            anomalies,
+            message: `Dispatched ${readyJobs.length} jobs in ${batches.length} batches.${anomalies.length > 0 ? ` WARNING: ${anomalies.length} anomalies detected.` : ""}`,
+        };
+    },
+});

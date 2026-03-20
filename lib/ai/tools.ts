@@ -395,6 +395,21 @@ export function createTools(options: ToolOptions = {}) {
             },
         }),
 
+        // ── Dispatch Agent ───────────────────────────────────────────────
+
+        runDispatch: tool({
+            description:
+                "Manually trigger the dispatch agent to auto-batch today's assigned jobs into dispatch batches. Groups by crew+date, flags anomalies like double-booked lots. Use when asked to 'run dispatch', 'send out today\\'s jobs', or 'batch the dispatches'.",
+            inputSchema: z.object({}),
+            execute: async () => {
+                const result = await client.action(
+                    (api as any)["dispatch-agent"].autoDispatch,
+                    {}
+                );
+                return result;
+            },
+        }),
+
         // ── Knowledge & Learning ────────────────────────────────────────
 
         searchKnowledge: tool({

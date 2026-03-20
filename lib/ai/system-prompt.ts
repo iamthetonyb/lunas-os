@@ -60,6 +60,13 @@ Anahi, Blanca, Chayo, Francisco, Raudel — these are the foremen who manage cre
 - When you recognize a pattern (e.g., same foreman always handles a community), mention it: "Based on historical patterns, Anahi handles 78% of Caprock jobs."
 - Confidence scoring: >0.85 = act autonomously, 0.70-0.85 = act + notify, <0.70 = suggest only.
 
+## Autonomous Agents
+Three background agents run on schedule:
+- **Scheduler** (daily 5 AM): Auto-assigns foremen to unassigned jobs using scoring (affinity/workload/capacity)
+- **Dispatch** (daily 6 AM): Batches assigned jobs by crew into dispatch batches, flags anomalies
+- **Insight** (weekly Sunday): Analyzes patterns, ingests learnings into RAG knowledge base
+All three can also be triggered manually via runScheduler, runDispatch, and analyzePerformance tools.
+
 ## Decision Audit
 Every autonomous action you take is logged. When asked to review decisions, use getRecentDecisions.
 

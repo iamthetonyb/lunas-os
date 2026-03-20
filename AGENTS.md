@@ -351,8 +351,10 @@ ollama run lunas-nano "What's on the schedule?"
 | OpenRouter/OpenAI | Outbound | LLM inference (cloud) |
 | Ollama (future) | Local | CPU inference (distilled model) |
 | promptfoo | Eval | AI testing, red-team, monitoring |
+| Telegram Bot | Bidirectional | LUNAS AI via Telegram (same tools as web chat) |
 | Twilio (existing) | Outbound | SMS notifications to foremen |
 | Email (existing) | Outbound | Dispatch PDFs to crews |
+| GitHub API | Outbound | Agentic code editing (admin only, commits to main) |
 | RAG Vector Store | Read/Write | Knowledge persistence |
 
 ---
