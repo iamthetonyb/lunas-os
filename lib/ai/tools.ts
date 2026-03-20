@@ -6,8 +6,18 @@ import { tool } from "ai";
 import { z } from "zod";
 import { getConvexClient } from "@/lib/convex/http-client";
 import { api } from "@/convex/_generated/api";
+import {
+    readRepoFile,
+    listRepoDir,
+    writeRepoFile,
+    editRepoFile,
+} from "@/lib/github/client";
 
-export function createTools() {
+interface ToolOptions {
+    userRole?: string;
+}
+
+export function createTools(options: ToolOptions = {}) {
     const client = getConvexClient();
 
     // Auto-log write operations to the decision audit trail
@@ -370,6 +380,21 @@ export function createTools() {
             },
         }),
 
+        // ── Scheduler Agent ──────────────────────────────────────────────
+
+        runScheduler: tool({
+            description:
+                "Manually trigger the scheduler agent to auto-assign foremen to unassigned jobs. Shows what assignments were made and their confidence scores. Use when asked to 'run the scheduler', 'auto-assign jobs', or 'balance the workload'.",
+            inputSchema: z.object({}),
+            execute: async () => {
+                const result = await client.action(
+                    (api as any).scheduler.autoAssignJobs,
+                    {}
+                );
+                return result;
+            },
+        }),
+
         // ── Knowledge & Learning ────────────────────────────────────────
 
         searchKnowledge: tool({
@@ -455,6 +480,175 @@ export function createTools() {
                     (api as any).insights.analyzeEvolution,
                     {}
                 );
+            },
+        }),
+
+        // ── Agentic Code Editing (ADMIN only) ────────────────────────────
+
+        readFile: tool({
+            description:
+                "Read a file from the LUNAS-OS GitHub repo. Use this to inspect code before making edits. ADMIN ONLY.",
+            inputSchema: z.object({
+                path: z
+                    .string()
+                    .describe(
+                        "File path relative to repo root, e.g. 'app/dashboard/page.tsx'"
+                    ),
+            }),
+            execute: async ({ path }) => {
+                if (options.userRole !== "ADMIN") {
+                    return { error: "Only admins can read repo files." };
+                }
+                try {
+                    const file = await readRepoFile(path);
+                    return {
+                        path: file.path,
+                        content: file.content,
+                        lines: file.content.split("\n").length,
+                    };
+                } catch (e: any) {
+                    return { error: e.message };
+                }
+            },
+        }),
+
+        listFiles: tool({
+            description:
+                "List files in a directory of the LUNAS-OS GitHub repo. ADMIN ONLY.",
+            inputSchema: z.object({
+                path: z
+                    .string()
+                    .describe(
+                        "Directory path relative to repo root, e.g. 'app' or 'components'"
+                    ),
+            }),
+            execute: async ({ path }) => {
+                if (options.userRole !== "ADMIN") {
+                    return { error: "Only admins can browse repo files." };
+                }
+                try {
+                    const items = await listRepoDir(path);
+                    return { path, items };
+                } catch (e: any) {
+                    return { error: e.message };
+                }
+            },
+        }),
+
+        editFile: tool({
+            description:
+                "Edit a file in the LUNAS-OS repo by replacing specific text. Commits directly to main branch. Always read the file first to get exact text. ADMIN ONLY.",
+            inputSchema: z.object({
+                path: z
+                    .string()
+                    .describe("File path relative to repo root"),
+                oldText: z
+                    .string()
+                    .describe(
+                        "Exact text to find and replace (must match file contents)"
+                    ),
+                newText: z
+                    .string()
+                    .describe("Replacement text"),
+                commitMessage: z
+                    .string()
+                    .describe(
+                        "Short commit message describing the change"
+                    ),
+            }),
+            execute: async ({ path, oldText, newText, commitMessage }) => {
+                if (options.userRole !== "ADMIN") {
+                    return { error: "Only admins can edit repo files." };
+                }
+                try {
+                    const result = await editRepoFile(
+                        path,
+                        oldText,
+                        newText,
+                        `[LUNAS AI] ${commitMessage}`
+                    );
+                    await logAction("code_edit", { path, commitMessage }, result);
+                    return {
+                        success: true,
+                        path: result.path,
+                        commitSha: result.commitSha,
+                        commitUrl: result.commitUrl,
+                    };
+                } catch (e: any) {
+                    return { error: e.message };
+                }
+            },
+        }),
+
+        createFile: tool({
+            description:
+                "Create a new file in the LUNAS-OS repo. Commits directly to main branch. ADMIN ONLY.",
+            inputSchema: z.object({
+                path: z
+                    .string()
+                    .describe("File path relative to repo root"),
+                content: z.string().describe("Full file content"),
+                commitMessage: z
+                    .string()
+                    .describe(
+                        "Short commit message describing what was created"
+                    ),
+            }),
+            execute: async ({ path, content, commitMessage }) => {
+                if (options.userRole !== "ADMIN") {
+                    return { error: "Only admins can create repo files." };
+                }
+                try {
+                    const result = await writeRepoFile(
+                        path,
+                        content,
+                        `[LUNAS AI] ${commitMessage}`
+                    );
+                    await logAction("code_create", { path, commitMessage }, result);
+                    return {
+                        success: true,
+                        path: result.path,
+                        commitSha: result.commitSha,
+                        commitUrl: result.commitUrl,
+                    };
+                } catch (e: any) {
+                    return { error: e.message };
+                }
+            },
+        }),
+
+        overwriteFile: tool({
+            description:
+                "Overwrite an entire file in the LUNAS-OS repo with new content. Use when the changes are too extensive for editFile. Commits directly to main. ADMIN ONLY.",
+            inputSchema: z.object({
+                path: z
+                    .string()
+                    .describe("File path relative to repo root"),
+                content: z.string().describe("Complete new file content"),
+                commitMessage: z
+                    .string()
+                    .describe("Short commit message"),
+            }),
+            execute: async ({ path, content, commitMessage }) => {
+                if (options.userRole !== "ADMIN") {
+                    return { error: "Only admins can overwrite repo files." };
+                }
+                try {
+                    const result = await writeRepoFile(
+                        path,
+                        content,
+                        `[LUNAS AI] ${commitMessage}`
+                    );
+                    await logAction("code_overwrite", { path, commitMessage }, result);
+                    return {
+                        success: true,
+                        path: result.path,
+                        commitSha: result.commitSha,
+                        commitUrl: result.commitUrl,
+                    };
+                } catch (e: any) {
+                    return { error: e.message };
+                }
             },
         }),
     };

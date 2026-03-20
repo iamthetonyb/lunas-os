@@ -70,7 +70,7 @@ export default function IntakeDetailPage() {
             <div className="space-y-6">
               <div>
                 <h3 className="text-lg font-semibold text-gray-900 mb-4 border-b pb-2">
-                  Location & Plan
+                  {t('intake.builderLocation')}
                 </h3>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <DetailItem label={t('common.community')} value={intake.communityName} />
@@ -83,7 +83,7 @@ export default function IntakeDetailPage() {
 
               <div>
                 <h3 className="text-lg font-semibold text-gray-900 mb-4 border-b pb-2">
-                  Scheduling & Contact
+                  {t('intake.scheduleInfo')}
                 </h3>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <DetailItem

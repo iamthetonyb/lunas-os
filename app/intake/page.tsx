@@ -106,7 +106,7 @@ function IntakeDetailModal({
                 <div className="mt-4 space-y-6">
                   <div>
                     <h4 className="text-base font-semibold text-gray-800 border-b pb-2">
-                      Location & Plan
+                      {t('intake.builderLocation')}
                     </h4>
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-2">
                       <DetailItem label={t('common.community')} value={intake.communityName} />
@@ -119,7 +119,7 @@ function IntakeDetailModal({
 
                   <div>
                     <h4 className="text-base font-semibold text-gray-800 border-b pb-2">
-                      Scheduling & Contact
+                      {t('intake.scheduleInfo')}
                     </h4>
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-2">
                       <DetailItem

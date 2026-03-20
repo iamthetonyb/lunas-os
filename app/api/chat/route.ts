@@ -44,7 +44,7 @@ export async function POST(req: Request) {
         preferredLang?: string;
     } = body;
 
-    const tools = createTools();
+    const tools = createTools({ userRole: userRole || undefined });
 
     const result = streamText({
         model: getModel(),

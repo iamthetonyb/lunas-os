@@ -136,6 +136,12 @@ export default function AIChatPanel({ onClose }: { onClose: () => void }) {
                     </svg>
                     <span className="font-semibold text-sm">{t('ai.title')}</span>
                     <span className="text-[10px] bg-blue-500 px-1.5 py-0.5 rounded-full">GPT-5.4n</span>
+                    {(session?.user as any)?.role === 'ADMIN' && (
+                        <span className="text-[10px] bg-emerald-500 px-1.5 py-0.5 rounded-full flex items-center gap-0.5">
+                            <svg xmlns="http://www.w3.org/2000/svg" className="w-2.5 h-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M17.25 6.75L22.5 12l-5.25 5.25m-10.5 0L1.5 12l5.25-5.25m7.5-3l-4.5 16.5" /></svg>
+                            Agent
+                        </span>
+                    )}
                 </div>
                 <div className="flex items-center gap-1">
                     <button onClick={() => setVoiceMode(!voiceMode)} className={`p-1.5 rounded-lg transition-colors ${voiceMode ? 'bg-blue-500 text-white' : 'text-blue-200 hover:text-white'}`} title={voiceMode ? t('ai.textMode') : t('ai.voiceMode')}>
