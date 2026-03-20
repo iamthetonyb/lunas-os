@@ -4,6 +4,7 @@ import { ConditionalLayout } from '@/components/conditional-layout';
 import Providers from './providers';
 import { Toaster } from 'sonner';
 import { LanguageToggle } from '@/components/language-toggle';
+import { AIChatWidget } from '@/components/ai-chat-widget';
 
 export const metadata: Metadata = {
   title: 'Lunas OS',
@@ -17,6 +18,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <Providers>
           <ConditionalLayout>{children}</ConditionalLayout>
           <LanguageToggle />
+          <AIChatWidget />
         </Providers>
         <Toaster richColors position="top-right" closeButton />
       </body>

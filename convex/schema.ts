@@ -243,6 +243,32 @@ export default defineSchema({
         amount: v.optional(v.number()),
     }).index("by_invoice", ["invoiceId"]),
 
+    // AI Messages (conversation history for persistence)
+    aiMessages: defineTable({
+        threadId: v.string(),
+        userId: v.optional(v.id("users")),
+        role: v.string(), // user, assistant, system
+        content: v.string(),
+        toolCalls: v.optional(v.string()), // JSON serialized tool calls
+        createdAt: v.number(),
+    })
+        .index("by_thread", ["threadId"])
+        .index("by_user", ["userId"]),
+
+    // AI Decision Log (audit trail for autonomous actions)
+    aiDecisionLog: defineTable({
+        action: v.string(), // e.g. "auto_assign_foreman", "auto_dispatch"
+        input: v.string(), // JSON — what triggered the decision
+        output: v.string(), // JSON — what action was taken
+        confidence: v.optional(v.number()), // 0-1
+        approved: v.optional(v.boolean()),
+        approvedBy: v.optional(v.id("users")),
+        source: v.optional(v.string()), // "chat", "auto", "scheduled"
+        createdAt: v.number(),
+    })
+        .index("by_action", ["action"])
+        .index("by_createdAt", ["createdAt"]),
+
     // Community Lots
     communityLots: defineTable({
         communityId: v.id("communities"),
