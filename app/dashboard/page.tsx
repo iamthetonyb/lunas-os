@@ -22,7 +22,7 @@ export default function DashboardPage() {
   const recentData = useQuery(api.jobRequests.getRecent, {});
   const intakeList = recentData?.intakes ?? [];
 
-  const dispatchBatches = useQuery(api.queries.getDispatchBatches) ?? [];
+  const dispatchBatches = useQuery(api.queries.getDispatchBatches, {}) ?? [];
 
   // Contractor assignments
   const isContractor = orgRole === 'contractor' || (session?.user as any)?.role === 'FOREMAN' || (session?.user as any)?.role === 'CREW';

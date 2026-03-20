@@ -18,8 +18,8 @@ import { useSession } from 'next-auth/react';
 import { SearchableSelect, SearchableMultiSelect } from './searchable-select';
 import { getFriendlyName } from '@/lib/utils/community-display';
 
-const REQUESTED_BY_LIST = ['Anahi', 'Chayo', 'Blanca', 'Raudel', 'Francisco'] as const;
-type RequestedByName = (typeof REQUESTED_BY_LIST)[number];
+// Fallback list in case foreman query is still loading
+const FALLBACK_REQUESTED_BY = ['Anahi', 'Chayo', 'Blanca', 'Raudel', 'Francisco'];
 
 // Walk time options - top of hour only
 const WALK_TIME_OPTIONS: SelectOption[] = [
@@ -59,10 +59,7 @@ const baseSchema = z.object({
   attachments: z.any().optional(),
   requestedBy: z
     .string()
-    .min(1, 'Requested by is required')
-    .refine((value) => REQUESTED_BY_LIST.includes(value as RequestedByName), {
-      message: 'Select a valid requester',
-    }),
+    .min(1, 'Requested by is required'),
   contact: z.string().min(1, 'Contact information is required'),
   poNumber: z.string().optional(),
 });
@@ -84,10 +81,22 @@ export function IntakeForm() {
   const { t } = useTranslation();
 
   // Convex queries (reactive, auto-updating)
-  const builders = useQuery(api.queries.getBuilders) ?? [];
-  const communities = useQuery(api.queries.getCommunities) ?? [];
-  const modelPlans = useQuery(api.queries.getModelPlans) ?? [];
-  const services = useQuery(api.queries.getServices) ?? [];
+  const builders = useQuery(api.queries.getBuilders, {}) ?? [];
+  const communities = useQuery(api.queries.getCommunities, {}) ?? [];
+  const modelPlans = useQuery(api.queries.getModelPlans, {}) ?? [];
+  const services = useQuery(api.queries.getServices, {}) ?? [];
+  const allUsers = useQuery(api.queries.getUsers, { limit: 100 });
+
+  // Dynamic foreman list from Convex users table
+  const foremanNames = useMemo(() => {
+    if (!allUsers) return FALLBACK_REQUESTED_BY;
+    const names = allUsers
+      .filter((u: any) => u.systemRole === 'FOREMAN')
+      .map((u: any) => u.name)
+      .filter(Boolean)
+      .sort();
+    return names.length > 0 ? names : FALLBACK_REQUESTED_BY;
+  }, [allUsers]);
 
   const createJobRequest = useMutation(api.mutations.createJobRequest);
 
@@ -142,12 +151,12 @@ export function IntakeForm() {
   // Set default requestedBy for contractors
   useEffect(() => {
     if (isContractor && session?.user?.name && !watchedRequestedBy) {
-      const myName = REQUESTED_BY_LIST.find(n => n.toLowerCase() === session.user.name!.toLowerCase());
+      const myName = foremanNames.find((n: string) => n.toLowerCase() === session.user.name!.toLowerCase());
       if (myName) {
         setValue('requestedBy', myName, { shouldValidate: true });
       }
     }
-  }, [isContractor, session?.user?.name, setValue, watchedRequestedBy]);
+  }, [isContractor, session?.user?.name, setValue, watchedRequestedBy, foremanNames]);
 
   // Lot options from scraped data
   const lotOptions = useMemo<SelectOption[]>(() => {
@@ -241,8 +250,8 @@ export function IntakeForm() {
   }, [modelPlans, builderId]);
 
   const requestedByOptions = useMemo<SelectOption[]>(
-    () => REQUESTED_BY_LIST.map((name) => ({ value: name, label: name })),
-    []
+    () => foremanNames.map((name: string) => ({ value: name, label: name })),
+    [foremanNames]
   );
 
   useEffect(() => {

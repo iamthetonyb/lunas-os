@@ -9,7 +9,7 @@ import { useSession } from 'next-auth/react';
 import { ScheduleKanban } from '@/components/schedule-kanban';
 import { getFriendlyName } from '@/lib/utils/community-display';
 import { Dialog, Transition } from '@headlessui/react';
-import { ConfirmationModal } from '@/components/ui/confirmation-modal';
+import { ConfirmationDialog } from '@/components/ConfirmationDialog';
 import { toast } from 'sonner';
 import { JobCard } from '@/components/schedule/job-card';
 import { useTranslation } from 'react-i18next';
@@ -21,6 +21,8 @@ type ForemanConfig = {
   keywords?: string[];
 };
 
+// TODO: Replace this hardcoded directory with a Convex query (e.g., api.queries.getForemen).
+// Removing it now would break the page since resolveForemanForJob, foremanTabs, and JobCard all depend on it.
 const FOREMEN_DIRECTORY: ForemanConfig[] = [
   { id: 'anahi', name: 'Anahi', codes: ['22702'], keywords: ['sweep'] },
   { id: 'blanca', name: 'Blanca', keywords: ['power wash', 'wash'] },
@@ -169,19 +171,12 @@ export default function SchedulePage() {
     selectedDate: '',
   });
   const [rescheduledJobs, setRescheduledJobs] = useState<Map<string, string>>(new Map()); // jobId -> new date
-  const [confirmModal, setConfirmModal] = useState<{
-    isOpen: boolean;
+  const [confirmDialog, setConfirmDialog] = useState<{
     title: string;
     message: string;
     onConfirm: () => void;
-    variant: 'primary' | 'danger';
-  }>({
-    isOpen: false,
-    title: '',
-    message: '',
-    onConfirm: () => { },
-    variant: 'primary',
-  });
+    variant?: 'danger' | 'default';
+  } | null>(null);
 
   // Convex mutations
   const assignForemanMutation = useMutation(api.mutations.assignForeman);
@@ -218,7 +213,7 @@ export default function SchedulePage() {
 
   // Convex queries - reactive, no need for SWR polling or cache invalidation
   const upcomingJobs = useQuery(api.queries.getScheduleJobs, date ? { startDate: scheduleRange.start, endDate: scheduleRange.end } : 'skip') ?? [];
-  const crews = useQuery(api.queries.getCrews) ?? [];
+  const crews = useQuery(api.queries.getCrews, {}) ?? [];
   const crewNames = useMemo(() => crews.map((c: any) => c.name).sort(), [crews]);
 
   const decoratedJobs = useMemo<DecoratedJob[]>(
@@ -369,7 +364,7 @@ export default function SchedulePage() {
 
   const handleDispatch = async () => {
     if (!dispatchModal.job || !dispatchModal.selectedCrew) {
-      alert('Please select a crew member.');
+      toast.error('Please select a crew member.');
       return;
     }
     // Get foreman from database (reactive via Convex)
@@ -418,7 +413,7 @@ export default function SchedulePage() {
       closeRescheduleModal();
     } catch (error) {
       console.error('Failed to reschedule job', error);
-      alert('Failed to reschedule job. Please try again.');
+      toast.error('Failed to reschedule job. Please try again.');
     }
   };
 
@@ -427,28 +422,26 @@ export default function SchedulePage() {
     const isComplete = currentStatus === 'COMPLETE';
     const action = isComplete ? 'mark as incomplete' : 'mark as complete';
 
-    setConfirmModal({
-      isOpen: true,
+    setConfirmDialog({
       title: isComplete ? 'Undo Completion' : 'Mark Job Complete',
       message: `Are you sure you want to ${action}?`,
-      variant: isComplete ? 'primary' : 'primary', // Can use danger/warning if needed
+      variant: 'default',
       onConfirm: async () => {
         try {
           await completeJobMutation({ id: jobId as any });
         } catch (error) {
           console.error('Failed to toggle job completion', error);
-          alert('Failed to update job status.');
+          toast.error('Failed to update job status.');
         }
       },
     });
   };
 
   const handleAutoDraft = async () => {
-    setConfirmModal({
-      isOpen: true,
+    setConfirmDialog({
       title: 'Auto-Draft Schedule',
       message: 'This will automatically assign available crews to unassigned jobs for the next 14 days. Proceed?',
-      variant: 'primary',
+      variant: 'default',
       onConfirm: async () => {
         try {
           // Auto-draft: assigns foremen to jobs based on rules
@@ -468,7 +461,7 @@ export default function SchedulePage() {
       toast.info('Approve & Send is being migrated. Use individual dispatch for now.');
     } catch (error) {
       console.error('Failed to approve schedule', error);
-      alert('Failed to approve assignments.');
+      toast.error('Failed to approve assignments.');
     }
   };
 
@@ -769,14 +762,16 @@ export default function SchedulePage() {
         </Dialog>
       </Transition>
 
-      <ConfirmationModal
-        isOpen={confirmModal.isOpen}
-        onClose={() => setConfirmModal(prev => ({ ...prev, isOpen: false }))}
-        onConfirm={confirmModal.onConfirm}
-        title={confirmModal.title}
-        message={confirmModal.message}
-        variant={confirmModal.variant}
-      />
+      {confirmDialog && (
+        <ConfirmationDialog
+          isOpen={!!confirmDialog}
+          onClose={() => setConfirmDialog(null)}
+          onConfirm={confirmDialog.onConfirm}
+          title={confirmDialog.title}
+          message={confirmDialog.message}
+          variant={confirmDialog.variant}
+        />
+      )}
     </>
   );
 }

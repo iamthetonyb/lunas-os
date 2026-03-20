@@ -39,14 +39,34 @@ export const getReadyToDispatch = internalQuery({
             return date === today || date === tomorrow;
         });
 
-        // Enrich with job request data
-        const enriched = await Promise.all(
-            ready.map(async (jrs) => {
-                const jr = await ctx.db.get(jrs.jobRequestId);
+        // Batch-load: collect unique jobRequestIds, fetch all at once, build map
+        const jobRequestIds = [...new Set(ready.map((jrs) => jrs.jobRequestId))];
+        const jobRequests = await Promise.all(jobRequestIds.map((id) => ctx.db.get(id)));
+        const jrMap = new Map(
+            jobRequestIds.map((id, i) => [id, jobRequests[i]])
+        );
+
+        // Batch-load: collect unique communityIds from fetched job requests, fetch all at once
+        const communityIds = [
+            ...new Set(
+                jobRequests
+                    .filter((jr) => jr?.communityId)
+                    .map((jr) => jr!.communityId!)
+            ),
+        ];
+        const communities = await Promise.all(communityIds.map((id) => ctx.db.get(id)));
+        const communityMap = new Map(
+            communityIds.map((id, i) => [id, communities[i]])
+        );
+
+        // Enrich using maps — no additional DB calls
+        const enriched = ready
+            .map((jrs) => {
+                const jr = jrMap.get(jrs.jobRequestId);
                 if (!jr) return null;
 
                 const community = jr.communityId
-                    ? await ctx.db.get(jr.communityId)
+                    ? communityMap.get(jr.communityId) ?? null
                     : null;
 
                 return {
@@ -61,9 +81,9 @@ export const getReadyToDispatch = internalQuery({
                     jobRequestId: jrs.jobRequestId,
                 };
             })
-        );
+            .filter(Boolean);
 
-        return enriched.filter(Boolean);
+        return enriched;
     },
 });
 
@@ -84,14 +104,34 @@ export const detectAnomalies = internalQuery({
             return date === today && jrs.status !== "COMPLETE";
         });
 
-        // Check for duplicate lots
+        // Batch-load: collect unique jobRequestIds, fetch all at once, build map
+        const jobRequestIds = [...new Set(todayJobs.map((jrs) => jrs.jobRequestId))];
+        const jobRequests = await Promise.all(jobRequestIds.map((id) => ctx.db.get(id)));
+        const jrMap = new Map(
+            jobRequestIds.map((id, i) => [id, jobRequests[i]])
+        );
+
+        // Batch-load: collect unique communityIds from fetched job requests, fetch all at once
+        const communityIds = [
+            ...new Set(
+                jobRequests
+                    .filter((jr) => jr?.communityId)
+                    .map((jr) => jr!.communityId!)
+            ),
+        ];
+        const communities = await Promise.all(communityIds.map((id) => ctx.db.get(id)));
+        const communityMap = new Map(
+            communityIds.map((id, i) => [id, communities[i]])
+        );
+
+        // Check for duplicate lots using maps — no additional DB calls
         const lotMap: Record<string, any[]> = {};
         for (const jrs of todayJobs) {
-            const jr = await ctx.db.get(jrs.jobRequestId);
+            const jr = jrMap.get(jrs.jobRequestId);
             if (!jr?.lot) continue;
 
             const community = jr.communityId
-                ? await ctx.db.get(jr.communityId)
+                ? communityMap.get(jr.communityId) ?? null
                 : null;
 
             const key = `${community?.name ?? "unknown"}-${jr.lot}`;
@@ -181,13 +221,14 @@ export const logDispatchDecision = internalMutation({
 export const autoDispatch = internalAction({
     args: {},
     handler: async (ctx) => {
+        const _internal = internal as any;
         // 1. Get ready jobs
-        const readyJobs = await ctx.runQuery(
-            internal["dispatch-agent"].getReadyToDispatch
+        const readyJobs: any[] = await ctx.runQuery(
+            _internal.dispatchAgent.getReadyToDispatch
         );
 
         if (readyJobs.length === 0) {
-            await ctx.runMutation(internal["dispatch-agent"].logDispatchDecision, {
+            await ctx.runMutation(_internal.dispatchAgent.logDispatchDecision, {
                 action: "dispatch_run",
                 input: JSON.stringify({ readyCount: 0 }),
                 output: JSON.stringify({ message: "No jobs ready to dispatch" }),
@@ -202,8 +243,8 @@ export const autoDispatch = internalAction({
         }
 
         // 2. Detect anomalies
-        const anomalies = await ctx.runQuery(
-            internal["dispatch-agent"].detectAnomalies
+        const anomalies: any[] = await ctx.runQuery(
+            _internal.dispatchAgent.detectAnomalies
         );
 
         // 3. Group by crew + date
@@ -226,10 +267,10 @@ export const autoDispatch = internalAction({
         }
 
         // 4. Create dispatch batches
-        const batches = [];
+        const batches: any[] = [];
         for (const group of Object.values(groups)) {
-            const result = await ctx.runMutation(
-                internal["dispatch-agent"].createBatchWithAssignments,
+            const result: any = await ctx.runMutation(
+                _internal.dispatchAgent.createBatchWithAssignments,
                 {
                     foremanName: group.foremanName,
                     crewName: group.crewName,
@@ -246,7 +287,7 @@ export const autoDispatch = internalAction({
         }
 
         // 5. Log the dispatch run
-        await ctx.runMutation(internal["dispatch-agent"].logDispatchDecision, {
+        await ctx.runMutation(_internal.dispatchAgent.logDispatchDecision, {
             action: "auto_dispatch",
             input: JSON.stringify({
                 readyCount: readyJobs.length,

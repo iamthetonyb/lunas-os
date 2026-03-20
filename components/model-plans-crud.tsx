@@ -36,8 +36,8 @@ interface Builder {
 
 export function ModelPlansCrud() {
   const { t } = useTranslation();
-  const modelPlans = useQuery(api.queries.getModelPlans) as ModelPlan[] | undefined;
-  const builders = useQuery(api.queries.getBuilders) as Builder[] | undefined;
+  const modelPlans = useQuery(api.queries.getModelPlans, {}) as ModelPlan[] | undefined;
+  const builders = useQuery(api.queries.getBuilders, {}) as Builder[] | undefined;
   const createModelPlan = useMutation(api.mutations.createModelPlan);
   const updateModelPlan = useMutation(api.mutations.updateModelPlan);
   const deleteModelPlan = useMutation(api.mutations.deleteModelPlan);

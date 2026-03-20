@@ -30,7 +30,7 @@ interface Service {
 
 export function ServicesCrud() {
   const { t } = useTranslation();
-  const services = useQuery(api.queries.getServices) as Service[] | undefined;
+  const services = useQuery(api.queries.getServices, {}) as Service[] | undefined;
   const createService = useMutation(api.mutations.createService);
   const updateService = useMutation(api.mutations.updateService);
   const deleteService = useMutation(api.mutations.deleteService);

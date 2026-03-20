@@ -103,6 +103,25 @@ button {
   color: #f1f5f9;
 }
 
+/* Reusable input field class */
+.input-field {
+  width: 100%;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: 0.5rem;
+  background-color: var(--input);
+  color: var(--foreground);
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+  transition: border-color 0.2s ease;
+}
+
+.input-field:focus {
+  outline: none;
+  border-color: var(--ring);
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+}
+
 /* Shadows in dark mode */
 .dark .shadow-sm,
 .dark .shadow-md,

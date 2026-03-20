@@ -5,9 +5,11 @@
  * This is the "learning loop" from AGENTS.md — the system gets smarter
  * with every completed batch.
  */
-import { action, internalQuery } from "./_generated/server";
-import { internal } from "./_generated/api";
+import { action, internalQuery, internalAction, internalMutation } from "./_generated/server";
+import { internal, components } from "./_generated/api";
 import { v } from "convex/values";
+import { RAG } from "@convex-dev/rag";
+import { openai } from "@ai-sdk/openai";
 
 // ── Internal Queries (used by insight actions) ──────────────────────
 
@@ -28,17 +30,50 @@ export const getCompletedJobsInternal = internalQuery({
         // Filter to recent
         const recent = completed.filter((j) => j.createdAt >= cutoff);
 
-        // Enrich with job request + community + builder info
-        const enriched = await Promise.all(
-            recent.map(async (jrs) => {
-                const jr = await ctx.db.get(jrs.jobRequestId);
+        // Batch-load: collect unique jobRequestIds, fetch all at once, build map
+        const jobRequestIds = [...new Set(recent.map((jrs) => jrs.jobRequestId))];
+        const jobRequests = await Promise.all(jobRequestIds.map((id) => ctx.db.get(id)));
+        const jrMap = new Map(
+            jobRequestIds.map((id, i) => [id, jobRequests[i]])
+        );
+
+        // Batch-load: collect unique communityIds from fetched job requests
+        const communityIds = [
+            ...new Set(
+                jobRequests
+                    .filter((jr) => jr?.communityId)
+                    .map((jr) => jr!.communityId!)
+            ),
+        ];
+        const communities = await Promise.all(communityIds.map((id) => ctx.db.get(id)));
+        const communityMap = new Map(
+            communityIds.map((id, i) => [id, communities[i]])
+        );
+
+        // Batch-load: collect unique builderIds from fetched job requests
+        const builderIds = [
+            ...new Set(
+                jobRequests
+                    .filter((jr) => jr?.builderId)
+                    .map((jr) => jr!.builderId!)
+            ),
+        ];
+        const builders = await Promise.all(builderIds.map((id) => ctx.db.get(id)));
+        const builderMap = new Map(
+            builderIds.map((id, i) => [id, builders[i]])
+        );
+
+        // Enrich using maps — no additional DB calls
+        const enriched = recent
+            .map((jrs) => {
+                const jr = jrMap.get(jrs.jobRequestId);
                 if (!jr) return null;
 
                 const community = jr.communityId
-                    ? await ctx.db.get(jr.communityId)
+                    ? communityMap.get(jr.communityId) ?? null
                     : null;
                 const builder = jr.builderId
-                    ? await ctx.db.get(jr.builderId)
+                    ? builderMap.get(jr.builderId) ?? null
                     : null;
 
                 return {
@@ -52,9 +87,9 @@ export const getCompletedJobsInternal = internalQuery({
                     status: jrs.status,
                 };
             })
-        );
+            .filter(Boolean);
 
-        return enriched.filter(Boolean);
+        return enriched;
     },
 });
 
@@ -68,16 +103,42 @@ export const getForemanAffinities = internalQuery({
             .query("jobRequestServices")
             .collect();
 
-        // Count foreman assignments per community
+        // Batch-load: collect unique jobRequestIds, fetch all at once, build map
+        const jobRequestIds = [
+            ...new Set(
+                allJrs
+                    .filter((jrs) => jrs.assignedForemanName)
+                    .map((jrs) => jrs.jobRequestId)
+            ),
+        ];
+        const jobRequests = await Promise.all(jobRequestIds.map((id) => ctx.db.get(id)));
+        const jrMap = new Map(
+            jobRequestIds.map((id, i) => [id, jobRequests[i]])
+        );
+
+        // Batch-load: collect unique communityIds from fetched job requests
+        const communityIds = [
+            ...new Set(
+                jobRequests
+                    .filter((jr) => jr?.communityId)
+                    .map((jr) => jr!.communityId!)
+            ),
+        ];
+        const communities = await Promise.all(communityIds.map((id) => ctx.db.get(id)));
+        const communityMap = new Map(
+            communityIds.map((id, i) => [id, communities[i]])
+        );
+
+        // Count foreman assignments per community using maps — no additional DB calls
         const affinities: Record<string, Record<string, number>> = {};
 
         for (const jrs of allJrs) {
             if (!jrs.assignedForemanName) continue;
 
-            const jr = await ctx.db.get(jrs.jobRequestId);
+            const jr = jrMap.get(jrs.jobRequestId);
             if (!jr?.communityId) continue;
 
-            const community = await ctx.db.get(jr.communityId);
+            const community = communityMap.get(jr.communityId);
             if (!community) continue;
 
             const key = community.name;
@@ -115,15 +176,42 @@ export const getServicePatterns = internalQuery({
             .query("jobRequestServices")
             .collect();
 
+        // Batch-load: collect unique jobRequestIds, fetch all at once, build map
+        const jobRequestIds = [
+            ...new Set(
+                allJrs
+                    .filter((jrs) => jrs.serviceName)
+                    .map((jrs) => jrs.jobRequestId)
+            ),
+        ];
+        const jobRequests = await Promise.all(jobRequestIds.map((id) => ctx.db.get(id)));
+        const jrMap = new Map(
+            jobRequestIds.map((id, i) => [id, jobRequests[i]])
+        );
+
+        // Batch-load: collect unique communityIds from fetched job requests
+        const communityIds = [
+            ...new Set(
+                jobRequests
+                    .filter((jr) => jr?.communityId)
+                    .map((jr) => jr!.communityId!)
+            ),
+        ];
+        const communities = await Promise.all(communityIds.map((id) => ctx.db.get(id)));
+        const communityMap = new Map(
+            communityIds.map((id, i) => [id, communities[i]])
+        );
+
+        // Build patterns using maps — no additional DB calls
         const patterns: Record<string, Record<string, number>> = {};
 
         for (const jrs of allJrs) {
             if (!jrs.serviceName) continue;
 
-            const jr = await ctx.db.get(jrs.jobRequestId);
+            const jr = jrMap.get(jrs.jobRequestId);
             if (!jr?.communityId) continue;
 
-            const community = await ctx.db.get(jr.communityId);
+            const community = communityMap.get(jr.communityId);
             if (!community) continue;
 
             const key = community.name;
@@ -213,19 +301,20 @@ export const analyzeServicePatterns = action({
 export const runWeeklyInsights = action({
     args: {},
     handler: async (ctx) => {
+        const _internal = internal as any;
         // 1. Analyze foreman patterns
-        const foremanInsights = await ctx.runAction(
-            internal.insights.analyzeForemanPatterns
+        const foremanInsights: any = await ctx.runAction(
+            _internal.insights.analyzeForemanPatterns
         );
 
         // 2. Analyze service patterns
-        const serviceInsights = await ctx.runAction(
-            internal.insights.analyzeServicePatterns
+        const serviceInsights: any = await ctx.runAction(
+            _internal.insights.analyzeServicePatterns
         );
 
         // 3. Run evolution analysis (confidence calibration)
-        const evolution = await ctx.runAction(
-            internal.insights.analyzeEvolution
+        const evolution: any = await ctx.runAction(
+            _internal.insights.analyzeEvolution
         );
 
         // 4. Ingest all insights into RAG
@@ -236,14 +325,14 @@ export const runWeeklyInsights = action({
         ];
 
         for (const text of allInsights) {
-            await ctx.runAction(internal.insights.ingestInsight, {
+            await ctx.runAction(_internal.insights.ingestInsight, {
                 text,
                 namespace: "operations",
             });
         }
 
         // 5. Log the learning event
-        await ctx.runMutation(internal.insights.logInsightRun, {
+        await ctx.runMutation(_internal.insights.logInsightRun, {
             foremanCount: foremanInsights.count,
             serviceCount: serviceInsights.count,
             totalIngested: allInsights.length,
@@ -259,11 +348,6 @@ export const runWeeklyInsights = action({
 });
 
 // ── Internal helpers ────────────────────────────────────────────────
-
-import { internalAction, internalMutation } from "./_generated/server";
-import { components } from "./_generated/api";
-import { RAG } from "@convex-dev/rag";
-import { openai } from "@ai-sdk/openai";
 
 const rag = new RAG(components.rag, {
     textEmbeddingModel: openai.embedding("text-embedding-3-small"),
@@ -355,8 +439,9 @@ export const getDecisionMetrics = internalQuery({
 export const analyzeEvolution = action({
     args: {},
     handler: async (ctx) => {
-        const metrics = await ctx.runQuery(
-            internal.insights.getDecisionMetrics
+        const _internal = internal as any;
+        const metrics: any[] = await ctx.runQuery(
+            _internal.insights.getDecisionMetrics
         );
 
         const insights: string[] = [];

@@ -112,6 +112,13 @@ export const { handlers, auth, signIn, signOut } = NextAuth(() => {
       Google({
         clientId: process.env.GOOGLE_CLIENT_ID,
         clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+        authorization: {
+          params: {
+            scope: 'openid profile email https://www.googleapis.com/auth/calendar',
+            access_type: 'offline',
+            prompt: 'consent',
+          },
+        },
       })
     );
   }
@@ -123,6 +130,11 @@ export const { handlers, auth, signIn, signOut } = NextAuth(() => {
         clientId: process.env.AZURE_AD_CLIENT_ID,
         clientSecret: process.env.AZURE_AD_CLIENT_SECRET,
         issuer: `https://login.microsoftonline.com/${process.env.AZURE_AD_TENANT_ID}/v2.0`,
+        authorization: {
+          params: {
+            scope: 'openid profile email Calendars.ReadWrite Mail.Send',
+          },
+        },
       })
     );
   }
@@ -134,7 +146,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth(() => {
     pages: { signIn: '/login' },
     providers,
     callbacks: {
-      async jwt({ token, user }: any) {
+      async jwt({ token, user, account }: any) {
         if (user?.id) {
           token.userId = user.id;
           try {
@@ -157,6 +169,37 @@ export const { handlers, auth, signIn, signOut } = NextAuth(() => {
             console.warn('[auth] JWT callback: Convex lookup failed, using basic user info');
           }
         }
+
+        // Capture OAuth tokens on sign-in (account is only present during initial sign-in)
+        if (account?.access_token && token.userId) {
+          const provider =
+            account.provider === 'microsoft-entra-id' ? 'microsoft' :
+            account.provider === 'google' ? 'google' :
+            account.provider;
+          token.provider = provider;
+
+          try {
+            const convex = getConvex();
+            // expires_at from NextAuth is in seconds, convert to epoch ms
+            const expiresAt = account.expires_at
+              ? account.expires_at * 1000
+              : Date.now() + 3600 * 1000; // fallback: 1 hour
+
+            await convex.mutation(api.oauthAccounts.upsert, {
+              userId: token.userId as Id<"users">,
+              provider,
+              providerAccountId: account.providerAccountId ?? account.sub ?? '',
+              accessToken: account.access_token,
+              refreshToken: account.refresh_token ?? undefined,
+              expiresAt,
+              scope: account.scope ?? undefined,
+            });
+            console.log(`[auth] Stored ${provider} OAuth tokens for user ${token.userId}`);
+          } catch (e) {
+            console.error(`[auth] Failed to store ${provider} OAuth tokens:`, e);
+          }
+        }
+
         return token;
       },
       async session({ session, token }: any) {
@@ -171,6 +214,9 @@ export const { handlers, auth, signIn, signOut } = NextAuth(() => {
         }
         if (token?.orgRole) {
           session.user.orgRole = token.orgRole as string;
+        }
+        if (token?.provider) {
+          session.user.provider = token.provider as string;
         }
         return session;
       },

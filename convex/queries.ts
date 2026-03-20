@@ -1,5 +1,6 @@
 import { query } from "./_generated/server";
 import { v } from "convex/values";
+import type { Doc, Id } from "./_generated/dataModel";
 
 // ── Auth Queries ──────────────────────────────────────────────────────
 
@@ -60,22 +61,30 @@ export const getUserById = query({
 // ── Model Plans ───────────────────────────────────────────────────────
 
 export const getModelPlans = query({
-    handler: async (ctx) => {
-        const plans = await ctx.db.query("modelPlans").collect();
-        return plans.filter((p) => p.active !== false);
+    args: { limit: v.optional(v.number()) },
+    handler: async (ctx, args) => {
+        const plans = await ctx.db
+            .query("modelPlans")
+            .collect();
+        const active = plans.filter((p) => p.active !== false);
+        return args.limit ? active.slice(0, args.limit) : active;
     },
 });
 
 // ── Communities by builder ────────────────────────────────────────────
 
 export const getCommunitiesByBuilder = query({
-    args: { builderId: v.id("builders") },
+    args: {
+        builderId: v.id("builders"),
+        limit: v.optional(v.number()),
+    },
     handler: async (ctx, args) => {
         const communities = await ctx.db
             .query("communities")
             .withIndex("by_builder", (q) => q.eq("builderId", args.builderId))
             .collect();
-        return communities.filter((c) => c.active !== false);
+        const active = communities.filter((c) => c.active !== false);
+        return args.limit ? active.slice(0, args.limit) : active;
     },
 });
 
@@ -83,87 +92,130 @@ export const getCommunitiesByBuilder = query({
 export const getScheduleJobs = query({
     args: {
         startDate: v.string(),
-        endDate: v.string()
+        endDate: v.string(),
     },
     handler: async (ctx, args) => {
-        // Get ALL job request services (we filter by effective date below)
-        const allJobServices = await ctx.db
+        // Use index to narrow down by scheduledDate range first
+        const byScheduled = await ctx.db
             .query("jobRequestServices")
+            .withIndex("by_scheduledDate", (q) =>
+                q.gte("scheduledDate", args.startDate).lte("scheduledDate", args.endDate)
+            )
             .collect();
 
-        // Filter by effective date: rescheduledDate takes priority over scheduledDate
-        const jobServices = allJobServices.filter((jrs) => {
-            const effectiveDate = jrs.rescheduledDate ?? jrs.scheduledDate ?? "";
-            return effectiveDate >= args.startDate && effectiveDate <= args.endDate;
+        // Also get rescheduled jobs that may have different dates
+        const byStatus = await ctx.db
+            .query("jobRequestServices")
+            .withIndex("by_status", (q) => q.eq("status", "SCHEDULED"))
+            .collect();
+
+        const rescheduled = byStatus.filter((jrs) => {
+            if (!jrs.rescheduledDate) return false;
+            return jrs.rescheduledDate >= args.startDate && jrs.rescheduledDate <= args.endDate;
         });
 
-        // Enrich with job request details
-        const enrichedJobs = await Promise.all(
-            jobServices.map(async (jrs) => {
-                const jobRequest = await ctx.db.get(jrs.jobRequestId);
-                let communityName = null;
-                let builderName = null;
+        // Merge and deduplicate
+        const jobMap = new Map<string, typeof byScheduled[0]>();
+        for (const jrs of byScheduled) jobMap.set(jrs._id, jrs);
+        for (const jrs of rescheduled) jobMap.set(jrs._id, jrs);
 
-                if (jobRequest?.communityId) {
-                    const community = await ctx.db.get(jobRequest.communityId);
-                    communityName = community?.name ?? null;
-                }
-                if (jobRequest?.builderId) {
-                    const builder = await ctx.db.get(jobRequest.builderId);
-                    builderName = builder?.name ?? null;
-                }
+        // Also include PENDING/DISPATCHED/COMPLETE that fall in date range
+        const allInRange = await ctx.db
+            .query("jobRequestServices")
+            .collect();
+        for (const jrs of allInRange) {
+            if (jobMap.has(jrs._id)) continue;
+            const effectiveDate = jrs.rescheduledDate ?? jrs.scheduledDate ?? "";
+            if (effectiveDate >= args.startDate && effectiveDate <= args.endDate) {
+                jobMap.set(jrs._id, jrs);
+            }
+        }
 
-                const effectiveDate = jrs.rescheduledDate ?? jrs.scheduledDate;
-                const wasRescheduled = !!jrs.rescheduledDate && jrs.rescheduledDate !== jrs.scheduledDate;
+        const jobServices = Array.from(jobMap.values());
 
-                return {
-                    id: jrs._id,
-                    startDate: effectiveDate,
-                    originalStartDate: wasRescheduled ? jrs.scheduledDate : null,
-                    builderName,
-                    communityName,
-                    lot: jobRequest?.lot ?? null,
-                    serviceName: jrs.serviceName,
-                    walkTime: jrs.walkTime,
-                    status: jrs.status,
-                    assignedForemanName: jrs.assignedForemanName,
-                    assignedCrewName: jrs.assignedCrewName,
-                    rescheduledDate: jrs.rescheduledDate,
-                    requestedBy: jobRequest?.requestedBy ?? null,
-                    isExtraWork: jobRequest?.isExtraWork ?? false,
-                };
-            })
+        // BATCH-LOAD: Collect all unique IDs, fetch once, build maps
+        const jobRequestIds = [...new Set(jobServices.map((jrs) => jrs.jobRequestId))];
+        const jobRequests = await Promise.all(jobRequestIds.map((id) => ctx.db.get(id)));
+        const jrMap = new Map(jobRequests.filter(Boolean).map((jr) => [jr!._id, jr!]));
+
+        const communityIds = [...new Set(
+            jobRequests.filter(Boolean).map((jr) => jr!.communityId).filter(Boolean)
+        )] as string[];
+        const builderIds = [...new Set(
+            jobRequests.filter(Boolean).map((jr) => jr!.builderId).filter(Boolean)
+        )] as string[];
+
+        const [communities, builders] = await Promise.all([
+            Promise.all(communityIds.map((id) => ctx.db.get(id as Id<"communities">))),
+            Promise.all(builderIds.map((id) => ctx.db.get(id as Id<"builders">))),
+        ]);
+        const communityMap = new Map<string, Doc<"communities">>(
+            communities.filter(Boolean).map((c) => [c!._id, c!])
+        );
+        const builderMap = new Map<string, Doc<"builders">>(
+            builders.filter(Boolean).map((b) => [b!._id, b!])
         );
 
-        return enrichedJobs;
+        // O(1) lookups
+        return jobServices.map((jrs) => {
+            const jobRequest = jrMap.get(jrs.jobRequestId);
+            const communityName = jobRequest?.communityId
+                ? communityMap.get(jobRequest.communityId as string)?.name ?? null
+                : null;
+            const builderName = jobRequest?.builderId
+                ? builderMap.get(jobRequest.builderId as string)?.name ?? null
+                : null;
+
+            const effectiveDate = jrs.rescheduledDate ?? jrs.scheduledDate;
+            const wasRescheduled = !!jrs.rescheduledDate && jrs.rescheduledDate !== jrs.scheduledDate;
+
+            return {
+                id: jrs._id,
+                startDate: effectiveDate,
+                originalStartDate: wasRescheduled ? jrs.scheduledDate : null,
+                builderName,
+                communityName,
+                lot: jobRequest?.lot ?? null,
+                serviceName: jrs.serviceName,
+                walkTime: jrs.walkTime,
+                status: jrs.status,
+                assignedForemanName: jrs.assignedForemanName,
+                assignedCrewName: jrs.assignedCrewName,
+                rescheduledDate: jrs.rescheduledDate,
+                requestedBy: jobRequest?.requestedBy ?? null,
+                isExtraWork: jobRequest?.isExtraWork ?? false,
+            };
+        });
     },
 });
 
 // Get all dispatch batches (real-time)
 export const getDispatchBatches = query({
-    handler: async (ctx) => {
-        const batches = await ctx.db.query("dispatchBatches").collect();
+    args: { limit: v.optional(v.number()) },
+    handler: async (ctx, args) => {
+        const batches = await ctx.db
+            .query("dispatchBatches")
+            .order("desc")
+            .take(args.limit ?? 200);
 
-        // Enrich with job count
-        const enrichedBatches = await Promise.all(
-            batches.map(async (batch) => {
-                const assignments = await ctx.db
+        // BATCH-LOAD: Get all assignments for all batches in one pass
+        const allAssignments = await Promise.all(
+            batches.map((batch) =>
+                ctx.db
                     .query("assignments")
                     .withIndex("by_batch", (q) => q.eq("dispatchBatchId", batch._id))
-                    .collect();
-
-                return {
-                    id: batch._id,
-                    serviceDate: batch.serviceDate,
-                    status: batch.status,
-                    crewName: batch.crewName ?? "Unassigned Crew",
-                    foremanName: batch.foremanName ?? "Unassigned",
-                    jobCount: assignments.length,
-                };
-            })
+                    .collect()
+            )
         );
 
-        return enrichedBatches;
+        return batches.map((batch, i) => ({
+            id: batch._id,
+            serviceDate: batch.serviceDate,
+            status: batch.status,
+            crewName: batch.crewName ?? "Unassigned Crew",
+            foremanName: batch.foremanName ?? "Unassigned",
+            jobCount: allAssignments[i].length,
+        }));
     },
 });
 
@@ -179,39 +231,51 @@ export const getDispatchBatchById = query({
             .withIndex("by_batch", (q) => q.eq("dispatchBatchId", args.batchId))
             .collect();
 
-        const jobs = await Promise.all(
-            assignments.map(async (assignment) => {
-                const jrs = await ctx.db.get(assignment.jobRequestServiceId);
-                if (!jrs) return null;
+        // BATCH-LOAD: Fetch all JRS, then all JRs, then communities/builders
+        const jrsIds = assignments.map((a) => a.jobRequestServiceId);
+        const jrsList = await Promise.all(jrsIds.map((id) => ctx.db.get(id)));
+        const jrsMap = new Map(jrsList.filter(Boolean).map((j) => [j!._id, j!]));
 
-                const jobRequest = await ctx.db.get(jrs.jobRequestId);
-                let communityName = null;
-                let builderName = null;
+        const jrIds = [...new Set(jrsList.filter(Boolean).map((j) => j!.jobRequestId))];
+        const jrList = await Promise.all(jrIds.map((id) => ctx.db.get(id)));
+        const jrMap = new Map(jrList.filter(Boolean).map((j) => [j!._id, j!]));
 
-                if (jobRequest?.communityId) {
-                    const community = await ctx.db.get(jobRequest.communityId);
-                    communityName = community?.name ?? null;
-                }
-                if (jobRequest?.builderId) {
-                    const builder = await ctx.db.get(jobRequest.builderId);
-                    builderName = builder?.name ?? null;
-                }
-
-                return {
-                    id: jrs._id,
-                    assignmentId: assignment._id,
-                    communityName,
-                    builderName,
-                    lot: jobRequest?.lot ?? null,
-                    address: jobRequest?.address ?? null,
-                    serviceName: jrs.serviceName,
-                    walkTime: jrs.walkTime,
-                    dueDate: jrs.scheduledDate ?? null,
-                    status: assignment.status,
-                    assignedForeman: batch.foremanName ?? null,
-                };
-            })
+        const communityIds = [...new Set(jrList.filter(Boolean).map((j) => j!.communityId).filter(Boolean))];
+        const builderIds = [...new Set(jrList.filter(Boolean).map((j) => j!.builderId).filter(Boolean))];
+        const [communities, builders] = await Promise.all([
+            Promise.all(communityIds.map((id) => ctx.db.get(id as Id<"communities">))),
+            Promise.all(builderIds.map((id) => ctx.db.get(id as Id<"builders">))),
+        ]);
+        const communityMap = new Map<string, Doc<"communities">>(
+            communities.filter(Boolean).map((c) => [c!._id, c!])
         );
+        const builderMap = new Map<string, Doc<"builders">>(
+            builders.filter(Boolean).map((b) => [b!._id, b!])
+        );
+
+        const jobs = assignments.map((assignment) => {
+            const jrs = jrsMap.get(assignment.jobRequestServiceId);
+            if (!jrs) return null;
+            const jobRequest = jrMap.get(jrs.jobRequestId);
+
+            return {
+                id: jrs._id,
+                assignmentId: assignment._id,
+                communityName: jobRequest?.communityId
+                    ? communityMap.get(jobRequest.communityId as string)?.name ?? null
+                    : null,
+                builderName: jobRequest?.builderId
+                    ? builderMap.get(jobRequest.builderId as string)?.name ?? null
+                    : null,
+                lot: jobRequest?.lot ?? null,
+                address: jobRequest?.address ?? null,
+                serviceName: jrs.serviceName,
+                walkTime: jrs.walkTime,
+                dueDate: jrs.scheduledDate ?? null,
+                status: assignment.status,
+                assignedForeman: batch.foremanName ?? null,
+            };
+        });
 
         return {
             id: batch._id,
@@ -227,39 +291,36 @@ export const getDispatchBatchById = query({
 
 // Get all users (real-time)
 export const getUsers = query({
-    handler: async (ctx) => {
-        const users = await ctx.db.query("users").collect();
+    args: { limit: v.optional(v.number()) },
+    handler: async (ctx, args) => {
+        const users = await ctx.db.query("users").take(args.limit ?? 500);
 
-        const enrichedUsers = await Promise.all(
-            users.map(async (user) => {
-                const memberships = await ctx.db
+        // BATCH-LOAD: Get all memberships for all users, then all orgs
+        const allMemberships = await Promise.all(
+            users.map((user) =>
+                ctx.db
                     .query("orgMembers")
                     .withIndex("by_user", (q) => q.eq("userId", user._id))
-                    .collect();
-
-                const membershipDetails = await Promise.all(
-                    memberships.map(async (m) => {
-                        const org = await ctx.db.get(m.orgId);
-                        return {
-                            orgId: m.orgId,
-                            orgName: org?.name ?? "Unknown",
-                            role: m.role,
-                        };
-                    })
-                );
-
-                return {
-                    id: user._id,
-                    name: user.name,
-                    email: user.email,
-                    phone: user.phone,
-                    systemRole: user.role,
-                    memberships: membershipDetails,
-                };
-            })
+                    .collect()
+            )
         );
 
-        return enrichedUsers;
+        const allOrgIds = [...new Set(allMemberships.flat().map((m) => m.orgId))];
+        const orgs = await Promise.all(allOrgIds.map((id) => ctx.db.get(id)));
+        const orgMap = new Map(orgs.filter(Boolean).map((o) => [o!._id, o!]));
+
+        return users.map((user, i) => ({
+            id: user._id,
+            name: user.name,
+            email: user.email,
+            phone: user.phone,
+            systemRole: user.role,
+            memberships: allMemberships[i].map((m) => ({
+                orgId: m.orgId,
+                orgName: orgMap.get(m.orgId)?.name ?? "Unknown",
+                role: m.role,
+            })),
+        }));
     },
 });
 
@@ -272,48 +333,51 @@ export const getOrgs = query({
 
 // Get all active builders
 export const getBuilders = query({
-    handler: async (ctx) => {
+    args: { limit: v.optional(v.number()) },
+    handler: async (ctx, args) => {
         const builders = await ctx.db.query("builders").collect();
-        return builders.filter((b) => b.active !== false);
+        const active = builders.filter((b) => b.active !== false);
+        return args.limit ? active.slice(0, args.limit) : active;
     },
 });
 
 // Get all active communities
 export const getCommunities = query({
-    handler: async (ctx) => {
+    args: { limit: v.optional(v.number()) },
+    handler: async (ctx, args) => {
         const communities = await ctx.db.query("communities").collect();
-        return communities.filter((c) => c.active !== false);
+        const active = communities.filter((c) => c.active !== false);
+        return args.limit ? active.slice(0, args.limit) : active;
     },
 });
 
 // Get all active services
 export const getServices = query({
-    handler: async (ctx) => {
+    args: { limit: v.optional(v.number()) },
+    handler: async (ctx, args) => {
         const services = await ctx.db.query("services").collect();
-        return services.filter((s) => s.active !== false);
+        const active = services.filter((s) => s.active !== false);
+        return args.limit ? active.slice(0, args.limit) : active;
     },
 });
 
 // Get crews
 export const getCrews = query({
-    handler: async (ctx) => {
-        const crews = await ctx.db.query("crews").collect();
+    args: { limit: v.optional(v.number()) },
+    handler: async (ctx, args) => {
+        const crews = await ctx.db.query("crews").take(args.limit ?? 200);
 
-        const enrichedCrews = await Promise.all(
-            crews.map(async (crew) => {
-                let foremanName = null;
-                if (crew.foremanId) {
-                    const foreman = await ctx.db.get(crew.foremanId);
-                    foremanName = foreman?.name ?? null;
-                }
-                return {
-                    ...crew,
-                    id: crew._id,
-                    foremanName,
-                };
-            })
-        );
+        // BATCH-LOAD: Get all foreman users at once
+        const foremanIds = [...new Set(crews.map((c) => c.foremanId).filter(Boolean))];
+        const foremen = await Promise.all(foremanIds.map((id) => ctx.db.get(id!)));
+        const foremanMap = new Map(foremen.filter(Boolean).map((f) => [f!._id, f!]));
 
-        return enrichedCrews;
+        return crews.map((crew) => ({
+            ...crew,
+            id: crew._id,
+            foremanName: crew.foremanId
+                ? foremanMap.get(crew.foremanId)?.name ?? null
+                : null,
+        }));
     },
 });

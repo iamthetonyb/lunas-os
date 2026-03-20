@@ -1,5 +1,6 @@
 import { query, mutation } from "./_generated/server";
 import { v } from "convex/values";
+import type { Doc, Id } from "./_generated/dataModel";
 
 export const getProfile = query({
     args: { userId: v.id("users") },
@@ -37,63 +38,131 @@ export const updateProfile = mutation({
     },
 });
 
+// FIX: was .collect() on entire users table + .find() in JS.
+// Now uses by_name index for O(1) lookup.
 export const getForemanContact = query({
     args: { name: v.string() },
     handler: async (ctx, args) => {
-        const users = await ctx.db.query("users").collect();
-        const match = users.find(
-            (u) => u.name?.toLowerCase() === args.name.toLowerCase()
-        );
-        if (!match) return null;
+        const user = await ctx.db
+            .query("users")
+            .withIndex("by_name", (q) => q.eq("name", args.name))
+            .first();
+        if (!user) return null;
         return {
-            name: match.name,
-            email: match.email,
-            phone: match.phone,
-            preferredContactMethod: match.preferredContactMethod ?? 'email',
+            name: user.name,
+            email: user.email,
+            phone: user.phone,
+            preferredContactMethod: user.preferredContactMethod ?? 'email',
         };
     },
 });
 
+// FIX: was .collect() on entire dispatchBatches + N+1 gets per assignment.
+// Now uses by_serviceDate index to filter server-side, then batch-loads
+// all related entities (jrs, jr, community, builder) with deduped Maps
+// for O(1) lookups instead of per-row fetches.
 export const getMyAssignments = query({
     args: { userName: v.string() },
     handler: async (ctx, args) => {
         const today = new Date().toISOString().split('T')[0];
-        const batches = await ctx.db.query("dispatchBatches").collect();
+        const nameLower = args.userName.toLowerCase();
 
-        // Filter to current/future batches matching this user
+        // Use by_serviceDate index to only scan current/future batches.
+        const batches = await ctx.db
+            .query("dispatchBatches")
+            .withIndex("by_serviceDate", (q) => q.gte("serviceDate", today))
+            .collect();
+
+        // Filter to batches where this user is foreman or crew.
         const myBatches = batches.filter(
             (b) =>
-                (b.serviceDate ?? '') >= today &&
-                (b.foremanName?.toLowerCase() === args.userName.toLowerCase() ||
-                    b.crewName?.toLowerCase() === args.userName.toLowerCase())
+                b.foremanName?.toLowerCase() === nameLower ||
+                b.crewName?.toLowerCase() === nameLower
         );
 
-        const assignments: any[] = [];
+        if (myBatches.length === 0) return [];
 
-        for (const batch of myBatches) {
-            const batchAssignments = await ctx.db
-                .query("assignments")
-                .withIndex("by_batch", (q) => q.eq("dispatchBatchId", batch._id))
-                .collect();
+        // Batch-load all assignments for matching batches in parallel.
+        const batchAssignmentArrays = await Promise.all(
+            myBatches.map((batch) =>
+                ctx.db
+                    .query("assignments")
+                    .withIndex("by_batch", (q) => q.eq("dispatchBatchId", batch._id))
+                    .collect()
+            )
+        );
 
-            for (const assignment of batchAssignments) {
-                const jrs = await ctx.db.get(assignment.jobRequestServiceId);
-                if (!jrs) continue;
+        // Flatten and build a batch-to-assignments map.
+        const allAssignments: Array<{ assignment: any; batch: typeof myBatches[number] }> = [];
+        for (let i = 0; i < myBatches.length; i++) {
+            for (const assignment of batchAssignmentArrays[i]) {
+                allAssignments.push({ assignment, batch: myBatches[i] });
+            }
+        }
 
-                const jr = await ctx.db.get(jrs.jobRequestId);
-                let communityName = null;
-                let builderName = null;
+        if (allAssignments.length === 0) return [];
 
-                if (jr?.communityId) {
-                    const c = await ctx.db.get(jr.communityId);
-                    communityName = c?.name ?? null;
-                }
-                if (jr?.builderId) {
-                    const b = await ctx.db.get(jr.builderId);
-                    builderName = b?.name ?? null;
-                }
+        // Collect all unique jobRequestServiceIds, then batch-load them.
+        const jrsIds = [...new Set(allAssignments.map((a) => a.assignment.jobRequestServiceId))];
+        const jrsResults = await Promise.all(jrsIds.map((id) => ctx.db.get(id)));
+        const jrsMap = new Map<string, Doc<"jobRequestServices">>();
+        for (let i = 0; i < jrsIds.length; i++) {
+            const jrs = jrsResults[i];
+            if (jrs) jrsMap.set(jrsIds[i], jrs as Doc<"jobRequestServices">);
+        }
 
-                assignments.push({
+        // Collect all unique jobRequestIds from the loaded JRS docs, then batch-load.
+        const jrIds = [...new Set(
+            [...jrsMap.values()].map((jrs) => jrs.jobRequestId)
+        )] as Id<"jobRequests">[];
+        const jrResults = await Promise.all(jrIds.map((id) => ctx.db.get(id)));
+        const jrMap = new Map<string, Doc<"jobRequests">>();
+        for (let i = 0; i < jrIds.length; i++) {
+            const jr = jrResults[i];
+            if (jr) jrMap.set(jrIds[i], jr);
+        }
+
+        // Collect all unique communityIds and builderIds from job requests.
+        const communityIds = new Set<string>();
+        const builderIds = new Set<string>();
+        for (const jr of jrMap.values()) {
+            if (jr.communityId) communityIds.add(jr.communityId as string);
+            if (jr.builderId) builderIds.add(jr.builderId as string);
+        }
+
+        // Batch-load communities and builders in parallel.
+        const communityIdArr = [...communityIds];
+        const builderIdArr = [...builderIds];
+        const [communityResults, builderResults] = await Promise.all([
+            Promise.all(communityIdArr.map((id) => ctx.db.get(id as Id<"communities">))),
+            Promise.all(builderIdArr.map((id) => ctx.db.get(id as Id<"builders">))),
+        ]);
+        const communityMap = new Map<string, Doc<"communities">>();
+        for (let i = 0; i < communityIdArr.length; i++) {
+            const c = communityResults[i];
+            if (c) communityMap.set(communityIdArr[i], c);
+        }
+        const builderMap = new Map<string, Doc<"builders">>();
+        for (let i = 0; i < builderIdArr.length; i++) {
+            const b = builderResults[i];
+            if (b) builderMap.set(builderIdArr[i], b);
+        }
+
+        // Assemble results with O(1) lookups from Maps.
+        return allAssignments
+            .map(({ assignment, batch }) => {
+                const jrs = jrsMap.get(assignment.jobRequestServiceId);
+                if (!jrs) return null;
+
+                const jr = jrMap.get(jrs.jobRequestId) ?? null;
+                const communityName = jr?.communityId
+                    ? communityMap.get(jr.communityId as string)?.name ?? null
+                    : null;
+                const builderName = jr?.builderId
+                    ? builderMap.get(jr.builderId as string)?.name ?? null
+                    : null;
+
+                return {
                     id: assignment._id,
                     serviceDate: batch.serviceDate,
                     communityName,
@@ -104,11 +173,9 @@ export const getMyAssignments = query({
                     status: assignment.status,
                     crewName: batch.crewName,
                     foremanName: batch.foremanName,
-                });
-            }
-        }
-
-        return assignments;
+                };
+            })
+            .filter((a): a is NonNullable<typeof a> => a !== null);
     },
 });
 
@@ -158,40 +225,52 @@ export const updatePassword = mutation({
     },
 });
 
+// FIX: was doing N+1 ctx.db.get(m.orgId) per membership per user.
+// Now loads all orgs once into a Map for O(1) lookups.
 export const listWithOrgs = query({
     handler: async (ctx) => {
-        const users = await ctx.db.query("users").collect();
-        const orgs = await ctx.db.query("orgs").collect();
+        const [users, orgs, allMemberships] = await Promise.all([
+            ctx.db.query("users").collect(),
+            ctx.db.query("orgs").collect(),
+            ctx.db.query("orgMembers").collect(),
+        ]);
 
-        const enrichedUsers = await Promise.all(
-            users.map(async (user) => {
-                const memberships = await ctx.db
-                    .query("orgMembers")
-                    .withIndex("by_user", (q) => q.eq("userId", user._id))
-                    .collect();
+        // Build org lookup map — single pass, O(1) per lookup.
+        const orgMap = new Map(orgs.map((o) => [o._id, o]));
 
-                const membershipDetails = await Promise.all(
-                    memberships.map(async (m) => {
-                        const org = await ctx.db.get(m.orgId);
-                        return {
-                            orgId: m.orgId,
-                            orgName: org?.name ?? "Unknown",
-                            role: m.role,
-                        };
-                    })
-                );
+        // Group memberships by userId — single pass instead of N indexed queries.
+        const membershipsByUser = new Map<string, typeof allMemberships>();
+        for (const m of allMemberships) {
+            const key = m.userId as string;
+            const existing = membershipsByUser.get(key);
+            if (existing) {
+                existing.push(m);
+            } else {
+                membershipsByUser.set(key, [m]);
+            }
+        }
 
+        const enrichedUsers = users.map((user) => {
+            const memberships = membershipsByUser.get(user._id as string) ?? [];
+            const membershipDetails = memberships.map((m) => {
+                const org = orgMap.get(m.orgId);
                 return {
-                    id: user._id,
-                    name: user.name,
-                    email: user.email,
-                    phone: user.phone,
-                    systemRole: user.role,
-                    preferredContactMethod: user.preferredContactMethod,
-                    memberships: membershipDetails,
+                    orgId: m.orgId,
+                    orgName: org?.name ?? "Unknown",
+                    role: m.role,
                 };
-            })
-        );
+            });
+
+            return {
+                id: user._id,
+                name: user.name,
+                email: user.email,
+                phone: user.phone,
+                systemRole: user.role,
+                preferredContactMethod: user.preferredContactMethod,
+                memberships: membershipDetails,
+            };
+        });
 
         return {
             users: enrichedUsers,

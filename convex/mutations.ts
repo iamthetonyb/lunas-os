@@ -1,7 +1,27 @@
 import { mutation } from "./_generated/server";
 import { v } from "convex/values";
 
-// Assign foreman to a job (real-time sync)
+// ── Helper: Find linked Blue Book entries for a job request service ───
+async function findLinkedBlueBookEntries(ctx: any, jobRequestServiceId: string) {
+    return await ctx.db
+        .query("blueBookEntries")
+        .withIndex("by_jobRequestService", (q: any) =>
+            q.eq("jobRequestServiceId", jobRequestServiceId)
+        )
+        .collect();
+}
+
+// ── Helper: Find all Blue Book entries for a job request ──────────────
+async function findBlueBookEntriesByJobRequest(ctx: any, jobRequestId: string) {
+    return await ctx.db
+        .query("blueBookEntries")
+        .withIndex("by_jobRequest", (q: any) =>
+            q.eq("jobRequestId", jobRequestId)
+        )
+        .collect();
+}
+
+// Assign foreman to a job (real-time sync → Blue Book)
 export const assignForeman = mutation({
     args: {
         jobId: v.id("jobRequestServices"),
@@ -11,11 +31,21 @@ export const assignForeman = mutation({
         await ctx.db.patch(args.jobId, {
             assignedForemanName: args.foremanName ?? undefined,
         });
+
+        // Propagate to linked Blue Book entries
+        const linked = await findLinkedBlueBookEntries(ctx, args.jobId);
+        for (const entry of linked) {
+            await ctx.db.patch(entry._id, {
+                assignedForemanName: args.foremanName ?? undefined,
+                updatedAt: Date.now(),
+            });
+        }
+
         return { success: true };
     },
 });
 
-// Assign crew to a job
+// Assign crew to a job (real-time sync → Blue Book)
 export const assignCrew = mutation({
     args: {
         jobId: v.id("jobRequestServices"),
@@ -25,6 +55,16 @@ export const assignCrew = mutation({
         await ctx.db.patch(args.jobId, {
             assignedCrewName: args.crewName ?? undefined,
         });
+
+        // Propagate to linked Blue Book entries
+        const linked = await findLinkedBlueBookEntries(ctx, args.jobId);
+        for (const entry of linked) {
+            await ctx.db.patch(entry._id, {
+                crewName: args.crewName ?? undefined,
+                updatedAt: Date.now(),
+            });
+        }
+
         return { success: true };
     },
 });
@@ -41,11 +81,23 @@ export const rescheduleJob = mutation({
             rescheduledDate: args.newDate,
             rescheduledReason: args.reason ?? undefined,
         });
+
+        // Update start date on linked Blue Book entries
+        const linked = await findLinkedBlueBookEntries(ctx, args.jobId);
+        const startDateNum = new Date(args.newDate).getTime();
+        for (const entry of linked) {
+            await ctx.db.patch(entry._id, {
+                startDate: args.newDate,
+                startDateNum: isNaN(startDateNum) ? undefined : startDateNum,
+                updatedAt: Date.now(),
+            });
+        }
+
         return { success: true };
     },
 });
 
-// Dispatch a job (create batch and assignment)
+// Dispatch a job (create batch and assignment, sync → Blue Book)
 export const dispatchJob = mutation({
     args: {
         jobId: v.id("jobRequestServices"),
@@ -78,6 +130,17 @@ export const dispatchJob = mutation({
             createdAt: Date.now(),
         });
 
+        // Propagate to linked Blue Book entries
+        const linked = await findLinkedBlueBookEntries(ctx, args.jobId);
+        for (const entry of linked) {
+            await ctx.db.patch(entry._id, {
+                assignedForemanName: args.foremanName,
+                crewName: args.crewName,
+                status: "DISPATCHED",
+                updatedAt: Date.now(),
+            });
+        }
+
         return { success: true, batchId };
     },
 });
@@ -102,7 +165,7 @@ export const deleteDispatchBatch = mutation({
     },
 });
 
-// Create a new job request (from intake)
+// Create a new job request (from intake) — auto-creates Blue Book entries
 export const createJobRequest = mutation({
     args: {
         builderId: v.optional(v.id("builders")),
@@ -124,6 +187,22 @@ export const createJobRequest = mutation({
         })),
     },
     handler: async (ctx, args) => {
+        // ── Input validation ─────────────────────────────────────────
+        if (args.services.length === 0) {
+            throw new Error("At least one service is required");
+        }
+        if (args.services.length > 20) {
+            throw new Error("Maximum 20 services per job request");
+        }
+        if (args.dueDate && !/^\d{4}-\d{2}-\d{2}/.test(args.dueDate)) {
+            throw new Error("dueDate must be ISO-8601 format (YYYY-MM-DD)");
+        }
+        if (args.lot && args.lot.trim().length === 0) {
+            throw new Error("Lot cannot be empty whitespace");
+        }
+
+        const now = Date.now();
+
         // Auto-detect extra work:
         // 1. Explicit flag from intake form
         // 2. Service name contains "extra"
@@ -138,14 +217,30 @@ export const createJobRequest = mutation({
         if (!isExtraWork && args.communityId && args.lot) {
             const existing = await ctx.db
                 .query("jobRequests")
-                .filter((q) =>
-                    q.and(
-                        q.eq(q.field("communityId"), args.communityId),
-                        q.eq(q.field("lot"), args.lot)
-                    )
-                )
+                .withIndex("by_community", (q) => q.eq("communityId", args.communityId))
+                .filter((q) => q.eq(q.field("lot"), args.lot))
                 .first();
             if (existing) isExtraWork = true;
+        }
+
+        // Resolve denormalized names for Blue Book entries
+        let builderName: string | undefined;
+        let communityName: string | undefined;
+        let modelPlanCode: string | undefined;
+        let modelPlanSqft: string | undefined;
+
+        if (args.builderId) {
+            const builder = await ctx.db.get(args.builderId);
+            builderName = builder?.name;
+        }
+        if (args.communityId) {
+            const community = await ctx.db.get(args.communityId);
+            communityName = community?.name;
+        }
+        if (args.modelPlanId) {
+            const mp = await ctx.db.get(args.modelPlanId);
+            modelPlanCode = mp?.code ?? undefined;
+            modelPlanSqft = mp?.sqft ?? undefined;
         }
 
         // Create job request
@@ -162,12 +257,18 @@ export const createJobRequest = mutation({
             contactPhone: args.contactPhone,
             contactEmail: args.contactEmail,
             isExtraWork: isExtraWork || undefined,
-            createdAt: Date.now(),
+            status: "PENDING",
+            createdAt: now,
         });
 
-        // Create job request services — auto-assign foreman from requestedBy
+        // Compute startDateNum for indexed sorting
+        const startDateNum = args.dueDate
+            ? new Date(args.dueDate).getTime()
+            : undefined;
+
+        // Create job request services + auto-create Blue Book entries
         for (const service of args.services) {
-            await ctx.db.insert("jobRequestServices", {
+            const jrsId = await ctx.db.insert("jobRequestServices", {
                 jobRequestId,
                 serviceId: service.serviceId,
                 serviceName: service.serviceName,
@@ -175,7 +276,33 @@ export const createJobRequest = mutation({
                 assignedForemanName: args.requestedBy,
                 status: "PENDING",
                 scheduledDate: args.dueDate,
-                createdAt: Date.now(),
+                createdAt: now,
+            });
+
+            // Auto-create linked Blue Book entry with available fields
+            await ctx.db.insert("blueBookEntries", {
+                jobRequestId,
+                jobRequestServiceId: jrsId,
+                builderId: args.builderId,
+                communityId: args.communityId,
+                modelPlanId: args.modelPlanId,
+                serviceId: service.serviceId,
+                lot: args.lot,
+                startDate: args.dueDate,
+                startDateNum: startDateNum && !isNaN(startDateNum) ? startDateNum : undefined,
+                // Denormalized names
+                builderName,
+                communityName,
+                serviceName: service.serviceName,
+                modelPlanCode,
+                modelPlanSqft,
+                // Fields that will be filled as the job progresses
+                assignedForemanName: args.requestedBy,
+                poNumber: args.poNumber,
+                status: "PENDING",
+                source: "intake",
+                createdAt: now,
+                updatedAt: now,
             });
         }
 
@@ -193,10 +320,23 @@ export const createUser = mutation({
         passwordHash: v.optional(v.string()),
     },
     handler: async (ctx, args) => {
+        // ── Input validation ─────────────────────────────────────────
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(args.email)) {
+            throw new Error("Invalid email format");
+        }
+        const validRoles = ["ADMIN", "FOREMAN", "DISPATCHER", "VIEWER", "MEMBER"];
+        if (!validRoles.includes(args.role)) {
+            throw new Error(`Invalid role. Must be one of: ${validRoles.join(", ")}`);
+        }
+        if (args.name !== undefined && (args.name.length < 1 || args.name.length > 100)) {
+            throw new Error("Name must be 1-100 characters");
+        }
+
         const userId = await ctx.db.insert("users", {
-            email: args.email,
-            name: args.name,
-            phone: args.phone,
+            email: args.email.toLowerCase().trim(),
+            name: args.name?.trim(),
+            phone: args.phone?.trim(),
             role: args.role,
             passwordHash: args.passwordHash,
             createdAt: Date.now(),
@@ -247,7 +387,11 @@ export const deleteUser = mutation({
 export const createOrg = mutation({
     args: { name: v.string() },
     handler: async (ctx, args) => {
-        const slug = args.name.toLowerCase().replace(/\s+/g, "-");
+        const trimmedName = args.name.trim();
+        if (trimmedName.length < 1 || trimmedName.length > 100) {
+            throw new Error("Organization name must be 1-100 characters");
+        }
+        const slug = trimmedName.toLowerCase().replace(/\s+/g, "-");
         const orgId = await ctx.db.insert("orgs", {
             name: args.name,
             slug,
@@ -302,10 +446,8 @@ export const assignOrgMembership = mutation({
             .first();
 
         if (existing) {
-            // Update existing
             await ctx.db.patch(existing._id, { role: args.role });
         } else {
-            // Create new
             await ctx.db.insert("orgMembers", {
                 userId: args.userId,
                 orgId: args.orgId,
@@ -321,8 +463,13 @@ export const assignOrgMembership = mutation({
 export const createBuilder = mutation({
     args: { name: v.string() },
     handler: async (ctx, args) => {
+        const trimmed = args.name.trim();
+        if (trimmed.length < 1 || trimmed.length > 100) {
+            throw new Error("Builder name must be 1-100 characters");
+        }
         const id = await ctx.db.insert("builders", {
-            name: args.name,
+            name: trimmed,
+            active: true,
             createdAt: Date.now(),
         });
         return { success: true, id };
@@ -336,9 +483,15 @@ export const createCommunity = mutation({
         builderId: v.optional(v.id("builders")),
     },
     handler: async (ctx, args) => {
+        const trimmed = args.name.trim();
+        if (trimmed.length < 1 || trimmed.length > 100) {
+            throw new Error("Community name must be 1-100 characters");
+        }
         const id = await ctx.db.insert("communities", {
-            name: args.name,
+            name: trimmed,
+            normalizedName: trimmed.toLowerCase(),
             builderId: args.builderId,
+            active: true,
             createdAt: Date.now(),
         });
         return { success: true, id };
@@ -355,8 +508,12 @@ export const createService = mutation({
         unitKind: v.optional(v.string()),
     },
     handler: async (ctx, args) => {
+        const trimmed = args.name.trim();
+        if (trimmed.length < 1 || trimmed.length > 100) {
+            throw new Error("Service name must be 1-100 characters");
+        }
         const id = await ctx.db.insert("services", {
-            name: args.name,
+            name: trimmed,
             description: args.description,
             code: args.code,
             category: args.category,
@@ -485,6 +642,10 @@ export const updateCommunity = mutation({
         for (const [k, val] of Object.entries(updates)) {
             if (val !== undefined) filtered[k] = val;
         }
+        // Keep normalizedName in sync
+        if (updates.name) {
+            filtered.normalizedName = updates.name.toLowerCase().trim();
+        }
         await ctx.db.patch(id, filtered);
         return { success: true };
     },
@@ -507,8 +668,15 @@ export const createCrew = mutation({
         capacityPerDay: v.optional(v.number()),
     },
     handler: async (ctx, args) => {
+        const trimmed = args.name.trim();
+        if (trimmed.length < 1 || trimmed.length > 100) {
+            throw new Error("Crew name must be 1-100 characters");
+        }
+        if (args.capacityPerDay !== undefined && args.capacityPerDay <= 0) {
+            throw new Error("capacityPerDay must be greater than 0");
+        }
         const id = await ctx.db.insert("crews", {
-            name: args.name,
+            name: trimmed,
             foremanId: args.foremanId,
             skills: args.skills,
             capacityPerDay: args.capacityPerDay,

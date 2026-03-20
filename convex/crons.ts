@@ -9,6 +9,7 @@
 import { cronJobs } from "convex/server";
 import { internal } from "./_generated/api";
 
+const _internal = internal as any;
 const crons = cronJobs();
 
 // Daily scheduler — auto-assign foremen to unassigned jobs
@@ -16,7 +17,7 @@ const crons = cronJobs();
 crons.daily(
     "daily-scheduler",
     { hourUTC: 11, minuteUTC: 0 },
-    internal.scheduler.autoAssignJobs
+    _internal.scheduler.autoAssignJobs
 );
 
 // Daily dispatch — auto-batch assigned jobs and send to crews
@@ -24,14 +25,14 @@ crons.daily(
 crons.daily(
     "daily-dispatch",
     { hourUTC: 12, minuteUTC: 0 },
-    internal["dispatch-agent"].autoDispatch
+    _internal.dispatchAgent.autoDispatch
 );
 
 // Weekly insight pipeline — every Sunday at 2 AM UTC
 crons.weekly(
     "weekly-insight-pipeline",
     { dayOfWeek: "sunday", hourUTC: 2, minuteUTC: 0 },
-    internal.insights.runWeeklyInsights
+    _internal.insights.runWeeklyInsights
 );
 
 export default crons;

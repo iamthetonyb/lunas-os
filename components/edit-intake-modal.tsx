@@ -56,10 +56,10 @@ function EditIntakeForm({ intake, onSuccess, onClose }: { intake: RecentIntake; 
 
   // CRITICAL: All hooks MUST be called unconditionally at the top level before any returns
   // to comply with React Rules of Hooks. Moving data fetching hooks here.
-  const builders = useQuery(api.queries.getBuilders) as BuilderDTO[] | undefined;
-  const communities = useQuery(api.queries.getCommunities) as CommunityDTO[] | undefined;
-  const modelPlans = useQuery(api.queries.getModelPlans) as ModelPlanDTO[] | undefined;
-  const services = useQuery(api.queries.getServices) as ServiceDTO[] | undefined;
+  const builders = useQuery(api.queries.getBuilders, {}) as BuilderDTO[] | undefined;
+  const communities = useQuery(api.queries.getCommunities, {}) as CommunityDTO[] | undefined;
+  const modelPlans = useQuery(api.queries.getModelPlans, {}) as ModelPlanDTO[] | undefined;
+  const services = useQuery(api.queries.getServices, {}) as ServiceDTO[] | undefined;
 
   const updateJobRequest = useMutation(api.jobRequests.update);
 

@@ -12,8 +12,8 @@ type Community = { _id: Id<"communities">; name: string; builderId?: Id<"builder
 
 export function BuildersCrud() {
     const { t } = useTranslation();
-    const builders = useQuery(api.queries.getBuilders) ?? [];
-    const communities = useQuery(api.queries.getCommunities) ?? [];
+    const builders = useQuery(api.queries.getBuilders, {}) ?? [];
+    const communities = useQuery(api.queries.getCommunities, {}) ?? [];
     const loadingBuilders = builders === undefined;
     const loadingCommunities = communities === undefined;
 

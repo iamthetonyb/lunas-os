@@ -2,6 +2,7 @@
 
 import { PageHeader } from '@/components/page-header';
 import { useState, useRef } from 'react';
+import { toast } from 'sonner';
 
 export default function ImportPage() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -23,38 +24,34 @@ export default function ImportPage() {
 
   const handleImport = async () => {
     if (!selectedFile) return;
-    
+
     setUploading(true);
     try {
-      // TODO: Replace with actual API endpoint
-      setTimeout(() => {
-        alert(`File "${selectedFile.name}" imported successfully!`);
-        setSelectedFile(null);
-        setUploading(false);
-        if (fileInputRef.current) fileInputRef.current.value = '';
-      }, 1500);
+      // TODO: Replace with actual import API endpoint
+      toast.info(`Import for "${selectedFile.name}" will be processed. API integration pending.`);
+      setSelectedFile(null);
+      if (fileInputRef.current) fileInputRef.current.value = '';
     } catch {
-      alert('Import failed. Please try again.');
+      toast.error('Import failed. Please try again.');
+    } finally {
       setUploading(false);
     }
   };
 
   const handleGoogleSheetsImport = async () => {
     if (!googleSheetsUrl.trim()) {
-      alert('Please enter a Google Sheets URL first.');
+      toast.warning('Please enter a Google Sheets URL first.');
       return;
     }
-    
+
     setUploading(true);
     try {
-      // TODO: Connect to actual API
-      setTimeout(() => {
-        alert('Google Sheets import functionality will be connected to API');
-        setGoogleSheetsUrl('');
-        setUploading(false);
-      }, 1500);
+      // TODO: Connect to actual Google Sheets import API
+      toast.info('Google Sheets import will be processed. API integration pending.');
+      setGoogleSheetsUrl('');
     } catch {
-      alert('Import failed. Please try again.');
+      toast.error('Import failed. Please try again.');
+    } finally {
       setUploading(false);
     }
   };

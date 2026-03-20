@@ -115,7 +115,6 @@ export const exportSFTData = action({
     },
     handler: async (ctx, args) => {
         const decisions = await ctx.runQuery(
-            // @ts-expect-error — types generated after deploy
             "distillation:getTrainingDecisions" as any,
             { minConfidence: 0.7, limit: 1000 }
         );

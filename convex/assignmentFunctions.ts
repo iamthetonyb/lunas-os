@@ -79,6 +79,20 @@ export const complete = mutation({
             await ctx.db.patch(assignment.jobRequestServiceId, {
                 status: "COMPLETE",
             });
+
+            // Propagate completion to linked Blue Book entries
+            const linkedEntries = await ctx.db
+                .query("blueBookEntries")
+                .withIndex("by_jobRequestService", (q) =>
+                    q.eq("jobRequestServiceId", assignment.jobRequestServiceId)
+                )
+                .collect();
+            for (const entry of linkedEntries) {
+                await ctx.db.patch(entry._id, {
+                    status: "COMPLETE",
+                    updatedAt: Date.now(),
+                });
+            }
         }
 
         return { success: true };
@@ -106,6 +120,20 @@ export const submitTicket = mutation({
             await ctx.db.patch(assignment.jobRequestServiceId, {
                 status: "COMPLETE",
             });
+
+            // Propagate to Blue Book
+            const linkedEntries = await ctx.db
+                .query("blueBookEntries")
+                .withIndex("by_jobRequestService", (q) =>
+                    q.eq("jobRequestServiceId", assignment.jobRequestServiceId)
+                )
+                .collect();
+            for (const entry of linkedEntries) {
+                await ctx.db.patch(entry._id, {
+                    status: "COMPLETE",
+                    updatedAt: Date.now(),
+                });
+            }
         }
 
         return { success: true };

@@ -13,12 +13,15 @@ export default defineSchema({
         preferredContactMethod: v.optional(v.string()), // email, call, text
         resetToken: v.optional(v.string()),
         resetTokenExpiry: v.optional(v.number()),
+        active: v.optional(v.boolean()),
         createdAt: v.number(),
         updatedAt: v.optional(v.number()),
     })
         .index("by_email", ["email"])
         .index("by_role", ["role"])
-        .index("by_resetToken", ["resetToken"]),
+        .index("by_resetToken", ["resetToken"])
+        .index("by_name", ["name"])
+        .index("by_active", ["active"]),
 
     // Organizations
     orgs: defineTable({
@@ -43,11 +46,14 @@ export default defineSchema({
         name: v.string(),
         active: v.optional(v.boolean()),
         createdAt: v.number(),
-    }).index("by_name", ["name"]),
+    })
+        .index("by_name", ["name"])
+        .index("by_active", ["active"]),
 
     // Communities
     communities: defineTable({
         name: v.string(),
+        normalizedName: v.optional(v.string()), // lowercased/trimmed for fuzzy matching
         builderId: v.optional(v.id("builders")),
         city: v.optional(v.string()),
         state: v.optional(v.string()),
@@ -55,7 +61,9 @@ export default defineSchema({
         createdAt: v.number(),
     })
         .index("by_name", ["name"])
-        .index("by_builder", ["builderId"]),
+        .index("by_builder", ["builderId"])
+        .index("by_active", ["active"])
+        .index("by_normalizedName", ["normalizedName"]),
 
     // Services
     services: defineTable({
@@ -68,7 +76,8 @@ export default defineSchema({
         createdAt: v.number(),
     })
         .index("by_name", ["name"])
-        .index("by_code", ["code"]),
+        .index("by_code", ["code"])
+        .index("by_active", ["active"]),
 
     // Model Plans
     modelPlans: defineTable({
@@ -82,7 +91,8 @@ export default defineSchema({
         createdAt: v.number(),
     })
         .index("by_community", ["communityId"])
-        .index("by_builder", ["builderId"]),
+        .index("by_builder", ["builderId"])
+        .index("by_active", ["active"]),
 
     // Crews
     crews: defineTable({
@@ -116,7 +126,10 @@ export default defineSchema({
         .index("by_dueDate", ["dueDate"])
         .index("by_community", ["communityId"])
         .index("by_builder", ["builderId"])
-        .index("by_createdAt", ["createdAt"]),
+        .index("by_createdAt", ["createdAt"])
+        .index("by_builder_status", ["builderId", "status"])
+        .index("by_community_createdAt", ["communityId", "createdAt"])
+        .index("by_status", ["status"]),
 
     // Job Request Services (individual service items within a job request)
     jobRequestServices: defineTable({
@@ -135,7 +148,9 @@ export default defineSchema({
         .index("by_jobRequest", ["jobRequestId"])
         .index("by_status", ["status"])
         .index("by_foreman", ["assignedForemanName"])
-        .index("by_scheduledDate", ["scheduledDate"]),
+        .index("by_scheduledDate", ["scheduledDate"])
+        .index("by_status_scheduledDate", ["status", "scheduledDate"])
+        .index("by_jobRequest_status", ["jobRequestId", "status"]),
 
     // Dispatch Batches
     dispatchBatches: defineTable({
@@ -149,7 +164,8 @@ export default defineSchema({
     })
         .index("by_serviceDate", ["serviceDate"])
         .index("by_status", ["status"])
-        .index("by_foreman", ["foremanName"]),
+        .index("by_foreman", ["foremanName"])
+        .index("by_status_serviceDate", ["status", "serviceDate"]),
 
     // Assignments (links job request services to dispatch batches)
     assignments: defineTable({
@@ -168,17 +184,28 @@ export default defineSchema({
     })
         .index("by_batch", ["dispatchBatchId"])
         .index("by_jobRequestService", ["jobRequestServiceId"])
-        .index("by_status", ["status"]),
+        .index("by_status", ["status"])
+        .index("by_batch_status", ["dispatchBatchId", "status"]),
 
-    // Blue Book Entries (scraped data)
+    // Blue Book Entries (scraped data + auto-created from intakes)
     blueBookEntries: defineTable({
         startDate: v.optional(v.string()),
+        startDateNum: v.optional(v.number()), // epoch ms for indexed sorting
         builderId: v.optional(v.id("builders")),
         communityId: v.optional(v.id("communities")),
         lot: v.optional(v.string()),
         modelPlanId: v.optional(v.id("modelPlans")),
         modelPlanName: v.optional(v.string()),
         serviceId: v.optional(v.id("services")),
+        // Link to job request for auto-created entries (enables real-time sync)
+        jobRequestId: v.optional(v.id("jobRequests")),
+        jobRequestServiceId: v.optional(v.id("jobRequestServices")),
+        // Denormalized fields for fast reads without joins
+        builderName: v.optional(v.string()),
+        communityName: v.optional(v.string()),
+        serviceName: v.optional(v.string()),
+        modelPlanCode: v.optional(v.string()),
+        modelPlanSqft: v.optional(v.string()),
         accountCategoryCode: v.optional(v.string()),
         accountCategoryName: v.optional(v.string()),
         amount: v.optional(v.string()),
@@ -199,7 +226,12 @@ export default defineSchema({
         .index("by_startDate", ["startDate"])
         .index("by_community", ["communityId"])
         .index("by_builder", ["builderId"])
-        .index("by_status", ["status"]),
+        .index("by_status", ["status"])
+        .index("by_builder_startDateNum", ["builderId", "startDateNum"])
+        .index("by_builder_community", ["builderId", "communityId"])
+        .index("by_builder_status", ["builderId", "status"])
+        .index("by_jobRequestService", ["jobRequestServiceId"])
+        .index("by_jobRequest", ["jobRequestId"]),
 
     // Contract Rates
     contractRates: defineTable({
@@ -279,4 +311,74 @@ export default defineSchema({
         status: v.optional(v.string()),
         createdAt: v.number(),
     }).index("by_community", ["communityId"]),
+
+    // ── NEW TABLES (Phase 1) ────────────────────────────────────────────
+
+    // Builder Phase Configs — per-builder phase definitions (replaces hardcoded KNOWN_PHASES)
+    builderPhaseConfigs: defineTable({
+        builderId: v.id("builders"),
+        code: v.string(),
+        title: v.string(),
+        shorthand: v.string(),
+        serviceNames: v.array(v.string()),
+        sortOrder: v.number(),
+        active: v.boolean(),
+        createdAt: v.number(),
+        updatedAt: v.optional(v.number()),
+    })
+        .index("by_builder", ["builderId"])
+        .index("by_builder_code", ["builderId", "code"]),
+
+    // Phase Overrides — replaces localStorage (persisted, cross-device)
+    phaseOverrides: defineTable({
+        lotKey: v.string(), // `${communityId}:${lot}`
+        builderId: v.id("builders"),
+        communityId: v.id("communities"),
+        lot: v.string(),
+        phaseCode: v.string(),
+        phaseComplete: v.optional(v.boolean()),
+        serviceOverrides: v.optional(v.string()), // JSON: { serviceName: boolean }
+        createdAt: v.number(),
+        updatedAt: v.optional(v.number()),
+    })
+        .index("by_lotKey", ["lotKey"])
+        .index("by_builder_community", ["builderId", "communityId"]),
+
+    // Community Aliases — maps scraped name variants to canonical community records
+    communityAliases: defineTable({
+        alias: v.string(), // lowercased/trimmed
+        communityId: v.id("communities"),
+        builderId: v.optional(v.id("builders")),
+        createdAt: v.number(),
+    })
+        .index("by_alias", ["alias"])
+        .index("by_community", ["communityId"]),
+
+    // OAuth Accounts — OAuth token storage for Microsoft/Google
+    oauthAccounts: defineTable({
+        userId: v.id("users"),
+        provider: v.string(), // "google" | "microsoft"
+        providerAccountId: v.string(),
+        accessToken: v.string(),
+        refreshToken: v.optional(v.string()),
+        expiresAt: v.number(), // epoch ms
+        scope: v.optional(v.string()),
+        createdAt: v.number(),
+        updatedAt: v.optional(v.number()),
+    })
+        .index("by_user", ["userId"])
+        .index("by_provider_account", ["provider", "providerAccountId"]),
+
+    // Foreman Affinity Cache — pre-computed affinity data (updated by weekly insight pipeline)
+    foremanAffinityCache: defineTable({
+        communityId: v.id("communities"),
+        communityName: v.string(),
+        foremanName: v.string(),
+        assignmentCount: v.number(),
+        percentage: v.number(), // 0-100
+        isBackup: v.boolean(),
+        computedAt: v.number(),
+    })
+        .index("by_community", ["communityId"])
+        .index("by_foreman", ["foremanName"]),
 });

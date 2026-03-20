@@ -57,9 +57,9 @@ interface ModelPlan {
 export function RatesCrud() {
   const { t } = useTranslation();
   const rates = useQuery(api.contractRates.list) as Rate[] | undefined;
-  const builders = useQuery(api.queries.getBuilders) as Builder[] | undefined;
-  const services = useQuery(api.queries.getServices) as Service[] | undefined;
-  const modelPlans = useQuery(api.queries.getModelPlans) as ModelPlan[] | undefined;
+  const builders = useQuery(api.queries.getBuilders, {}) as Builder[] | undefined;
+  const services = useQuery(api.queries.getServices, {}) as Service[] | undefined;
+  const modelPlans = useQuery(api.queries.getModelPlans, {}) as ModelPlan[] | undefined;
   const createRate = useMutation(api.contractRates.create);
   const updateRate = useMutation(api.contractRates.update);
   const removeRate = useMutation(api.contractRates.remove);

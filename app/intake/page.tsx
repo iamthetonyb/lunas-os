@@ -345,24 +345,31 @@ export default function IntakePage() {
 
   async function handleDelete(intakeId: string) {
     if (!intakeId) {
-      alert('Cannot delete intake: ID is missing.');
+      toast.error('Cannot delete intake: ID is missing.');
       return;
     }
     console.log('[intake] Attempting to delete:', intakeId);
-    if (!window.confirm('Are you sure you want to delete this intake?')) {
-      return;
-    }
-
-    try {
-      await removeIntake({ id: intakeId as Id<"jobRequests"> });
-      console.log('[intake] Successfully deleted:', intakeId);
-      setDetailModalOpen(false); // Close modal if open
-      toast.success('Intake deleted successfully!');
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'Unknown error';
-      console.error('[intake] Failed to delete:', intakeId, message);
-      toast.error(`Failed to delete intake: ${message}`);
-    }
+    toast('Are you sure you want to delete this intake?', {
+      action: {
+        label: 'Delete',
+        onClick: async () => {
+          try {
+            await removeIntake({ id: intakeId as Id<"jobRequests"> });
+            console.log('[intake] Successfully deleted:', intakeId);
+            setDetailModalOpen(false); // Close modal if open
+            toast.success('Intake deleted successfully!');
+          } catch (error) {
+            const message = error instanceof Error ? error.message : 'Unknown error';
+            console.error('[intake] Failed to delete:', intakeId, message);
+            toast.error(`Failed to delete intake: ${message}`);
+          }
+        },
+      },
+      cancel: {
+        label: 'Cancel',
+        onClick: () => {},
+      },
+    });
   }
 
   return (

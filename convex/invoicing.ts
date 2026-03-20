@@ -1,6 +1,45 @@
 import { query, mutation } from "./_generated/server";
 import { v } from "convex/values";
 
+export const list = query({
+    args: {
+        builderId: v.optional(v.id("builders")),
+    },
+    handler: async (ctx, args) => {
+        let invoices;
+        if (args.builderId) {
+            invoices = await ctx.db
+                .query("invoices")
+                .withIndex("by_builder", (q) => q.eq("builderId", args.builderId))
+                .order("desc")
+                .collect();
+        } else {
+            invoices = await ctx.db
+                .query("invoices")
+                .order("desc")
+                .collect();
+        }
+
+        // Enrich with builder names
+        const enriched = await Promise.all(
+            invoices.map(async (invoice) => {
+                let builderName: string | null = null;
+                if (invoice.builderId) {
+                    const builder = await ctx.db.get(invoice.builderId);
+                    builderName = builder?.name ?? null;
+                }
+                return {
+                    ...invoice,
+                    id: invoice._id,
+                    builderName,
+                };
+            })
+        );
+
+        return enriched;
+    },
+});
+
 export const getById = query({
     args: { id: v.id("invoices") },
     handler: async (ctx, args) => {

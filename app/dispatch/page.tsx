@@ -32,7 +32,7 @@ export default function DispatchPage() {
   }, []);
 
   // Convex reactive query - no refreshInterval needed, Convex is realtime
-  const allBatches = useQuery(api.queries.getDispatchBatches) ?? [];
+  const allBatches = useQuery(api.queries.getDispatchBatches, {}) ?? [];
 
   // Convex mutation for deleting batches
   const deleteBatchMutation = useMutation(api.mutations.deleteDispatchBatch);

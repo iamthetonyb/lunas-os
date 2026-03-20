@@ -7,6 +7,8 @@ import { api } from '@/convex/_generated/api';
 import { Id } from '@/convex/_generated/dataModel';
 import { Dialog, Transition } from '@headlessui/react';
 import { useTranslation } from 'react-i18next';
+import { ConfirmationDialog } from '@/components/ConfirmationDialog';
+import { toast } from 'sonner';
 
 type AdminUser = {
   id: string;
@@ -320,6 +322,7 @@ export default function UsersPage() {
   const [orgModalOpen, setOrgModalOpen] = useState(false);
   const [editingOrg, setEditingOrg] = useState<Org | null>(null);
   const [isDeletingOrg, setIsDeletingOrg] = useState(false);
+  const [confirmDialog, setConfirmDialog] = useState<{title: string; message: string; onConfirm: () => void} | null>(null);
 
   const sortedUsers = useMemo(() => {
     if (!data?.users) return [];
@@ -339,11 +342,11 @@ export default function UsersPage() {
         orgId: membership.orgId as Id<"orgs">,
         role: membership.role,
       });
-      alert('Membership saved.');
+      toast.success('Membership saved.');
     } catch (err: any) {
       console.error('Membership submit failed:', err);
       const errorMsg = err.message || 'Failed to update membership.';
-      alert(errorMsg);
+      toast.error(errorMsg);
     } finally {
       setBusy(false);
     }
@@ -359,17 +362,17 @@ export default function UsersPage() {
           orgId: editingOrg.id as Id<"orgs">,
           name: orgForm.name,
         });
-        alert('Organization updated.');
+        toast.success('Organization updated.');
       } else {
         await createOrg({ name: orgForm.name });
-        alert('Organization created.');
+        toast.success('Organization created.');
       }
       setOrgForm({ name: '' });
       setEditingOrg(null);
       setOrgModalOpen(false);
     } catch (err) {
       console.error(err);
-      alert('Failed to save organization.');
+      toast.error('Failed to save organization.');
     } finally {
       setBusy(false);
     }
@@ -381,19 +384,23 @@ export default function UsersPage() {
     setOrgModalOpen(true);
   };
 
-  const handleDeleteOrg = async (orgId: string) => {
-    if (!confirm('Are you sure you want to delete this organization? This will NOT delete associated users, but will remove their access to this org.')) return;
-
-    setBusy(true);
-    try {
-      await deleteOrg({ orgId: orgId as Id<"orgs"> });
-      alert('Organization deleted.');
-    } catch (err) {
-      console.error(err);
-      alert('Failed to delete organization.');
-    } finally {
-      setBusy(false);
-    }
+  const handleDeleteOrg = (orgId: string) => {
+    setConfirmDialog({
+      title: 'Delete Organization',
+      message: 'Are you sure you want to delete this organization? This will NOT delete associated users, but will remove their access to this org.',
+      onConfirm: async () => {
+        setBusy(true);
+        try {
+          await deleteOrg({ orgId: orgId as Id<"orgs"> });
+          toast.success('Organization deleted.');
+        } catch (err) {
+          console.error(err);
+          toast.error('Failed to delete organization.');
+        } finally {
+          setBusy(false);
+        }
+      },
+    });
   };
 
   const handleCreateUser = () => {
@@ -618,8 +625,18 @@ export default function UsersPage() {
         onClose={handleUserModalClose}
         user={editingUser}
         onSuccess={() => {
-          alert(editingUser ? 'User updated successfully!' : 'User created successfully!');
+          toast.success(editingUser ? 'User updated successfully!' : 'User created successfully!');
         }}
+      />
+
+      <ConfirmationDialog
+        isOpen={!!confirmDialog}
+        onClose={() => setConfirmDialog(null)}
+        onConfirm={confirmDialog?.onConfirm ?? (() => {})}
+        title={confirmDialog?.title ?? ''}
+        message={confirmDialog?.message ?? ''}
+        confirmLabel="Delete"
+        variant="danger"
       />
     </>
   );

@@ -23,6 +23,19 @@ export const create = mutation({
         expiresOn: v.optional(v.string()),
     },
     handler: async (ctx, args) => {
+        if (args.rate && isNaN(parseFloat(args.rate))) {
+            throw new Error("Rate must be a numeric value");
+        }
+        if (args.effectiveOn && !/^\d{4}-\d{2}-\d{2}/.test(args.effectiveOn)) {
+            throw new Error("effectiveOn must be ISO-8601 format (YYYY-MM-DD)");
+        }
+        if (args.expiresOn && !/^\d{4}-\d{2}-\d{2}/.test(args.expiresOn)) {
+            throw new Error("expiresOn must be ISO-8601 format (YYYY-MM-DD)");
+        }
+        const validBases = ["per_lot", "per_sqft", "per_unit", "flat"];
+        if (args.basis && !validBases.includes(args.basis)) {
+            throw new Error(`Invalid basis. Must be one of: ${validBases.join(", ")}`);
+        }
         const id = await ctx.db.insert("contractRates", {
             ...args,
             active: true,

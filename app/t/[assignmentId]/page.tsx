@@ -11,6 +11,7 @@ import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import Link from 'next/link';
 import { useTranslation } from 'react-i18next';
+import { toast } from 'sonner';
 
 const schema = z.object({
   status: z.enum(['COMPLETE', 'NOT_DONE']),
@@ -57,10 +58,10 @@ export default function FieldTicketPage({ params }: { params: Promise<{ assignme
         foremanSig,
         customerSig,
       });
-      alert('Field ticket submitted successfully!');
+      toast.success('Field ticket submitted successfully!');
     } catch (error) {
       console.error('Failed to submit field ticket', error);
-      alert('Error submitting field ticket');
+      toast.error('Error submitting field ticket');
     }
   });
 

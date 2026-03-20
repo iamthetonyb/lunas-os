@@ -36,6 +36,21 @@ export default function ExtraWorkPage() {
   // Convex mutation for updates
   const updateJobRequest = useMutation(api.jobRequests.update);
 
+  // O(n) duplicate detection: build a Set of keys that appear more than once
+  const duplicateKeys = useMemo(() => {
+    if (!jobs) return new Set<string>();
+    const counts = new Map<string, number>();
+    for (const job of jobs) {
+      const key = `${job.communityName}:${job.lot}`;
+      counts.set(key, (counts.get(key) ?? 0) + 1);
+    }
+    const dupes = new Set<string>();
+    for (const [key, count] of counts) {
+      if (count > 1) dupes.add(key);
+    }
+    return dupes;
+  }, [jobs]);
+
   if (isContractor) {
     return (
       <main className="px-6 py-6 space-y-6">
@@ -87,14 +102,7 @@ export default function ExtraWorkPage() {
               <tr><td colSpan={7} className="px-4 py-6 text-center text-gray-500">{t('extraWork.noExtraWork')}</td></tr>
             )}
             {jobs?.map((job) => {
-              const svcName = (s: any) => s.serviceName || s.name || '';
-              const serviceKey = job.services.map(svcName).sort().join('|');
-              const isDuplicate = jobs.some(other =>
-                other.id !== job.id &&
-                other.communityName === job.communityName &&
-                other.lot === job.lot &&
-                other.services.map(svcName).sort().join('|') === serviceKey
-              );
+              const isDuplicate = duplicateKeys.has(`${job.communityName}:${job.lot}`);
 
               return (
                 <tr key={job.id} className={isDuplicate ? "bg-red-50 hover:bg-red-100" : "hover:bg-gray-50"}>
