@@ -1,22 +1,13 @@
 'use client';
 
-import useSWR from 'swr';
 import { useState, Fragment } from 'react';
 import { Dialog, Transition } from '@headlessui/react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { fetchJSON } from '@/lib/utils/fetch-json';
-
-const fetcher = async <T,>(url: string): Promise<T> => {
-  try {
-    return await fetchJSON<T>(url);
-  } catch (error) {
-    console.error('Fetcher error for', url, error);
-    // Returning empty array/object keeps UI stable for list fetchers
-    return ([] as unknown) as T;
-  }
-};
+import { useQuery, useMutation } from 'convex/react';
+import { api } from '@/convex/_generated/api';
+import { Id } from '@/convex/_generated/dataModel';
 
 const schema = z.object({
   builderId: z.string().min(1, 'Builder is required'),
@@ -35,7 +26,7 @@ const schema = z.object({
 type FormData = z.infer<typeof schema>;
 
 interface Rate {
-  id: string;
+  _id: Id<"contractRates">;
   builderId: string;
   serviceId: string;
   modelPlanId: string | null;
@@ -47,26 +38,30 @@ interface Rate {
 }
 
 interface Builder {
-  id: string;
+  _id: Id<"builders">;
   name: string;
 }
 
 interface Service {
-  id: string;
+  _id: Id<"services">;
   name: string;
 }
 
 interface ModelPlan {
-  id: string;
+  _id: Id<"modelPlans">;
   name: string;
   builderId: string;
 }
 
 export function RatesCrud() {
-  const { data: rates, mutate } = useSWR<Rate[]>('/api/contract-rates', fetcher);
-  const { data: builders } = useSWR<Builder[]>('/api/builders', fetcher);
-  const { data: services } = useSWR<Service[]>('/api/services', fetcher);
-  const { data: modelPlans } = useSWR<ModelPlan[]>('/api/model-plans', fetcher);
+  const rates = useQuery(api.contractRates.list) as Rate[] | undefined;
+  const builders = useQuery(api.queries.getBuilders) as Builder[] | undefined;
+  const services = useQuery(api.queries.getServices) as Service[] | undefined;
+  const modelPlans = useQuery(api.queries.getModelPlans) as ModelPlan[] | undefined;
+  const createRate = useMutation(api.contractRates.create);
+  const updateRate = useMutation(api.contractRates.update);
+  const removeRate = useMutation(api.contractRates.remove);
+
   const [isOpen, setIsOpen] = useState(false);
   const [selectedRate, setSelectedRate] = useState<Rate | null>(null);
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
@@ -86,19 +81,32 @@ export function RatesCrud() {
   const selectedBuilderId = watch('builderId');
 
   const onSubmit = handleSubmit(async (data) => {
-    const url = selectedRate ? `/api/contract-rates/${selectedRate.id}` : '/api/contract-rates';
-    const method = selectedRate ? 'PUT' : 'POST';
-
     try {
-      await fetchJSON(url, {
-        method,
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(data),
-      });
+      if (selectedRate) {
+        await updateRate({
+          id: selectedRate._id,
+          builderId: data.builderId as Id<"builders">,
+          serviceId: data.serviceId as Id<"services">,
+          modelPlanId: data.modelPlanId ? data.modelPlanId as Id<"modelPlans"> : undefined,
+          basis: data.basis,
+          rate: String(data.rate),
+          unitLabel: data.unitLabel,
+          effectiveOn: data.effectiveOn,
+          expiresOn: data.expiresOn,
+        });
+      } else {
+        await createRate({
+          builderId: data.builderId as Id<"builders">,
+          serviceId: data.serviceId as Id<"services">,
+          modelPlanId: data.modelPlanId ? data.modelPlanId as Id<"modelPlans"> : undefined,
+          basis: data.basis,
+          rate: String(data.rate),
+          unitLabel: data.unitLabel,
+          effectiveOn: data.effectiveOn,
+          expiresOn: data.expiresOn,
+        });
+      }
 
-      mutate();
       setIsOpen(false);
       reset();
       setSelectedRate(null);
@@ -126,13 +134,10 @@ export function RatesCrud() {
 
   const handleDelete = async (id: string) => {
     if (!confirm('Are you sure you want to delete this rate?')) return;
-    
+
     setIsDeleting(id);
     try {
-      await fetchJSON(`/api/contract-rates/${id}`, {
-        method: 'DELETE',
-      });
-      mutate();
+      await removeRate({ id: id as Id<"contractRates"> });
     } catch (error) {
       console.error('Failed to delete rate', error);
       alert('Failed to delete rate.');
@@ -147,18 +152,18 @@ export function RatesCrud() {
   };
 
   const getBuilderName = (builderId: string) => {
-    const builder = builders?.find((b) => b.id === builderId);
+    const builder = builders?.find((b) => b._id === builderId);
     return builder?.name || 'Unknown';
   };
 
   const getServiceName = (serviceId: string) => {
-    const service = services?.find((s) => s.id === serviceId);
+    const service = services?.find((s) => s._id === serviceId);
     return service?.name || 'Unknown';
   };
 
   const getModelPlanName = (modelPlanId: string | null) => {
     if (!modelPlanId) return 'All Models';
-    const plan = modelPlans?.find((p) => p.id === modelPlanId);
+    const plan = modelPlans?.find((p) => p._id === modelPlanId);
     return plan?.name || 'Unknown';
   };
 
@@ -225,7 +230,7 @@ export function RatesCrud() {
               </thead>
               <tbody className="bg-white dark:bg-slate-900 divide-y divide-gray-200 dark:divide-gray-700">
                 {rates?.map((rate) => (
-                  <tr key={rate.id} className="hover:bg-gray-50 dark:hover:bg-slate-800 transition-colors">
+                  <tr key={rate._id} className="hover:bg-gray-50 dark:hover:bg-slate-800 transition-colors">
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100 font-medium">
                       {getBuilderName(rate.builderId)}
                     </td>
@@ -268,11 +273,11 @@ export function RatesCrud() {
                           Edit
                         </button>
                         <button
-                          onClick={() => handleDelete(rate.id)}
-                          disabled={isDeleting === rate.id}
+                          onClick={() => handleDelete(rate._id)}
+                          disabled={isDeleting === rate._id}
                           className="inline-flex items-center gap-1 px-3 py-1.5 bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300 hover:bg-red-100 dark:hover:bg-red-900/40 rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                         >
-                          {isDeleting === rate.id ? (
+                          {isDeleting === rate._id ? (
                             <>
                               <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
                                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
@@ -347,7 +352,7 @@ export function RatesCrud() {
                         >
                           <option value="">-- Select Builder --</option>
                           {builders?.map((builder) => (
-                            <option key={builder.id} value={builder.id}>
+                            <option key={builder._id} value={builder._id}>
                               {builder.name}
                             </option>
                           ))}
@@ -368,7 +373,7 @@ export function RatesCrud() {
                         >
                           <option value="">-- Select Service --</option>
                           {services?.map((service) => (
-                            <option key={service.id} value={service.id}>
+                            <option key={service._id} value={service._id}>
                               {service.name}
                             </option>
                           ))}
@@ -391,7 +396,7 @@ export function RatesCrud() {
                       >
                         <option value="">All Models</option>
                         {filteredModelPlans?.map((plan) => (
-                          <option key={plan.id} value={plan.id}>
+                          <option key={plan._id} value={plan._id}>
                             {plan.name}
                           </option>
                         ))}

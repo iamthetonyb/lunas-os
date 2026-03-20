@@ -1,20 +1,22 @@
 'use client';
 
 import { PageHeader } from '@/components/page-header';
-import useSWR from 'swr';
+import { useQuery, useMutation } from 'convex/react';
+import { api } from '@/convex/_generated/api';
+import { Id } from '@/convex/_generated/dataModel';
 import { useState } from 'react';
 import Link from 'next/link';
-import { fetchJSON } from '@/lib/utils/fetch-json';
-
-const fetcher = <T,>(url: string) => fetchJSON<T>(url);
 
 export default function InvoicingPage() {
   const [builderId, setBuilderId] = useState<string | null>(null);
-  const { data: builders } = useSWR<any[]>('/api/builders', fetcher);
-  const { data: blueBookEntries } = useSWR<any[]>(
-    builderId ? `/api/blue-book?builderId=${builderId}&status=COMPLETE&invoiced=false` : null, 
-    fetcher
+  const builders = useQuery(api.queries.getBuilders, {});
+  const blueBookEntries = useQuery(
+    api.blueBook.list,
+    builderId
+      ? { builderId: builderId as Id<"builders">, status: 'COMPLETE', invoiced: false }
+      : 'skip'
   );
+  const buildInvoice = useMutation(api.invoicing.build);
 
   // Mock invoices data
   const invoices = [
@@ -23,15 +25,15 @@ export default function InvoicingPage() {
     { id: 'INV-003', builder: 'Pulte', date: '2025-10-05', amount: '$15,200', status: 'Paid' },
   ];
 
+  const entries = blueBookEntries?.entries;
+
   const handleBuildDraft = async () => {
-    const entryIds = Array.isArray(blueBookEntries) ? blueBookEntries.map((e: any) => e.id) : [];
+    const entryIds = Array.isArray(entries) ? entries.map((e: any) => e.id as Id<"blueBookEntries">) : [];
+    if (!builderId || entryIds.length === 0) return;
     try {
-      await fetchJSON('/api/invoicing/build', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ builderId, entryIds }),
+      await buildInvoice({
+        builderId: builderId as Id<"builders">,
+        entryIds,
       });
       alert('Invoice draft created successfully!');
     } catch (error) {
@@ -42,8 +44,8 @@ export default function InvoicingPage() {
 
   return (
     <>
-      <PageHeader 
-        title="Invoicing" 
+      <PageHeader
+        title="Invoicing"
         description="Generate and manage invoices"
         action={
           <button className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
@@ -60,26 +62,26 @@ export default function InvoicingPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">Select Builder</label>
-              <select 
-                onChange={(e) => setBuilderId(e.target.value)}
+              <select
+                onChange={(e) => setBuilderId(e.target.value || null)}
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
               >
                 <option value="">-- Select Builder --</option>
                 {Array.isArray(builders) && builders.map((builder: any) => (
-                  <option key={builder.id} value={builder.id}>
+                  <option key={builder._id} value={builder._id}>
                     {builder.name}
                   </option>
                 ))}
               </select>
             </div>
             <div className="flex items-end">
-              <button 
-                onClick={handleBuildDraft} 
-                disabled={!blueBookEntries || blueBookEntries.length === 0}
+              <button
+                onClick={handleBuildDraft}
+                disabled={!entries || entries.length === 0}
                 className="w-full px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {blueBookEntries && blueBookEntries.length > 0 
-                  ? `Build Draft (${blueBookEntries.length} entries)` 
+                {entries && entries.length > 0
+                  ? `Build Draft (${entries.length} entries)`
                   : 'Build Draft Invoice'}
               </button>
             </div>
@@ -134,8 +136,8 @@ export default function InvoicingPage() {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm">
                       <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
-                        invoice.status === 'Paid' 
-                          ? 'bg-green-100 text-green-800' 
+                        invoice.status === 'Paid'
+                          ? 'bg-green-100 text-green-800'
                           : invoice.status === 'Sent'
                           ? 'bg-blue-100 text-blue-800'
                           : 'bg-yellow-100 text-yellow-800'

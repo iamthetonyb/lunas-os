@@ -3,15 +3,13 @@
 import { PageHeader } from '@/components/page-header';
 import Link from 'next/link';
 import { use } from 'react';
-import useSWR, { mutate } from 'swr';
-import { fetchJSON } from '@/lib/utils/fetch-json';
+import { useQuery, useMutation } from 'convex/react';
+import { api } from '@/convex/_generated/api';
 import { useSession } from 'next-auth/react';
 import { getFriendlyName } from '@/lib/utils/community-display';
 import { ConfirmationModal } from '@/components/ui/confirmation-modal';
 import { useState } from 'react';
 import { toast } from 'sonner';
-
-const fetcher = <T,>(url: string) => fetchJSON<T>(url);
 
 type DispatchDetail = {
     id: string;
@@ -25,6 +23,7 @@ type DispatchDetail = {
 
 type DispatchJob = {
     id: string;
+    assignmentId?: string;
     communityName: string | null;
     builderName: string | null;
     lot: string | null;
@@ -47,10 +46,13 @@ export default function DispatchDetailPage({ params }: { params: Promise<{ id: s
         jobId: null,
     });
 
-    const { data: dispatch, error, isLoading } = useSWR<DispatchDetail>(
-        `/api/dispatch-batches/${id}`,
-        fetcher
-    );
+    // Convex reactive query - returns undefined while loading, null if not found
+    const dispatch = useQuery(api.queries.getDispatchBatchById, { batchId: id as any }) as DispatchDetail | undefined | null;
+    const isLoading = dispatch === undefined;
+
+    // Convex mutations
+    const completeMutation = useMutation(api.assignmentFunctions.complete);
+    const removeMutation = useMutation(api.assignmentFunctions.remove);
 
     const [completeModal, setCompleteModal] = useState<{ isOpen: boolean; jobId: string | null }>({
         isOpen: false,
@@ -68,12 +70,12 @@ export default function DispatchDetailPage({ params }: { params: Promise<{ id: s
     const handleMarkCompleteConfirm = async () => {
         if (!completeModal.jobId) return;
         try {
-            await fetchJSON('/api/schedule/complete', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ jobId: completeModal.jobId }),
-            });
-            mutate(`/api/dispatch-batches/${id}`);
+            // Find the assignment ID for this job from the dispatch data
+            const job = dispatch?.jobs?.find(j => j.id === completeModal.jobId);
+            const assignmentId = (job as any)?.assignmentId;
+            if (assignmentId) {
+                await completeMutation({ id: assignmentId });
+            }
         } catch (error) {
             console.error('Failed to mark job complete', error);
         }
@@ -82,10 +84,12 @@ export default function DispatchDetailPage({ params }: { params: Promise<{ id: s
     const handleDeleteConfirm = async () => {
         if (!deleteModal.jobId) return;
         try {
-            await fetchJSON(`/api/assignments/${deleteModal.jobId}`, {
-                method: 'DELETE',
-            });
-            mutate(`/api/dispatch-batches/${id}`);
+            // Find the assignment ID for this job from the dispatch data
+            const job = dispatch?.jobs?.find(j => j.id === deleteModal.jobId);
+            const assignmentId = (job as any)?.assignmentId;
+            if (assignmentId) {
+                await removeMutation({ id: assignmentId });
+            }
             toast.success('Job removed from dispatch');
         } catch (error) {
             console.error('Failed to delete assignment', error);
@@ -106,7 +110,7 @@ export default function DispatchDetailPage({ params }: { params: Promise<{ id: s
         );
     }
 
-    if (error || !dispatch) {
+    if (!dispatch) {
         return (
             <>
                 <PageHeader

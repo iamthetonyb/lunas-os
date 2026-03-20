@@ -3,29 +3,9 @@
 import { PageHeader } from '@/components/page-header';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
-import useSWR from 'swr';
-import { fetchJSON } from '@/lib/utils/fetch-json';
-
-type IntakeDetail = {
-  id: string;
-  builderName: string;
-  communityName: string;
-  lot: string;
-  address: string | null;
-  modelPlanName: string | null;
-  dueDate: string;
-  createdAt: string;
-  notes: string | null;
-  poNumber: string | null;
-  contact: string | null;
-  requestedBy: string | null;
-  services: {
-    name: string | null;
-    walkTime: string | null;
-  }[];
-};
-
-const fetcher = (url: string) => fetchJSON<IntakeDetail>(url);
+import { useQuery } from 'convex/react';
+import { api } from '@/convex/_generated/api';
+import { Id } from '@/convex/_generated/dataModel';
 
 // Helper: Parse ISO date string as local date (avoids UTC midnight -> previous day issue)
 const formatDateLocal = (dateStr: string | null | undefined): string => {
@@ -48,10 +28,13 @@ function DetailItem({ label, value }: { label: string; value: string | null | un
 export default function IntakeDetailPage() {
   const params = useParams();
   const id = typeof params.id === 'string' ? params.id : '';
-  const { data: intake, isLoading, error } = useSWR(
-    id ? `/api/job-requests/${id}` : null,
-    fetcher
+  const intake = useQuery(
+    api.jobRequests.getById,
+    id ? { id: id as Id<"jobRequests"> } : 'skip'
   );
+
+  const isLoading = intake === undefined;
+  const error = false; // Convex throws on error; undefined means loading
 
   const pageTitle = intake ? `Intake: ${intake.communityName} Lot ${intake.lot}` : 'Intake Details';
 
@@ -107,7 +90,7 @@ export default function IntakeDetailPage() {
                   />
                   <DetailItem label="PO Number" value={intake.poNumber} />
                   <DetailItem label="Requested By" value={intake.requestedBy} />
-                  <DetailItem label="Contact" value={intake.contact} />
+                  <DetailItem label="Contact" value={[intake.contactPhone, intake.contactEmail].filter(Boolean).join(' / ') || null} />
                 </div>
               </div>
 
@@ -116,7 +99,7 @@ export default function IntakeDetailPage() {
                   Services
                 </h3>
                 <ul className="space-y-2">
-                  {intake.services.map((service, index) => (
+                  {intake.services.map((service: any, index: number) => (
                     <li key={index} className="flex items-center justify-between rounded-lg bg-gray-50 px-4 py-2">
                       <span className="font-medium text-gray-800">{service.name}</span>
                       {service.walkTime && (

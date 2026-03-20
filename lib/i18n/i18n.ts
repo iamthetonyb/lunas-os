@@ -1,45 +1,31 @@
 import i18n from 'i18next';
 import { initReactI18next } from 'react-i18next';
-import Backend from 'i18next-http-backend';
-import LanguageDetector from 'i18next-browser-languagedetector';
+import resourcesToBackend from 'i18next-resources-to-backend';
 
-if (typeof window !== 'undefined') {
+// Server-side i18n — used by Server Components if needed.
+// Uses the same file-based approach as client.ts.
+
+if (!i18n.isInitialized) {
   i18n
-    .use(Backend)
-    .use(LanguageDetector)
+    .use(
+      resourcesToBackend(
+        (language: string, namespace: string) =>
+          import(`../../public/locales/${language}/${namespace}.json`)
+      )
+    )
     .use(initReactI18next)
     .init({
       fallbackLng: 'en',
-      supportedLngs: ['en', 'en-US', 'es'],
-      debug: true,
-      interpolation: {
-        escapeValue: false,
-      },
-      backend: {
-        loadPath: '/locales/{{lng}}/{{ns}}.json',
-      },
-    });
-} else {
-  // Server-side initialization (no backend, prevents build hang)
-  i18n
-    .use(initReactI18next)
-    .init({
-      fallbackLng: 'en',
-      supportedLngs: ['en', 'en-US', 'es'],
+      supportedLngs: ['en', 'es'],
+      defaultNS: 'translation',
+      ns: ['translation'],
       debug: false,
-      resources: {
-        en: { translation: {} },
-        'en-US': { translation: {} },
-        es: { translation: {} },
-      },
       interpolation: {
         escapeValue: false,
       },
       react: {
         useSuspense: false,
       },
-      // Explicitly disable backend
-      backend: undefined,
     });
 }
 

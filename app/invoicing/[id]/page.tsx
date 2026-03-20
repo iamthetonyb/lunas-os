@@ -2,33 +2,27 @@
 
 import { PageHeader } from '@/components/page-header';
 import { useParams } from 'next/navigation';
-import useSWR from 'swr';
-import { fetchJSON } from '@/lib/utils/fetch-json';
+import { useQuery } from 'convex/react';
+import { api } from '@/convex/_generated/api';
+import { Id } from '@/convex/_generated/dataModel';
 
 type InvoiceLine = {
     id: string;
-    description: string | null;
-    qty: string | null;
-    amount: string | null;
-};
-
-type Invoice = {
-    id: string;
-    invoiceNumber: string | null;
-    status: string | null;
-    totalAmount: string | null;
-    createdAt: string | null;
-    lines: InvoiceLine[];
+    description?: string;
+    qty?: number;
+    amount?: number;
 };
 
 export default function InvoiceDetailPage() {
     const params = useParams();
     const id = params?.id as string;
 
-    const { data: invoice, isLoading, error } = useSWR<Invoice>(
-        id ? `/api/invoices/${id}` : null,
-        fetchJSON
+    const invoice = useQuery(
+        api.invoicing.getById,
+        id ? { id: id as Id<"invoices"> } : 'skip'
     );
+
+    const isLoading = invoice === undefined;
 
     if (isLoading) {
         return (
@@ -41,14 +35,14 @@ export default function InvoiceDetailPage() {
         );
     }
 
-    if (error) {
+    if (!invoice) {
         return (
             <>
                 <PageHeader title="Invoice Details" description="Error loading invoice" />
                 <main className="px-6 py-6">
                     <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4">
                         <p className="text-red-600 dark:text-red-400">
-                            {error?.message || 'Failed to load invoice'}
+                            Failed to load invoice
                         </p>
                     </div>
                 </main>
@@ -59,7 +53,7 @@ export default function InvoiceDetailPage() {
     return (
         <>
             <PageHeader
-                title={`Invoice ${invoice?.invoiceNumber || id}`}
+                title={`Invoice ${invoice?.poNumber || id}`}
                 description="Invoice details and line items"
             />
             <main className="px-6 py-6">
@@ -68,7 +62,7 @@ export default function InvoiceDetailPage() {
                         <div>
                             <p className="text-sm text-gray-500 dark:text-gray-400">Invoice Number</p>
                             <p className="font-semibold text-gray-900 dark:text-white">
-                                {invoice?.invoiceNumber || '—'}
+                                {invoice?.poNumber || '\u2014'}
                             </p>
                         </div>
                         <div>
@@ -80,13 +74,13 @@ export default function InvoiceDetailPage() {
                         <div>
                             <p className="text-sm text-gray-500 dark:text-gray-400">Total Amount</p>
                             <p className="font-semibold text-gray-900 dark:text-white">
-                                ${invoice?.totalAmount || '0.00'}
+                                ${invoice?.total || '0.00'}
                             </p>
                         </div>
                         <div>
                             <p className="text-sm text-gray-500 dark:text-gray-400">Created</p>
                             <p className="font-semibold text-gray-900 dark:text-white">
-                                {invoice?.createdAt ? new Date(invoice.createdAt).toLocaleDateString() : '—'}
+                                {invoice?.createdAt ? new Date(invoice.createdAt).toLocaleDateString() : '\u2014'}
                             </p>
                         </div>
                     </div>
@@ -113,7 +107,7 @@ export default function InvoiceDetailPage() {
                                 {invoice?.lines?.map((line: InvoiceLine) => (
                                     <tr key={line.id}>
                                         <td className="px-4 py-2 text-sm text-gray-900 dark:text-white">
-                                            {line.description || '—'}
+                                            {line.description || '\u2014'}
                                         </td>
                                         <td className="px-4 py-2 text-sm text-gray-900 dark:text-white">
                                             {line.qty || 1}

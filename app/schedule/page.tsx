@@ -3,18 +3,15 @@
 import { PageHeader } from '@/components/page-header';
 import Link from 'next/link';
 import { useEffect, useMemo, useState, Fragment } from 'react';
-import useSWR, { mutate } from 'swr';
+import { useQuery, useMutation } from 'convex/react';
+import { api } from '@/convex/_generated/api';
 import { useSession } from 'next-auth/react';
 import { ScheduleKanban } from '@/components/schedule-kanban';
-import { fetchJSON } from '@/lib/utils/fetch-json';
 import { getFriendlyName } from '@/lib/utils/community-display';
 import { Dialog, Transition } from '@headlessui/react';
 import { ConfirmationModal } from '@/components/ui/confirmation-modal';
-import { useOrgRealtime } from '@/lib/realtime/use-org-realtime';
 import { toast } from 'sonner';
 import { JobCard } from '@/components/schedule/job-card';
-
-const fetcher = <T,>(url: string) => fetchJSON<T>(url);
 
 type ForemanConfig = {
   id: string;
@@ -159,8 +156,6 @@ function resolveForemanForJob(job: UpcomingJob): ForemanConfig | typeof UNASSIGN
 
 export default function SchedulePage() {
   const { data: session } = useSession();
-  const orgId = (session?.user as any)?.orgId;
-  useOrgRealtime(orgId);
 
   // Fix for Hydration Mismatch: Initialize with empty string or stable value, then update on mount
   const [date, setDate] = useState('');
@@ -195,6 +190,12 @@ export default function SchedulePage() {
     variant: 'primary',
   });
 
+  // Convex mutations
+  const assignForemanMutation = useMutation(api.mutations.assignForeman);
+  const dispatchJobMutation = useMutation(api.mutations.dispatchJob);
+  const rescheduleJobMutation = useMutation(api.mutations.rescheduleJob);
+  const completeJobMutation = useMutation(api.assignmentFunctions.complete);
+
   // Handle inline foreman selection - persist to database
   const handleForemanChange = async (jobId: string, foremanName: string) => {
     // Update local state immediately for responsive UI
@@ -210,13 +211,7 @@ export default function SchedulePage() {
 
     // Persist to database
     try {
-      await fetchJSON('/api/schedule/assign-foreman', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ jobId, foremanName: foremanName || null }),
-      });
-      // Refresh data to ensure consistency
-      mutateAssignments();
+      await assignForemanMutation({ jobId: jobId as any, foremanName: foremanName || undefined });
     } catch (error) {
       console.error('Failed to save foreman assignment:', error);
     }
@@ -225,11 +220,6 @@ export default function SchedulePage() {
   // Check if current user is a contractor (foreman/crew)
   const isContractor = session?.user?.role === 'FOREMAN' || session?.user?.role === 'CREW';
 
-  const { data: assignments, mutate: mutateAssignments } = useSWR<DraftAssignment[]>(
-    '/api/assignments?status=DRAFT',
-    fetcher
-  );
-  const { data: crews } = useSWR<any[]>('/api/crews', fetcher);
   const scheduleRange = useMemo(() => {
     // Guard: If date is empty (initial render before useEffect), use today as fallback
     if (!date) {
@@ -245,15 +235,8 @@ export default function SchedulePage() {
     };
   }, [date]);
 
-  const { data: upcomingJobs = [], mutate: mutateUpcomingJobs } = useSWR<UpcomingJob[]>(
-    date ? `/api/schedule/blue-book?start=${scheduleRange.start}&end=${scheduleRange.end}` : null,
-    fetcher,
-    {
-      revalidateOnFocus: true,
-      revalidateOnReconnect: true,
-      dedupingInterval: 2000, // Cache for 2 seconds to prevent rapid re-fetches
-    }
-  );
+  // Convex queries - reactive, no need for SWR polling or cache invalidation
+  const upcomingJobs = useQuery(api.queries.getScheduleJobs, date ? { startDate: scheduleRange.start, endDate: scheduleRange.end } : 'skip') ?? [];
 
   // Initialize foreman map from saved data when jobs load
   useEffect(() => {
@@ -274,19 +257,19 @@ export default function SchedulePage() {
   const decoratedJobs = useMemo<DecoratedJob[]>(
     () =>
       (upcomingJobs ?? []).map((job) => {
-        const foreman = resolveForemanForJob(job);
+        const foreman = resolveForemanForJob(job as any);
         const serviceDisplay = job.serviceName
-          ? job.accountCategoryCode
-            ? `${job.accountCategoryCode} – ${job.serviceName}`
+          ? (job as any).accountCategoryCode
+            ? `${(job as any).accountCategoryCode} – ${job.serviceName}`
             : job.serviceName
-          : job.contractorName ?? '—';
+          : (job as any).contractorName ?? '—';
 
         return {
           ...job,
           foremanId: foreman.id,
           foremanName: foreman.name,
           serviceDisplay,
-        };
+        } as DecoratedJob;
       }),
     [upcomingJobs]
   );
@@ -445,17 +428,12 @@ export default function SchedulePage() {
     // Get foreman from the inline table selector
     const foremanName = selectedForemenMap.get(dispatchModal.job.id) || 'Unassigned';
     try {
-      await fetchJSON('/api/schedule/dispatch', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          jobId: dispatchModal.job.id,
-          foremanName: foremanName,
-          crewName: dispatchModal.selectedCrew,
-          serviceDate: dispatchModal.job.startDate, // Pass the job's service date
-        }),
+      await dispatchJobMutation({
+        jobId: dispatchModal.job.id as any,
+        foremanName,
+        crewName: dispatchModal.selectedCrew,
+        serviceDate: dispatchModal.job.startDate || '',
       });
-      mutateAssignments();
       toast.success(`Job dispatched to ${dispatchModal.selectedCrew}!`);
 
       // Trigger optimistic update callback if present
@@ -486,14 +464,11 @@ export default function SchedulePage() {
   const handleRescheduleConfirm = async () => {
     if (!rescheduleModal.job || !rescheduleModal.selectedDate) return;
     try {
-      await fetchJSON('/api/schedule/reschedule', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ jobId: rescheduleModal.job.id, newDate: rescheduleModal.selectedDate }),
+      await rescheduleJobMutation({
+        jobId: rescheduleModal.job.id as any,
+        newDate: rescheduleModal.selectedDate,
       });
       setRescheduledJobs((prev) => new Map(prev).set(rescheduleModal.job!.id, rescheduleModal.selectedDate));
-      mutateAssignments();
-      mutate(`/api/schedule/blue-book?start=${scheduleRange.start}&end=${scheduleRange.end}`);
       closeRescheduleModal();
     } catch (error) {
       console.error('Failed to reschedule job', error);
@@ -513,13 +488,7 @@ export default function SchedulePage() {
       variant: isComplete ? 'primary' : 'primary', // Can use danger/warning if needed
       onConfirm: async () => {
         try {
-          await fetchJSON('/api/schedule/complete', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ jobId }),
-          });
-          mutateAssignments();
-          mutate(`/api/schedule/blue-book?start=${scheduleRange.start}&end=${scheduleRange.end}`);
+          await completeJobMutation({ id: jobId as any });
         } catch (error) {
           console.error('Failed to toggle job completion', error);
           alert('Failed to update job status.');
@@ -536,10 +505,9 @@ export default function SchedulePage() {
       variant: 'primary',
       onConfirm: async () => {
         try {
-          await fetchJSON(`/api/schedule/auto-draft?date=${date}`, {
-            method: 'POST',
-          });
-          mutateAssignments();
+          // Auto-draft: assigns foremen to jobs based on rules
+          // This feature will be re-implemented as a Convex action
+          toast.info('Auto-draft is being migrated. Use manual assignment for now.');
         } catch (error) {
           console.error('Failed to auto-draft schedule', error);
         }
@@ -548,16 +516,10 @@ export default function SchedulePage() {
   };
 
   const handleApproveAndSend = async () => {
-    const assignmentIds = (assignments ?? []).map((assignment) => assignment.id);
     try {
-      await fetchJSON('/api/schedule/approve-send', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ assignmentIds }),
-      });
-      mutateAssignments();
+      // Approve-send: batch-approves all draft assignments
+      // This feature will be re-implemented as a Convex action
+      toast.info('Approve & Send is being migrated. Use individual dispatch for now.');
     } catch (error) {
       console.error('Failed to approve schedule', error);
       alert('Failed to approve assignments.');

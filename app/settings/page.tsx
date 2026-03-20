@@ -4,8 +4,9 @@ export const dynamic = 'force-dynamic';
 
 import { PageHeader } from '@/components/page-header';
 import { useState, useEffect } from 'react';
-import useSWR, { mutate } from 'swr';
-import { fetchJSON } from '@/lib/utils/fetch-json';
+import { useQuery, useMutation } from 'convex/react';
+import { api } from '@/convex/_generated/api';
+import { Id } from '@/convex/_generated/dataModel';
 import { useTranslation } from 'react-i18next';
 
 type UserProfile = {
@@ -19,7 +20,16 @@ type UserProfile = {
 
 export default function SettingsPage() {
   const { i18n } = useTranslation();
-  const { data: profile, isLoading } = useSWR<UserProfile>('/api/users/profile', (url: string) => fetchJSON<UserProfile>(url));
+  // TODO: Replace this with the actual logged-in user ID from your auth context
+  // For now, this uses a placeholder. You'll need to wire up the real userId.
+  const [userId, setUserId] = useState<string | null>(null);
+  const profile = useQuery(
+    api.userFunctions.getProfile,
+    userId ? { userId: userId as Id<"users"> } : "skip"
+  ) as UserProfile | undefined;
+  const isLoading = userId ? profile === undefined : false;
+  const updateProfile = useMutation(api.userFunctions.updateProfile);
+
   const [busy, setBusy] = useState(false);
   const [success, setSuccess] = useState('');
   const [error, setError] = useState('');
@@ -47,18 +57,19 @@ export default function SettingsPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!userId) return;
     setBusy(true);
     setSuccess('');
     setError('');
 
     try {
-      await fetchJSON('/api/users/profile', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData),
+      await updateProfile({
+        userId: userId as Id<"users">,
+        name: formData.name,
+        preferredLang: formData.preferredLang,
+        preferredContactMethod: formData.preferredContactMethod,
       });
       setSuccess('Settings saved successfully');
-      await mutate('/api/users/profile');
 
       // Update language immediately
       const newLang = formData.preferredLang === 'ES_MX' ? 'es' : 'en';

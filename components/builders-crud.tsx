@@ -1,18 +1,26 @@
 'use client';
 
 import { useState } from 'react';
-import useSWR, { mutate } from 'swr';
-import { fetchJSON } from '@/lib/utils/fetch-json';
+import { useQuery, useMutation } from 'convex/react';
+import { api } from '@/convex/_generated/api';
+import { Id } from '@/convex/_generated/dataModel';
 import { toast } from 'sonner';
 
-type Builder = { id: string; name: string };
-type Community = { id: string; name: string; builderId?: string | null };
-
-const fetcher = <T,>(url: string) => fetchJSON<T>(url);
+type Builder = { _id: Id<"builders">; name: string };
+type Community = { _id: Id<"communities">; name: string; builderId?: Id<"builders"> | null };
 
 export function BuildersCrud() {
-    const { data: builders = [], isLoading: loadingBuilders } = useSWR<Builder[]>('/api/builders', fetcher);
-    const { data: communities = [], isLoading: loadingCommunities } = useSWR<Community[]>('/api/communities', fetcher);
+    const builders = useQuery(api.queries.getBuilders) ?? [];
+    const communities = useQuery(api.queries.getCommunities) ?? [];
+    const loadingBuilders = builders === undefined;
+    const loadingCommunities = communities === undefined;
+
+    const createBuilder = useMutation(api.mutations.createBuilder);
+    const updateBuilder = useMutation(api.mutations.updateBuilder);
+    const deleteBuilder = useMutation(api.mutations.deleteBuilder);
+    const createCommunity = useMutation(api.mutations.createCommunity);
+    const updateCommunity = useMutation(api.mutations.updateCommunity);
+    const deleteCommunity = useMutation(api.mutations.deleteCommunity);
 
     const [selectedBuilderId, setSelectedBuilderId] = useState<string | null>(null);
     const [newBuilderName, setNewBuilderName] = useState('');
@@ -32,13 +40,8 @@ export function BuildersCrud() {
         if (!newBuilderName.trim()) return;
         setIsAddingBuilder(true);
         try {
-            await fetchJSON('/api/builders', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ name: newBuilderName.trim() }),
-            });
+            await createBuilder({ name: newBuilderName.trim() });
             setNewBuilderName('');
-            mutate('/api/builders');
             toast.success(`Builder "${newBuilderName}" added!`);
         } catch (error) {
             toast.error('Failed to add builder');
@@ -50,13 +53,8 @@ export function BuildersCrud() {
     const handleUpdateBuilder = async (id: string) => {
         if (!editingBuilderName.trim()) return;
         try {
-            await fetchJSON(`/api/builders/${id}`, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ name: editingBuilderName.trim() }),
-            });
+            await updateBuilder({ id: id as Id<"builders">, name: editingBuilderName.trim() });
             setEditingBuilderId(null);
-            mutate('/api/builders');
             toast.success('Builder updated!');
         } catch (error) {
             toast.error('Failed to update builder');
@@ -66,8 +64,7 @@ export function BuildersCrud() {
     const handleDeleteBuilder = async (id: string, name: string) => {
         if (!confirm(`Are you sure you want to delete "${name}"? This cannot be undone.`)) return;
         try {
-            await fetchJSON(`/api/builders/${id}`, { method: 'DELETE' });
-            mutate('/api/builders');
+            await deleteBuilder({ id: id as Id<"builders"> });
             if (selectedBuilderId === id) setSelectedBuilderId(null);
             toast.success(`Builder "${name}" deleted!`);
         } catch (error) {
@@ -79,17 +76,11 @@ export function BuildersCrud() {
         if (!newCommunityName.trim()) return;
         setIsAddingCommunity(true);
         try {
-            await fetchJSON('/api/communities', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    name: newCommunityName.trim(),
-                    builderId: selectedBuilderId,
-                }),
+            await createCommunity({
+                name: newCommunityName.trim(),
+                builderId: selectedBuilderId ? selectedBuilderId as Id<"builders"> : undefined,
             });
             setNewCommunityName('');
-            // Force refresh all community caches (for Blue Book and Intake dropdowns)
-            await mutate((key) => typeof key === 'string' && key.includes('/api/communities'));
             toast.success(`Community "${newCommunityName}" added!`);
         } catch (error) {
             toast.error('Failed to add community');
@@ -101,13 +92,8 @@ export function BuildersCrud() {
     const handleUpdateCommunity = async (id: string) => {
         if (!editingCommunityName.trim()) return;
         try {
-            await fetchJSON(`/api/communities/${id}`, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ name: editingCommunityName.trim() }),
-            });
+            await updateCommunity({ id: id as Id<"communities">, name: editingCommunityName.trim() });
             setEditingCommunityId(null);
-            mutate('/api/communities');
             toast.success('Community updated!');
         } catch (error) {
             toast.error('Failed to update community');
@@ -117,8 +103,7 @@ export function BuildersCrud() {
     const handleDeleteCommunity = async (id: string, name: string) => {
         if (!confirm(`Are you sure you want to delete "${name}"? This cannot be undone.`)) return;
         try {
-            await fetchJSON(`/api/communities/${id}`, { method: 'DELETE' });
-            mutate('/api/communities');
+            await deleteCommunity({ id: id as Id<"communities"> });
             toast.success(`Community "${name}" deleted!`);
         } catch (error) {
             toast.error('Failed to delete community. It may have associated jobs.');
@@ -160,42 +145,42 @@ export function BuildersCrud() {
                     <div className="space-y-2 max-h-[400px] overflow-y-auto">
                         {builders.map((builder) => (
                             <div
-                                key={builder.id}
-                                className={`flex items-center justify-between px-3 py-2 rounded-lg text-sm transition ${selectedBuilderId === builder.id
+                                key={builder._id}
+                                className={`flex items-center justify-between px-3 py-2 rounded-lg text-sm transition ${selectedBuilderId === builder._id
                                     ? 'bg-blue-100 dark:bg-blue-900'
                                     : 'bg-white dark:bg-slate-800 hover:bg-gray-100 dark:hover:bg-slate-700'
                                     }`}
                             >
-                                {editingBuilderId === builder.id ? (
+                                {editingBuilderId === builder._id ? (
                                     <div className="flex gap-2 flex-1">
                                         <input
                                             type="text"
                                             value={editingBuilderName}
                                             onChange={(e) => setEditingBuilderName(e.target.value)}
                                             className="flex-1 px-2 py-1 border rounded text-sm"
-                                            onKeyDown={(e) => e.key === 'Enter' && handleUpdateBuilder(builder.id)}
+                                            onKeyDown={(e) => e.key === 'Enter' && handleUpdateBuilder(builder._id)}
                                             autoFocus
                                         />
-                                        <button onClick={() => handleUpdateBuilder(builder.id)} className="text-green-600 text-xs">Save</button>
+                                        <button onClick={() => handleUpdateBuilder(builder._id)} className="text-green-600 text-xs">Save</button>
                                         <button onClick={() => setEditingBuilderId(null)} className="text-gray-500 text-xs">Cancel</button>
                                     </div>
                                 ) : (
                                     <>
                                         <button
-                                            onClick={() => setSelectedBuilderId(builder.id === selectedBuilderId ? null : builder.id)}
+                                            onClick={() => setSelectedBuilderId(builder._id === selectedBuilderId ? null : builder._id)}
                                             className="text-left flex-1 text-gray-700 dark:text-gray-300"
                                         >
                                             {builder.name}
                                         </button>
                                         <div className="flex gap-1">
                                             <button
-                                                onClick={() => { setEditingBuilderId(builder.id); setEditingBuilderName(builder.name); }}
+                                                onClick={() => { setEditingBuilderId(builder._id); setEditingBuilderName(builder.name); }}
                                                 className="px-2 py-1 text-xs text-blue-600 hover:bg-blue-50 rounded"
                                             >
                                                 Edit
                                             </button>
                                             <button
-                                                onClick={() => handleDeleteBuilder(builder.id, builder.name)}
+                                                onClick={() => handleDeleteBuilder(builder._id, builder.name)}
                                                 className="px-2 py-1 text-xs text-red-600 hover:bg-red-50 rounded"
                                             >
                                                 Delete
@@ -216,7 +201,7 @@ export function BuildersCrud() {
                         🏘️ Communities
                         {selectedBuilderId && (
                             <span className="text-sm font-normal text-blue-600 ml-2">
-                                (for {builders.find(b => b.id === selectedBuilderId)?.name})
+                                (for {builders.find(b => b._id === selectedBuilderId)?.name})
                             </span>
                         )}
                     </h4>
@@ -253,20 +238,20 @@ export function BuildersCrud() {
                     <div className="space-y-2 max-h-[400px] overflow-y-auto">
                         {filteredCommunities.map((community) => (
                             <div
-                                key={community.id}
+                                key={community._id}
                                 className="flex items-center justify-between px-3 py-2 bg-white dark:bg-slate-800 rounded-lg text-sm"
                             >
-                                {editingCommunityId === community.id ? (
+                                {editingCommunityId === community._id ? (
                                     <div className="flex gap-2 flex-1">
                                         <input
                                             type="text"
                                             value={editingCommunityName}
                                             onChange={(e) => setEditingCommunityName(e.target.value)}
                                             className="flex-1 px-2 py-1 border rounded text-sm"
-                                            onKeyDown={(e) => e.key === 'Enter' && handleUpdateCommunity(community.id)}
+                                            onKeyDown={(e) => e.key === 'Enter' && handleUpdateCommunity(community._id)}
                                             autoFocus
                                         />
-                                        <button onClick={() => handleUpdateCommunity(community.id)} className="text-green-600 text-xs">Save</button>
+                                        <button onClick={() => handleUpdateCommunity(community._id)} className="text-green-600 text-xs">Save</button>
                                         <button onClick={() => setEditingCommunityId(null)} className="text-gray-500 text-xs">Cancel</button>
                                     </div>
                                 ) : (
@@ -274,18 +259,18 @@ export function BuildersCrud() {
                                         <span className="text-gray-700 dark:text-gray-300 flex-1">{community.name}</span>
                                         {!selectedBuilderId && community.builderId && (
                                             <span className="text-xs text-gray-500 mr-2">
-                                                {builders.find(b => b.id === community.builderId)?.name}
+                                                {builders.find(b => b._id === community.builderId)?.name}
                                             </span>
                                         )}
                                         <div className="flex gap-1">
                                             <button
-                                                onClick={() => { setEditingCommunityId(community.id); setEditingCommunityName(community.name); }}
+                                                onClick={() => { setEditingCommunityId(community._id); setEditingCommunityName(community.name); }}
                                                 className="px-2 py-1 text-xs text-blue-600 hover:bg-blue-50 rounded"
                                             >
                                                 Edit
                                             </button>
                                             <button
-                                                onClick={() => handleDeleteCommunity(community.id, community.name)}
+                                                onClick={() => handleDeleteCommunity(community._id, community.name)}
                                                 className="px-2 py-1 text-xs text-red-600 hover:bg-red-50 rounded"
                                             >
                                                 Delete

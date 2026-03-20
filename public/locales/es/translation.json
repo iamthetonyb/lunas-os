@@ -4,11 +4,30 @@
         "schedule": "Horario",
         "dispatch": "Despacho",
         "intake": "Ingesta",
+        "extraWork": "Trabajo Extra",
         "blueBook": "Libro Azul",
         "invoicing": "Facturación",
         "settings": "Configuración",
         "import": "Importar",
-        "logout": "Cerrar Sesión"
+        "contracts": "Contratos",
+        "users": "Usuarios",
+        "logout": "Cerrar Sesión",
+        "darkMode": "Modo Oscuro",
+        "lightMode": "Modo Claro"
+    },
+    "login": {
+        "title": "Lunas OS",
+        "subtitle": "Inicia sesión en tu cuenta",
+        "emailLabel": "Correo Electrónico",
+        "emailPlaceholder": "admin@lunas.local",
+        "passwordLabel": "Contraseña",
+        "passwordPlaceholder": "Ingresa tu contraseña",
+        "signIn": "Iniciar Sesión",
+        "signingIn": "Iniciando sesión...",
+        "forgotPassword": "¿Olvidaste tu contraseña?",
+        "orContinueWith": "O continuar con",
+        "invalidCredentials": "Correo o contraseña inválidos. Verifica tus credenciales e inténtalo de nuevo.",
+        "error": "Ocurrió un error. Inténtalo de nuevo."
     },
     "common": {
         "add": "Agregar",
@@ -21,7 +40,15 @@
         "status": "Estado",
         "actions": "Acciones",
         "date": "Fecha",
-        "all": "Todos"
+        "all": "Todos",
+        "submit": "Enviar",
+        "email": "Correo Electrónico",
+        "password": "Contraseña",
+        "signIn": "Iniciar Sesión",
+        "total": "Total",
+        "complete": "Completo",
+        "notComplete": "No Completo",
+        "address": "Dirección"
     },
     "intake": {
         "title": "Formulario de Ingesta",
@@ -37,11 +64,29 @@
         "requestedBy": "Solicitado Por",
         "contact": "Contacto"
     },
+    "dispatch": {
+        "approveAndSend": "Aprobar y Enviar",
+        "runSheet": "Hoja de Ruta",
+        "fieldTicket": "Boleto de Campo"
+    },
+    "schedule": {
+        "windows": "Ventanas",
+        "tubs": "Bañeras",
+        "walkTime": "Tiempo de Caminata",
+        "service": "Servicio",
+        "signatureForeman": "Firma del Capataz",
+        "signatureCustomer": "Firma del Cliente",
+        "extras": "Extras"
+    },
     "status": {
         "pending": "Pendiente",
         "scheduled": "Programado",
         "dispatched": "Despachado",
         "completed": "Completado",
         "cancelled": "Cancelado"
+    },
+    "invoicing": {
+        "invoice": "Factura",
+        "blueBook": "Libro Azul"
     }
 }

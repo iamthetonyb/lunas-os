@@ -108,6 +108,7 @@ export const createJobRequest = mutation({
     args: {
         builderId: v.optional(v.id("builders")),
         communityId: v.optional(v.id("communities")),
+        modelPlanId: v.optional(v.id("modelPlans")),
         lot: v.optional(v.string()),
         address: v.optional(v.string()),
         dueDate: v.optional(v.string()),
@@ -127,6 +128,7 @@ export const createJobRequest = mutation({
         const jobRequestId = await ctx.db.insert("jobRequests", {
             builderId: args.builderId,
             communityId: args.communityId,
+            modelPlanId: args.modelPlanId,
             lot: args.lot,
             address: args.address,
             dueDate: args.dueDate,
@@ -322,11 +324,168 @@ export const createService = mutation({
     args: {
         name: v.string(),
         description: v.optional(v.string()),
+        code: v.optional(v.string()),
+        category: v.optional(v.string()),
+        unitKind: v.optional(v.string()),
     },
     handler: async (ctx, args) => {
         const id = await ctx.db.insert("services", {
             name: args.name,
             description: args.description,
+            code: args.code,
+            category: args.category,
+            unitKind: args.unitKind,
+            active: true,
+            createdAt: Date.now(),
+        });
+        return { success: true, id };
+    },
+});
+
+// ── Services CRUD ─────────────────────────────────────────────────────
+
+export const updateService = mutation({
+    args: {
+        id: v.id("services"),
+        name: v.optional(v.string()),
+        description: v.optional(v.string()),
+        code: v.optional(v.string()),
+        category: v.optional(v.string()),
+        unitKind: v.optional(v.string()),
+    },
+    handler: async (ctx, args) => {
+        const { id, ...updates } = args;
+        const filtered: Record<string, any> = {};
+        for (const [k, val] of Object.entries(updates)) {
+            if (val !== undefined) filtered[k] = val;
+        }
+        await ctx.db.patch(id, filtered);
+        return { success: true };
+    },
+});
+
+export const deleteService = mutation({
+    args: { id: v.id("services") },
+    handler: async (ctx, args) => {
+        await ctx.db.patch(args.id, { active: false });
+        return { success: true };
+    },
+});
+
+// ── Model Plans CRUD ──────────────────────────────────────────────────
+
+export const createModelPlan = mutation({
+    args: {
+        name: v.string(),
+        builderId: v.optional(v.id("builders")),
+        communityId: v.optional(v.id("communities")),
+        code: v.optional(v.string()),
+        sqft: v.optional(v.string()),
+    },
+    handler: async (ctx, args) => {
+        const id = await ctx.db.insert("modelPlans", {
+            ...args,
+            active: true,
+            createdAt: Date.now(),
+        });
+        return { success: true, id };
+    },
+});
+
+export const updateModelPlan = mutation({
+    args: {
+        id: v.id("modelPlans"),
+        name: v.optional(v.string()),
+        code: v.optional(v.string()),
+        sqft: v.optional(v.string()),
+        builderId: v.optional(v.id("builders")),
+    },
+    handler: async (ctx, args) => {
+        const { id, ...updates } = args;
+        const filtered: Record<string, any> = {};
+        for (const [k, val] of Object.entries(updates)) {
+            if (val !== undefined) filtered[k] = val;
+        }
+        await ctx.db.patch(id, filtered);
+        return { success: true };
+    },
+});
+
+export const deleteModelPlan = mutation({
+    args: { id: v.id("modelPlans") },
+    handler: async (ctx, args) => {
+        await ctx.db.patch(args.id, { active: false });
+        return { success: true };
+    },
+});
+
+// ── Builders CRUD ─────────────────────────────────────────────────────
+
+export const updateBuilder = mutation({
+    args: {
+        id: v.id("builders"),
+        name: v.optional(v.string()),
+    },
+    handler: async (ctx, args) => {
+        const { id, ...updates } = args;
+        const filtered: Record<string, any> = {};
+        for (const [k, val] of Object.entries(updates)) {
+            if (val !== undefined) filtered[k] = val;
+        }
+        await ctx.db.patch(id, filtered);
+        return { success: true };
+    },
+});
+
+export const deleteBuilder = mutation({
+    args: { id: v.id("builders") },
+    handler: async (ctx, args) => {
+        await ctx.db.patch(args.id, { active: false });
+        return { success: true };
+    },
+});
+
+// ── Communities CRUD ──────────────────────────────────────────────────
+
+export const updateCommunity = mutation({
+    args: {
+        id: v.id("communities"),
+        name: v.optional(v.string()),
+        builderId: v.optional(v.id("builders")),
+    },
+    handler: async (ctx, args) => {
+        const { id, ...updates } = args;
+        const filtered: Record<string, any> = {};
+        for (const [k, val] of Object.entries(updates)) {
+            if (val !== undefined) filtered[k] = val;
+        }
+        await ctx.db.patch(id, filtered);
+        return { success: true };
+    },
+});
+
+export const deleteCommunity = mutation({
+    args: { id: v.id("communities") },
+    handler: async (ctx, args) => {
+        await ctx.db.patch(args.id, { active: false });
+        return { success: true };
+    },
+});
+
+// Create crew
+export const createCrew = mutation({
+    args: {
+        name: v.string(),
+        foremanId: v.optional(v.id("users")),
+        skills: v.optional(v.array(v.string())),
+        capacityPerDay: v.optional(v.number()),
+    },
+    handler: async (ctx, args) => {
+        const id = await ctx.db.insert("crews", {
+            name: args.name,
+            foremanId: args.foremanId,
+            skills: args.skills,
+            capacityPerDay: args.capacityPerDay,
             createdAt: Date.now(),
         });
         return { success: true, id };

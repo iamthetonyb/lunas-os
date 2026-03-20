@@ -2,14 +2,11 @@
 
 import { PageHeader } from '@/components/page-header';
 import Link from 'next/link';
-import useSWR, { mutate } from 'swr';
-import { fetchJSON } from '@/lib/utils/fetch-json';
+import { useQuery, useMutation } from 'convex/react';
+import { api } from '@/convex/_generated/api';
 import { useSession } from 'next-auth/react';
 import { ConfirmationModal } from '@/components/ui/confirmation-modal';
-import { useState, useEffect } from 'react';
-import { useOrgRealtime } from '@/lib/realtime/use-org-realtime';
-
-const fetcher = <T,>(url: string) => fetchJSON<T>(url);
+import { useState, useEffect, useMemo } from 'react';
 
 type DispatchBatch = {
   id: string;
@@ -25,10 +22,6 @@ export default function DispatchPage() {
   const isContractor = session?.user?.role === 'FOREMAN' || session?.user?.role === 'CREW';
   const isAdmin = session?.user?.role === 'ADMIN';
   const currentUserName = session?.user?.name;
-  const orgId = (session?.user as any)?.orgId;
-
-  // Realtime updates
-  useOrgRealtime(orgId);
 
   // Date state for day-by-day filtering (hydration-safe)
   const [date, setDate] = useState('');
@@ -36,15 +29,17 @@ export default function DispatchPage() {
     setDate(new Date().toISOString().split('T')[0]);
   }, []);
 
-  // Fetch dispatch batches from API - filtered by date (guard for empty date)
-  const { data: batches = [], mutate: mutateBatches } = useSWR<DispatchBatch[]>(
-    date ? `/api/dispatch-batches?date=${date}` : null,
-    fetcher,
-    {
-      refreshInterval: 5000,
-      revalidateOnFocus: true,
-    }
-  );
+  // Convex reactive query - no refreshInterval needed, Convex is realtime
+  const allBatches = useQuery(api.queries.getDispatchBatches) ?? [];
+
+  // Convex mutation for deleting batches
+  const deleteBatchMutation = useMutation(api.mutations.deleteDispatchBatch);
+
+  // Filter batches by selected date (client-side since getDispatchBatches returns all)
+  const batches = useMemo(() => {
+    if (!date) return [];
+    return allBatches.filter((batch) => batch.serviceDate === date);
+  }, [allBatches, date]);
 
   const [deleteModal, setDeleteModal] = useState<{ isOpen: boolean; batchId: string | null }>({
     isOpen: false,
@@ -68,10 +63,7 @@ export default function DispatchPage() {
   const handleDeleteConfirm = async () => {
     if (!deleteModal.batchId) return;
     try {
-      await fetchJSON(`/api/dispatch-batches/${deleteModal.batchId}`, {
-        method: 'DELETE',
-      });
-      mutateBatches();
+      await deleteBatchMutation({ batchId: deleteModal.batchId as any });
     } catch (error) {
       console.error('Failed to delete batch', error);
     }
@@ -236,4 +228,3 @@ export default function DispatchPage() {
     </>
   );
 }
-

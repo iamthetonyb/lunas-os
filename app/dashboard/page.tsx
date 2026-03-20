@@ -2,83 +2,38 @@
 
 import { PageHeader } from '@/components/page-header';
 import Link from 'next/link';
-import useSWR from 'swr';
-import { fetchJSON } from '@/lib/utils/fetch-json';
+import { useQuery } from 'convex/react';
+import { api } from '@/convex/_generated/api';
+import { useSession } from 'next-auth/react';
 import { useState, useEffect } from 'react';
 
-const fetcher = async <T,>(url: string) => {
-  try {
-    return await fetchJSON<T>(url);
-  } catch (err) {
-    console.error('Fetch error:', err);
-    return [] as T;
-  }
-};
-
-type RecentIntake = {
-  id: string;
-  builderName: string;
-  communityName: string;
-  lot: string;
-  modelPlanName: string;
-  dueDate: string | null;
-  createdAt: string | null;
-  services: string[];
-};
-
 export default function DashboardPage() {
-  // Fetch current user membership to check role
-  const { data: membership } = useSWR<{ userId: string; orgId: string; role: string } | null>('/api/me', fetcher, {
-    revalidateOnFocus: false,
-    revalidateOnReconnect: false,
-    shouldRetryOnError: false,
-  });
+  const { data: session } = useSession();
+  const orgRole = (session?.user as any)?.orgRole;
 
-  // Only fetch blue book if user is admin or backoffice
-  const canAccessBlueBook = membership?.role === 'admin' || membership?.role === 'backoffice';
+  const canAccessBlueBook = orgRole === 'admin' || orgRole === 'backoffice';
 
-  const { data: blueBookEntries = [] } = useSWR<any[]>(
-    canAccessBlueBook ? '/api/blue-book' : null,
-    fetcher,
-    {
-      revalidateOnFocus: false,
-      revalidateOnReconnect: false,
-      shouldRetryOnError: false,
-    }
-  );
-  const { data: recentIntakes = [] } = useSWR<RecentIntake[]>(
-    '/api/job-requests/recent',
-    fetcher,
-    {
-      revalidateOnFocus: false,
-      revalidateOnReconnect: false,
-      shouldRetryOnError: false,
-    }
-  );
+  // Convex queries (reactive, auto-updating)
+  const blueBookData = useQuery(api.blueBook.list, canAccessBlueBook ? {} : 'skip');
+  const blueBookEntries = blueBookData?.entries ?? [];
 
-  // Fetch dispatch batches for scheduled count
-  const { data: dispatchBatches = [] } = useSWR<any[]>(
-    '/api/dispatch-batches',
-    fetcher,
-    {
-      revalidateOnFocus: false,
-      revalidateOnReconnect: false,
-      shouldRetryOnError: false,
-    }
-  );
+  const recentData = useQuery(api.jobRequests.getRecent, {});
+  const intakeList = recentData?.intakes ?? [];
 
-  // Fetch my upcoming jobs (for contractors)
-  const { data: myAssignments = [] } = useSWR<any[]>(
-    membership?.role === 'FOREMAN' || membership?.role === 'CREW' ? '/api/users/me/assignments' : null,
-    fetcher
-  );
+  const dispatchBatches = useQuery(api.queries.getDispatchBatches) ?? [];
+
+  // Contractor assignments
+  const isContractor = orgRole === 'contractor' || (session?.user as any)?.role === 'FOREMAN' || (session?.user as any)?.role === 'CREW';
+  const userName = session?.user?.name ?? '';
+  const myAssignments = useQuery(
+    api.userFunctions.getMyAssignments,
+    isContractor && userName ? { userName } : 'skip'
+  ) ?? [];
 
   // Calculate dynamic stats (hydration-safe today)
-  const intakeList = Array.isArray(recentIntakes) ? recentIntakes : (recentIntakes as any)?.data || [];
   const activeJobCount = blueBookEntries.filter((e: any) => e.status !== 'COMPLETE').length;
   const pendingIntakeCount = intakeList.length;
 
-  // Use stable empty string for server, will update on client
   const [today, setToday] = useState('');
   useEffect(() => {
     setToday(new Date().toISOString().split('T')[0]);
@@ -120,20 +75,18 @@ export default function DashboardPage() {
           ))}
         </div>
 
-        {/* Blue Book Snapshot and Recent Intakes - Layout depends on user role */}
+        {/* Blue Book Snapshot and Recent Intakes */}
         <div className={`grid grid-cols-1 ${canAccessBlueBook ? 'lg:grid-cols-3' : ''} gap-6 mb-8`}>
-          {/* Blue Book Info Card - Only for admin/backoffice */}
           {canAccessBlueBook && (
             <div className="lg:col-span-1">
-              {/* ... existing blue book card content ... */}
               <div className="bg-gradient-to-br from-blue-500 to-blue-700 dark:from-blue-600 dark:to-blue-900 rounded-lg shadow-lg p-6 text-white">
                 <div className="flex items-center justify-between mb-4">
-                  <h2 className="text-xl font-bold">📘 Blue Book</h2>
+                  <h2 className="text-xl font-bold">Blue Book</h2>
                   <Link
                     href="/blue-book"
                     className="text-sm bg-white/20 hover:bg-white/30 px-3 py-1 rounded-full transition-colors backdrop-blur-sm"
                   >
-                    View All →
+                    View All
                   </Link>
                 </div>
                 <div className="space-y-3">
@@ -158,17 +111,16 @@ export default function DashboardPage() {
             </div>
           )}
 
-          {/* My Upcoming Meetings - Only for Contractors */}
           {!canAccessBlueBook && (
             <div className="lg:col-span-1">
               <div className="bg-gradient-to-br from-indigo-500 to-indigo-700 dark:from-indigo-600 dark:to-indigo-900 rounded-lg shadow-lg p-6 text-white h-full">
                 <div className="flex items-center justify-between mb-4">
-                  <h2 className="text-xl font-bold">📅 My Upcoming Schedule</h2>
+                  <h2 className="text-xl font-bold">My Upcoming Schedule</h2>
                   <Link
                     href="/schedule"
                     className="text-sm bg-white/20 hover:bg-white/30 px-3 py-1 rounded-full transition-colors backdrop-blur-sm"
                   >
-                    View Full Schedule →
+                    View Full Schedule
                   </Link>
                 </div>
                 {myAssignments.length === 0 ? (
@@ -180,12 +132,12 @@ export default function DashboardPage() {
                     {myAssignments.slice(0, 5).map((job: any) => (
                       <div key={job.id} className="bg-white/10 backdrop-blur-sm rounded-lg p-4">
                         <div className="flex justify-between items-start mb-1">
-                          <p className="text-xs font-semibold uppercase tracking-wider opacity-80">{job.date ? new Date(job.date).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }) : 'TBD'}</p>
+                          <p className="text-xs font-semibold uppercase tracking-wider opacity-80">{job.serviceDate ? new Date(job.serviceDate).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }) : 'TBD'}</p>
                           <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${job.status === 'SENT' ? 'bg-green-400/30 text-green-100' : 'bg-white/20'}`}>{job.status}</span>
                         </div>
-                        <p className="text-sm font-bold truncate">{job.community} · Lot {job.lot}</p>
-                        <p className="text-xs opacity-90 truncate">{job.builder}</p>
-                        <p className="text-xs mt-1 italic opacity-80">{job.service}</p>
+                        <p className="text-sm font-bold truncate">{job.communityName} · Lot {job.lot}</p>
+                        <p className="text-xs opacity-90 truncate">{job.builderName}</p>
+                        <p className="text-xs mt-1 italic opacity-80">{job.serviceName}</p>
                       </div>
                     ))}
                     {myAssignments.length > 5 && (
@@ -201,7 +153,7 @@ export default function DashboardPage() {
           <div className={canAccessBlueBook ? 'lg:col-span-2' : ''}>
             <div className="bg-white dark:bg-slate-800 rounded-lg shadow-sm border border-gray-200 dark:border-slate-700 p-6">
               <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Recent Intakes</h2>
-              {recentIntakes.length === 0 ? (
+              {intakeList.length === 0 ? (
                 <p className="text-sm text-gray-500 dark:text-gray-400">
                   No recent intake submissions yet. Complete the intake form to see them here.
                 </p>
@@ -219,7 +171,7 @@ export default function DashboardPage() {
                           </p>
                           <p className="text-xs text-gray-500 dark:text-gray-400">
                             Lot {intake.lot} &middot;{' '}
-                            {intake.services.length ? intake.services.join(', ') : 'Services pending'}
+                            {intake.services?.length ? intake.services.map((s: any) => s.serviceName ?? s).join(', ') : 'Services pending'}
                           </p>
                         </div>
                         <span className="text-xs font-medium text-blue-600 dark:text-blue-300 bg-blue-50 dark:bg-blue-900/30 px-2 py-1 rounded-full">
@@ -248,7 +200,7 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {/* Blue Book Recent Entries Table - Only for admin/backoffice */}
+        {/* Blue Book Recent Entries Table */}
         {canAccessBlueBook && (
           <div>
             <div className="flex items-center justify-between mb-4">
@@ -257,7 +209,7 @@ export default function DashboardPage() {
                 href="/blue-book"
                 className="text-sm text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 font-medium transition-colors"
               >
-                View All Entries →
+                View All Entries
               </Link>
             </div>
             <div className="bg-white dark:bg-slate-800 rounded-lg shadow-sm border border-gray-200 dark:border-slate-700 overflow-hidden">
@@ -290,25 +242,25 @@ export default function DashboardPage() {
                     <tbody className="bg-white dark:bg-slate-800 divide-y divide-gray-200 dark:divide-slate-700">
                       {blueBookEntries.slice(0, 5).map((entry: any) => {
                         const categoryLabel = entry.accountCategoryCode
-                          ? `${entry.accountCategoryCode} – ${entry.accountCategoryName || ''}`.trim()
-                          : entry.serviceName || '—';
+                          ? `${entry.accountCategoryCode} - ${entry.accountCategoryName || ''}`.trim()
+                          : entry.serviceName || '-';
                         const startDateLabel = entry.startDate
                           ? new Date(entry.startDate).toLocaleDateString()
-                          : '—';
+                          : '-';
                         const amountLabel = entry.amount !== null && entry.amount !== undefined
                           ? new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(Number(entry.amount))
-                          : '—';
+                          : '-';
 
                         return (
                           <tr key={entry.id} className={entry.status === 'COMPLETE' ? 'bg-green-100/30 dark:bg-green-900/20' : 'hover:bg-gray-50 dark:hover:bg-slate-700/50'}>
                             <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">
-                              {entry.builderName || entry.builderId || '—'}
+                              {entry.builderName || '-'}
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
-                              {typeof entry.communityName === 'string' ? entry.communityName : entry.communityId || '—'}
+                              {entry.communityName || '-'}
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
-                              {entry.lot || '—'}
+                              {entry.lot || '-'}
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
                               {categoryLabel}

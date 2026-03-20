@@ -1,6 +1,84 @@
 import { query } from "./_generated/server";
 import { v } from "convex/values";
 
+// ── Auth Queries ──────────────────────────────────────────────────────
+
+export const getUserByEmail = query({
+    args: { email: v.string() },
+    handler: async (ctx, args) => {
+        const user = await ctx.db
+            .query("users")
+            .withIndex("by_email", (q) => q.eq("email", args.email))
+            .first();
+        if (!user) return null;
+
+        const membership = await ctx.db
+            .query("orgMembers")
+            .withIndex("by_user", (q) => q.eq("userId", user._id))
+            .first();
+
+        return {
+            _id: user._id,
+            email: user.email,
+            name: user.name,
+            phone: user.phone,
+            role: user.role,
+            passwordHash: user.passwordHash,
+            preferredLang: user.preferredLang,
+            preferredContactMethod: user.preferredContactMethod,
+            orgId: membership?.orgId ?? null,
+            orgRole: membership?.role ?? null,
+        };
+    },
+});
+
+export const getUserById = query({
+    args: { userId: v.id("users") },
+    handler: async (ctx, args) => {
+        const user = await ctx.db.get(args.userId);
+        if (!user) return null;
+
+        const membership = await ctx.db
+            .query("orgMembers")
+            .withIndex("by_user", (q) => q.eq("userId", user._id))
+            .first();
+
+        return {
+            _id: user._id,
+            email: user.email,
+            name: user.name,
+            phone: user.phone,
+            role: user.role,
+            preferredLang: user.preferredLang,
+            preferredContactMethod: user.preferredContactMethod,
+            orgId: membership?.orgId ?? null,
+            orgRole: membership?.role ?? null,
+        };
+    },
+});
+
+// ── Model Plans ───────────────────────────────────────────────────────
+
+export const getModelPlans = query({
+    handler: async (ctx) => {
+        const plans = await ctx.db.query("modelPlans").collect();
+        return plans.filter((p) => p.active !== false);
+    },
+});
+
+// ── Communities by builder ────────────────────────────────────────────
+
+export const getCommunitiesByBuilder = query({
+    args: { builderId: v.id("builders") },
+    handler: async (ctx, args) => {
+        const communities = await ctx.db
+            .query("communities")
+            .withIndex("by_builder", (q) => q.eq("builderId", args.builderId))
+            .collect();
+        return communities.filter((c) => c.active !== false);
+    },
+});
+
 // Get all jobs for the schedule view (real-time)
 export const getScheduleJobs = query({
     args: {
@@ -115,12 +193,16 @@ export const getDispatchBatchById = query({
 
                 return {
                     id: jrs._id,
+                    assignmentId: assignment._id,
                     communityName,
                     builderName,
                     lot: jobRequest?.lot ?? null,
+                    address: jobRequest?.address ?? null,
                     serviceName: jrs.serviceName,
                     walkTime: jrs.walkTime,
+                    dueDate: jrs.scheduledDate ?? null,
                     status: assignment.status,
+                    assignedForeman: batch.foremanName ?? null,
                 };
             })
         );

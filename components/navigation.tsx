@@ -6,19 +6,20 @@ import { signOut, useSession } from 'next-auth/react';
 import { useTheme } from 'next-themes';
 import Image from 'next/image';
 import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 
 const baseNavigation = [
-  { name: 'Dashboard', href: '/dashboard', icon: '📊' },
-  { name: 'Intake', href: '/intake', icon: '📝' },
-  { name: 'Extra Work', href: '/extra-work', icon: '🧾' },
-  { name: 'Schedule', href: '/schedule', icon: '📅' },
-  { name: 'Dispatch', href: '/dispatch', icon: '🚚' },
-  { name: 'Blue Book', href: '/blue-book', icon: '📘' },
-  { name: 'Contracts', href: '/contracts', icon: '📄' },
-  { name: 'Invoicing', href: '/invoicing', icon: '💰' },
-  { name: 'Import', href: '/import', icon: '📥' },
-  { name: 'Users', href: '/users', icon: '👥' },
-  { name: 'Settings', href: '/settings', icon: '⚙️' },
+  { key: 'Dashboard', tKey: 'navigation.dashboard', href: '/dashboard', icon: '📊' },
+  { key: 'Intake', tKey: 'navigation.intake', href: '/intake', icon: '📝' },
+  { key: 'Extra Work', tKey: 'navigation.extraWork', href: '/extra-work', icon: '🧾' },
+  { key: 'Schedule', tKey: 'navigation.schedule', href: '/schedule', icon: '📅' },
+  { key: 'Dispatch', tKey: 'navigation.dispatch', href: '/dispatch', icon: '🚚' },
+  { key: 'Blue Book', tKey: 'navigation.blueBook', href: '/blue-book', icon: '📘' },
+  { key: 'Contracts', tKey: 'navigation.contracts', href: '/contracts', icon: '📄' },
+  { key: 'Invoicing', tKey: 'navigation.invoicing', href: '/invoicing', icon: '💰' },
+  { key: 'Import', tKey: 'navigation.import', href: '/import', icon: '📥' },
+  { key: 'Users', tKey: 'navigation.users', href: '/users', icon: '👥' },
+  { key: 'Settings', tKey: 'navigation.settings', href: '/settings', icon: '⚙️' },
 ];
 
 export function Navigation() {
@@ -28,6 +29,7 @@ export function Navigation() {
   const toggleTheme = () => setTheme(currentTheme === 'dark' ? 'light' : 'dark');
   const [mounted, setMounted] = useState(false);
   const { data: session } = useSession();
+  const { t } = useTranslation();
   // Use orgRole from org_members (admin/backoffice/contractor) instead of user role
   const orgRole = session?.user?.orgRole ?? undefined;
   const userRole = session?.user?.role ?? undefined;
@@ -41,7 +43,7 @@ export function Navigation() {
   const contractorAllowed = new Set(['Dashboard', 'Intake', 'Schedule', 'Settings']);
   const navigation =
     orgRole === 'contractor'
-      ? baseNavigation.filter((item) => contractorAllowed.has(item.name))
+      ? baseNavigation.filter((item) => contractorAllowed.has(item.key))
       : baseNavigation;
 
   const userDisplayName = session?.user?.name ?? 'User';
@@ -77,7 +79,7 @@ export function Navigation() {
           const isActive = pathname === item.href || pathname?.startsWith(item.href + '/');
           return (
             <Link
-              key={item.name}
+              key={item.key}
               href={item.href}
               className={`
                 flex items-center gap-3 px-4 py-3 my-1 rounded-lg transition-colors
@@ -88,7 +90,7 @@ export function Navigation() {
               `}
             >
               <span className="text-xl">{item.icon}</span>
-              <span>{item.name}</span>
+              <span>{t(item.tKey)}</span>
             </Link>
           );
         })}
@@ -105,7 +107,7 @@ export function Navigation() {
             >
               <span className="flex items-center gap-2">
                 <span>{currentTheme === 'dark' ? '🌙' : '☀️'}</span>
-                <span>{currentTheme === 'dark' ? 'Dark Mode On' : 'Light Mode On'}</span>
+                <span>{currentTheme === 'dark' ? t('navigation.darkMode', 'Dark Mode On') : t('navigation.lightMode', 'Light Mode On')}</span>
               </span>
             </button>
           </div>
@@ -128,7 +130,7 @@ export function Navigation() {
             onClick={() => signOut({ callbackUrl: '/login' })}
             className="w-full px-4 py-2 bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 rounded-lg hover:bg-red-100 dark:hover:bg-red-900/50 transition-colors text-sm font-medium"
           >
-            Sign Out
+            {t('navigation.logout')}
           </button>
         </div>
       </div>

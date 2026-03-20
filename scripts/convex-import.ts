@@ -22,7 +22,7 @@ async function main() {
     }
 
     const convex = new ConvexHttpClient(CONVEX_URL);
-    const pg = new Pool({ connectionString: PG_URL });
+    const pg = new Pool({ connectionString: PG_URL, ssl: { rejectUnauthorized: false } });
 
     console.log("Starting data import from PostgreSQL to Convex...");
 
@@ -35,10 +35,10 @@ async function main() {
         for (const row of usersResult.rows) {
             await convex.mutation(api.mutations.createUser, {
                 email: row.email,
-                name: row.name,
-                phone: row.phone,
+                name: row.name ?? undefined,
+                phone: row.phone ?? undefined,
                 role: row.role || "FOREMAN",
-                passwordHash: row.password_hash,
+                passwordHash: row.password_hash ?? undefined,
             });
         }
         console.log(`   ✓ Imported ${usersResult.rows.length} users`);
@@ -69,11 +69,11 @@ async function main() {
 
         // 5. Import Services
         console.log("\n[5/8] Importing services...");
-        const servicesResult = await pg.query("SELECT id, name, description FROM services");
+        const servicesResult = await pg.query("SELECT id, name FROM services");
         for (const row of servicesResult.rows) {
             await convex.mutation(api.mutations.createService, {
                 name: row.name,
-                description: row.description,
+                description: undefined,
             });
         }
         console.log(`   ✓ Imported ${servicesResult.rows.length} services`);

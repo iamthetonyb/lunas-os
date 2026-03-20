@@ -4,11 +4,30 @@
         "schedule": "Schedule",
         "dispatch": "Dispatch",
         "intake": "Intake",
+        "extraWork": "Extra Work",
         "blueBook": "Blue Book",
         "invoicing": "Invoicing",
         "settings": "Settings",
         "import": "Import",
-        "logout": "Logout"
+        "contracts": "Contracts",
+        "users": "Users",
+        "logout": "Sign Out",
+        "darkMode": "Dark Mode On",
+        "lightMode": "Light Mode On"
+    },
+    "login": {
+        "title": "Lunas OS",
+        "subtitle": "Sign in to your account",
+        "emailLabel": "Email Address",
+        "emailPlaceholder": "admin@lunas.local",
+        "passwordLabel": "Password",
+        "passwordPlaceholder": "Enter your password",
+        "signIn": "Sign In",
+        "signingIn": "Signing in...",
+        "forgotPassword": "Forgot your password?",
+        "orContinueWith": "Or continue with",
+        "invalidCredentials": "Invalid email or password. Please check your credentials and try again.",
+        "error": "An error occurred. Please try again."
     },
     "common": {
         "add": "Add",
@@ -21,7 +40,15 @@
         "status": "Status",
         "actions": "Actions",
         "date": "Date",
-        "all": "All"
+        "all": "All",
+        "submit": "Submit",
+        "email": "Email",
+        "password": "Password",
+        "signIn": "Sign In",
+        "total": "Total",
+        "complete": "Complete",
+        "notComplete": "Not Complete",
+        "address": "Address"
     },
     "intake": {
         "title": "Intake Form",
@@ -37,11 +64,29 @@
         "requestedBy": "Requested By",
         "contact": "Contact"
     },
+    "dispatch": {
+        "approveAndSend": "Approve & Send",
+        "runSheet": "Run Sheet",
+        "fieldTicket": "Field Ticket"
+    },
+    "schedule": {
+        "windows": "Windows",
+        "tubs": "Tubs",
+        "walkTime": "Walk Time",
+        "service": "Service",
+        "signatureForeman": "Foreman Signature",
+        "signatureCustomer": "Customer Signature",
+        "extras": "Extras"
+    },
     "status": {
         "pending": "Pending",
         "scheduled": "Scheduled",
         "dispatched": "Dispatched",
         "completed": "Completed",
         "cancelled": "Cancelled"
+    },
+    "invoicing": {
+        "invoice": "Invoice",
+        "blueBook": "Blue Book"
     }
 }

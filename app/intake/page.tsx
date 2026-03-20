@@ -2,13 +2,13 @@
 
 import { PageHeader } from '@/components/page-header';
 import Link from 'next/link';
-import useSWR, { mutate } from 'swr';
-import { fetchJSON } from '@/lib/utils/fetch-json';
+import { useQuery, useMutation } from 'convex/react';
+import { api } from '@/convex/_generated/api';
+import { Id } from '@/convex/_generated/dataModel';
 import { useState, Fragment } from 'react';
 import { Dialog, Transition } from '@headlessui/react';
 import { EditIntakeModal } from '@/components/edit-intake-modal';
 import { useSession } from 'next-auth/react';
-import { useOrgRealtime } from '@/lib/realtime/use-org-realtime';
 import { toast } from 'sonner';
 
 // Helper: Parse ISO date string as local date (avoids UTC midnight -> previous day issue)
@@ -45,16 +45,6 @@ export type RecentIntake = {
   amount: string | null;
   status: string | null;
 };
-
-type RecentIntakesResponse = {
-  intakes: RecentIntake[];
-  total: number;
-  page: number;
-  limit: number;
-  totalPages: number;
-};
-
-const fetcher = (url: string) => fetchJSON<RecentIntakesResponse>(url);
 
 function DetailItem({ label, value }: { label: string; value: string | null | undefined }) {
   if (!value) return null;
@@ -211,22 +201,12 @@ function IntakeDetailModal({
 
 function RecentIntakes({ onIntakeSelect, onDelete, onEdit }: { onIntakeSelect: (intake: RecentIntake) => void, onDelete: (intakeId: string) => void, onEdit: (intake: RecentIntake) => void }) {
   const [page, setPage] = useState(1);
-  const { data, isLoading, error, mutate: mutateIntakes } = useSWR(
-    `/api/job-requests/recent?page=${page}&limit=10`,
-    fetcher,
-    {
-      revalidateOnFocus: true,
-      revalidateOnReconnect: true,
-      refreshInterval: 5000, // Auto-refresh every 5 seconds for live updates
-    }
-  );
+  const data = useQuery(api.jobRequests.getRecent, { page, limit: 10 });
+
+  const isLoading = data === undefined;
 
   if (isLoading) {
     return <p className="text-gray-500">Loading recent intakes...</p>;
-  }
-
-  if (error) {
-    return <p className="text-red-500">Failed to load recent intakes.</p>;
   }
 
   const { intakes, total, totalPages } = data || { intakes: [], total: 0, totalPages: 0 };
@@ -250,7 +230,7 @@ function RecentIntakes({ onIntakeSelect, onDelete, onEdit }: { onIntakeSelect: (
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100 bg-white">
-            {intakes.map((intake) => (
+            {intakes.map((intake: any) => (
               <tr
                 key={intake.id}
                 onClick={() => onIntakeSelect(intake)}
@@ -263,7 +243,7 @@ function RecentIntakes({ onIntakeSelect, onDelete, onEdit }: { onIntakeSelect: (
                   {formatDateLocal(intake.dueDate)}
                 </td>
                 <td className="px-4 py-3 text-gray-600">
-                  {intake.services.map((s) => s.name).join(', ')}
+                  {intake.services.map((s: any) => s.name).join(', ')}
                 </td>
                 <td className="px-4 py-3 text-right">
                   <div className="flex justify-end gap-2">
@@ -324,8 +304,8 @@ function RecentIntakes({ onIntakeSelect, onDelete, onEdit }: { onIntakeSelect: (
 
 export default function IntakePage() {
   const { data: session } = useSession();
-  const orgId = (session?.user as any)?.orgId;
-  useOrgRealtime(orgId);
+
+  const removeIntake = useMutation(api.jobRequests.remove);
 
   const [selectedIntake, setSelectedIntake] = useState<RecentIntake | null>(null);
   const [isDetailModalOpen, setDetailModalOpen] = useState(false);
@@ -356,8 +336,7 @@ export default function IntakePage() {
 
   async function handleEditSuccess() {
     setEditModalOpen(false);
-    // Force refresh any key starting with recent
-    await mutate((key) => typeof key === 'string' && key.startsWith('/api/job-requests/recent'));
+    // No manual revalidation needed — Convex auto-updates
   }
 
   async function handleDelete(intakeId: string) {
@@ -371,10 +350,8 @@ export default function IntakePage() {
     }
 
     try {
-      await fetchJSON(`/api/job-requests/${intakeId}`, { method: 'DELETE' });
+      await removeIntake({ id: intakeId as Id<"jobRequests"> });
       console.log('[intake] Successfully deleted:', intakeId);
-      // Force refresh any key starting with recent
-      await mutate((key) => typeof key === 'string' && key.startsWith('/api/job-requests/recent'));
       setDetailModalOpen(false); // Close modal if open
       toast.success('Intake deleted successfully!');
     } catch (error) {

@@ -2,6 +2,7 @@
 import { useState, Suspense } from 'react';
 import { signIn } from 'next-auth/react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { useTranslation } from 'react-i18next';
 
 function LoginForm() {
   const [email, setEmail] = useState('');
@@ -11,6 +12,7 @@ function LoginForm() {
   const router = useRouter();
   const params = useSearchParams();
   const callbackUrl = params.get('callbackUrl') ?? '/dashboard';
+  const { t } = useTranslation();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -28,7 +30,7 @@ function LoginForm() {
 
       if (res?.error) {
         // NextAuth returns error string if auth failed
-        alert('Invalid email or password. Please check your credentials and try again.');
+        alert(t('login.invalidCredentials'));
         setIsLoading(false);
         return;
       }
@@ -36,11 +38,11 @@ function LoginForm() {
       if (res?.ok) {
         router.push(callbackUrl);
       } else {
-        alert('Invalid credentials. Please try again.');
+        alert(t('login.invalidCredentials'));
       }
     } catch (err) {
       console.error('Login error:', err);
-      alert('An error occurred. Please try again.');
+      alert(t('login.error'));
       setIsLoading(false);
     }
   };
@@ -60,8 +62,8 @@ function LoginForm() {
       <div className="w-full max-w-md">
         <div className="bg-white rounded-lg shadow-md p-8">
           <div className="text-center mb-6">
-            <h1 className="text-3xl font-bold text-gray-900">Lunas OS</h1>
-            <p className="text-gray-600 mt-2">Sign in to your account</p>
+            <h1 className="text-3xl font-bold text-gray-900">{t('login.title')}</h1>
+            <p className="text-gray-600 mt-2">{t('login.subtitle')}</p>
           </div>
 
           <form
@@ -75,13 +77,13 @@ function LoginForm() {
                 htmlFor="email"
                 className="block text-sm font-medium text-gray-700 mb-1"
               >
-                Email Address
+                {t('login.emailLabel')}
               </label>
               <input
                 id="email"
                 name="email"
                 type="email"
-                placeholder="admin@lunas.local"
+                placeholder={t('login.emailPlaceholder')}
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-gray-900"
                 autoComplete="username"
                 required
@@ -96,13 +98,13 @@ function LoginForm() {
                 htmlFor="password"
                 className="block text-sm font-medium text-gray-700 mb-1"
               >
-                Password
+                {t('login.passwordLabel')}
               </label>
               <input
                 id="password"
                 name="password"
                 type="password"
-                placeholder="Enter your password"
+                placeholder={t('login.passwordPlaceholder')}
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-gray-900"
                 autoComplete="current-password"
                 required
@@ -117,7 +119,7 @@ function LoginForm() {
               className="w-full bg-blue-600 hover:bg-blue-700 text-white py-2.5 px-4 rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               disabled={isLoading || oauthLoading !== null}
             >
-              {isLoading ? 'Signing in...' : 'Sign In'}
+              {isLoading ? t('login.signingIn') : t('login.signIn')}
             </button>
           </form>
 
@@ -127,7 +129,7 @@ function LoginForm() {
               onClick={() => router.push('/forgot-password')}
               className="text-sm text-blue-600 hover:text-blue-700 hover:underline"
             >
-              Forgot your password?
+              {t('login.forgotPassword')}
             </button>
           </div>
 
@@ -137,7 +139,7 @@ function LoginForm() {
                 <div className="w-full border-t border-gray-300"></div>
               </div>
               <div className="relative flex justify-center text-sm">
-                <span className="px-2 bg-white text-gray-500">Or continue with</span>
+                <span className="px-2 bg-white text-gray-500">{t('login.orContinueWith')}</span>
               </div>
             </div>
 

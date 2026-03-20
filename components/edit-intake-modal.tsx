@@ -4,31 +4,23 @@ import { Controller, useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useTranslation } from 'react-i18next';
-import useSWR, { mutate, useSWRConfig } from 'swr';
+import { useQuery, useMutation } from 'convex/react';
+import { api } from '@/convex/_generated/api';
+import { Id } from '@/convex/_generated/dataModel';
 import {
   useEffect,
   useMemo,
   Fragment,
 } from 'react';
 import dayjs from 'dayjs';
-import { fetchJSON } from '@/lib/utils/fetch-json';
 import { Dialog, Transition } from '@headlessui/react';
 import type { RecentIntake } from '@/app/intake/page';
 import { SearchableSelect, SearchableMultiSelect, type SelectOption } from './searchable-select';
 
-const fetcher = async <T,>(url: string): Promise<T> => {
-  try {
-    return await fetchJSON<T>(url);
-  } catch (error) {
-    console.error('Fetcher error for', url, error);
-    return [] as unknown as T;
-  }
-};
-
-type BuilderDTO = { id: string; name: string };
-type CommunityDTO = { id: string; name: string; builderId?: string | null };
-type ModelPlanDTO = { id: string; name: string; builderId?: string | null; code?: string | null };
-type ServiceDTO = { id: string; name: string; code?: string | null };
+type BuilderDTO = { _id: string; name: string };
+type CommunityDTO = { _id: string; name: string; builderId?: string | null };
+type ModelPlanDTO = { _id: string; name: string; builderId?: string | null; code?: string | null };
+type ServiceDTO = { _id: string; name: string; code?: string | null };
 
 const REQUESTED_BY_LIST = ['Anahi', 'Chayo', 'Blanca', 'Raudel', 'Francisco'] as const;
 type RequestedByName = (typeof REQUESTED_BY_LIST)[number];
@@ -64,10 +56,12 @@ function EditIntakeForm({ intake, onSuccess, onClose }: { intake: RecentIntake; 
 
   // CRITICAL: All hooks MUST be called unconditionally at the top level before any returns
   // to comply with React Rules of Hooks. Moving data fetching hooks here.
-  const { data: builders } = useSWR<BuilderDTO[]>('/api/builders', fetcher);
-  const { data: communities } = useSWR<CommunityDTO[]>('/api/communities', fetcher);
-  const { data: modelPlans } = useSWR<ModelPlanDTO[]>('/api/model-plans', fetcher);
-  const { data: services } = useSWR<ServiceDTO[]>('/api/services', fetcher);
+  const builders = useQuery(api.queries.getBuilders) as BuilderDTO[] | undefined;
+  const communities = useQuery(api.queries.getCommunities) as CommunityDTO[] | undefined;
+  const modelPlans = useQuery(api.queries.getModelPlans) as ModelPlanDTO[] | undefined;
+  const services = useQuery(api.queries.getServices) as ServiceDTO[] | undefined;
+
+  const updateJobRequest = useMutation(api.jobRequests.update);
 
   // Initialize form with useForm hook - MUST be called unconditionally
   const {
@@ -113,7 +107,7 @@ function EditIntakeForm({ intake, onSuccess, onClose }: { intake: RecentIntake; 
       const label = service.name;
       const requiresNotes = normalized.includes('extra');
       const variant = requiresNotes ? 'danger' : undefined;
-      return { value: service.id, label, description, variant, requiresNotes };
+      return { value: service._id, label, description, variant, requiresNotes };
     });
   }, [services]);
 
@@ -128,16 +122,16 @@ function EditIntakeForm({ intake, onSuccess, onClose }: { intake: RecentIntake; 
     [selectedServiceIds, serviceOptionMap]
   );
 
-  const builderOptions = useMemo<SelectOption[]>(() => (builders ?? []).map((builder) => ({ value: builder.id, label: builder.name })), [builders]);
+  const builderOptions = useMemo<SelectOption[]>(() => (builders ?? []).map((builder) => ({ value: builder._id, label: builder.name })), [builders]);
   const communityOptions = useMemo(() => {
     if (!communities) return [];
     const filtered = builderId ? communities.filter(c => c.builderId === builderId) : communities;
-    return filtered.map((community) => ({ value: community.id, label: community.name }));
+    return filtered.map((community) => ({ value: community._id, label: community.name }));
   }, [communities, builderId]);
   const modelPlanOptions = useMemo(() => {
     if (!modelPlans) return [];
     const filtered = builderId ? modelPlans.filter((plan) => plan.builderId === builderId) : modelPlans;
-    return filtered.map((plan) => ({ value: plan.id, label: plan.name, description: plan.code ?? undefined }));
+    return filtered.map((plan) => ({ value: plan._id, label: plan.name, description: plan.code ?? undefined }));
   }, [modelPlans, builderId]);
   const requestedByOptions = useMemo<SelectOption[]>(() => REQUESTED_BY_LIST.map((name) => ({ value: name, label: name })), []);
 
@@ -145,7 +139,7 @@ function EditIntakeForm({ intake, onSuccess, onClose }: { intake: RecentIntake; 
   useEffect(() => {
     if (!modelPlanId) return;
     if (!modelPlans || modelPlans.length === 0) return;
-    const plan = modelPlans.find((item) => item.id === modelPlanId);
+    const plan = modelPlans.find((item) => item._id === modelPlanId);
     if (!plan) {
       setValue('modelPlanId', '');
       return;
@@ -175,15 +169,13 @@ function EditIntakeForm({ intake, onSuccess, onClose }: { intake: RecentIntake; 
     }
     clearErrors('notes');
     try {
-      await fetchJSON(`/api/job-requests/${intake.id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data),
+      await updateJobRequest({
+        id: intake.id as Id<"jobRequests">,
+        amount: data.amount != null ? String(data.amount) : undefined,
+        status: data.status ?? undefined,
+        notes: data.notes ?? undefined,
+        dueDate: data.dueDate ?? undefined,
       });
-      // Force refresh all job request related queries
-      await mutate((key) => typeof key === 'string' && key.startsWith('/api/job-requests'));
-      // Also refresh schedule data to reflect changes instantly
-      await mutate((key) => typeof key === 'string' && key.startsWith('/api/schedule/blue-book'));
       onSuccess();
     } catch (error) {
       console.error('Error updating job request:', error);

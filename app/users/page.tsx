@@ -1,18 +1,19 @@
 'use client';
 
 import { PageHeader } from '@/components/page-header';
-import useSWR, { mutate } from 'swr';
 import { useState, Fragment, useEffect, useMemo } from 'react';
-import { fetchJSON } from '@/lib/utils/fetch-json';
+import { useQuery, useMutation } from 'convex/react';
+import { api } from '@/convex/_generated/api';
+import { Id } from '@/convex/_generated/dataModel';
 import { Dialog, Transition } from '@headlessui/react';
 
 type AdminUser = {
   id: string;
-  name: string | null;
+  name?: string;
   email: string;
-  phone: string | null;
-  systemRole: string | null;
-  preferredContactMethod: string | null;
+  phone?: string;
+  systemRole: string;
+  preferredContactMethod?: string;
   memberships: { orgId: string; orgName: string; role: string }[];
 };
 
@@ -21,13 +22,6 @@ type Org = {
   name: string;
   slug: string;
 };
-
-type AdminUsersResponse = {
-  users: AdminUser[];
-  orgs: Org[];
-};
-
-const fetcher = (url: string) => fetchJSON<AdminUsersResponse>(url);
 
 type UserFormData = {
   name: string;
@@ -50,6 +44,9 @@ function UserModal({
   onSuccess: () => void;
 }) {
   const isEdit = !!user;
+  const createUser = useMutation(api.mutations.createUser);
+  const updateUser = useMutation(api.mutations.updateUser);
+
   const [formData, setFormData] = useState<UserFormData>({
     name: '',
     email: '',
@@ -118,32 +115,23 @@ function UserModal({
 
     setIsSubmitting(true);
     try {
-      const payload: any = {
-        name: formData.name,
-        email: formData.email,
-        phone: formData.phone || null,
-        preferredContactMethod: formData.preferredContactMethod,
-      };
-
-      if (formData.password) {
-        payload.password = formData.password;
-      }
-
       if (isEdit) {
-        await fetchJSON(`/api/admin/users/${user.id}`, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload),
+        await updateUser({
+          userId: user.id as Id<"users">,
+          name: formData.name,
+          phone: formData.phone || undefined,
+          passwordHash: formData.password || undefined,
         });
       } else {
-        await fetchJSON('/api/admin/users/create', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload),
+        await createUser({
+          email: formData.email,
+          name: formData.name,
+          phone: formData.phone || undefined,
+          role: 'contractor',
+          passwordHash: formData.password || undefined,
         });
       }
 
-      await mutate('/api/admin/users');
       onSuccess();
       onClose();
     } catch (err: any) {
@@ -305,7 +293,14 @@ function UserModal({
 }
 
 export default function UsersPage() {
-  const { data, isLoading, error } = useSWR<AdminUsersResponse>('/api/admin/users', fetcher);
+  const data = useQuery(api.userFunctions.listWithOrgs);
+  const isLoading = data === undefined;
+
+  const assignOrgMembership = useMutation(api.mutations.assignOrgMembership);
+  const createOrg = useMutation(api.mutations.createOrg);
+  const updateOrg = useMutation(api.mutations.updateOrg);
+  const deleteOrg = useMutation(api.mutations.deleteOrg);
+
   const [membership, setMembership] = useState<{
     userId: string;
     orgId: string;
@@ -336,22 +331,15 @@ export default function UsersPage() {
 
     setBusy(true);
     try {
-      await fetchJSON('/api/admin/users', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(membership),
+      await assignOrgMembership({
+        userId: membership.userId as Id<"users">,
+        orgId: membership.orgId as Id<"orgs">,
+        role: membership.role,
       });
-      await mutate('/api/admin/users');
       alert('Membership saved.');
     } catch (err: any) {
-      console.error('Membership submit failed with data:', err.data); // Log full server error.data
-      // Handle empty error.data
-      if (!err.data || Object.keys(err.data).length === 0) {
-        err.data = { error: 'Unknown server error' };
-      }
-      const errorMsg = err.data?.details
-        ? 'Validation failed: ' + JSON.stringify(err.data.details)
-        : err.data?.error || err.message || 'Failed to update membership.';
+      console.error('Membership submit failed:', err);
+      const errorMsg = err.message || 'Failed to update membership.';
       alert(errorMsg);
     } finally {
       setBusy(false);
@@ -364,24 +352,18 @@ export default function UsersPage() {
     setBusy(true);
     try {
       if (editingOrg) {
-        await fetchJSON(`/api/admin/orgs/${editingOrg.id}`, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ name: orgForm.name }),
+        await updateOrg({
+          orgId: editingOrg.id as Id<"orgs">,
+          name: orgForm.name,
         });
         alert('Organization updated.');
       } else {
-        await fetchJSON('/api/admin/orgs', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ name: orgForm.name }),
-        });
+        await createOrg({ name: orgForm.name });
         alert('Organization created.');
       }
       setOrgForm({ name: '' });
       setEditingOrg(null);
       setOrgModalOpen(false);
-      await mutate('/api/admin/users');
     } catch (err) {
       console.error(err);
       alert('Failed to save organization.');
@@ -401,8 +383,7 @@ export default function UsersPage() {
 
     setBusy(true);
     try {
-      await fetchJSON(`/api/admin/orgs/${orgId}`, { method: 'DELETE' });
-      await mutate('/api/admin/users');
+      await deleteOrg({ orgId: orgId as Id<"orgs"> });
       alert('Organization deleted.');
     } catch (err) {
       console.error(err);
@@ -444,9 +425,8 @@ export default function UsersPage() {
       <main className="px-6 py-6 space-y-6">
         <section className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
           <h3 className="text-lg font-semibold text-gray-900 mb-4">Current Users</h3>
-          {isLoading && <p className="text-gray-600">Loading…</p>}
-          {error && <p className="text-red-600">Unable to load users.</p>}
-          {!isLoading && !error && (
+          {isLoading && <p className="text-gray-600">Loading...</p>}
+          {!isLoading && (
             <div className="overflow-x-auto">
               <table className="min-w-full divide-y divide-gray-200 text-sm">
                 <thead className="bg-gray-50">
@@ -506,7 +486,7 @@ export default function UsersPage() {
                 value={membership.userId}
                 onChange={(e) => setMembership((prev) => ({ ...prev, userId: e.target.value }))}
               >
-                <option value="">Select user…</option>
+                <option value="">Select user...</option>
                 {sortedUsers.map((user) => (
                   <option key={user.id} value={user.id}>
                     {user.name || user.email}
@@ -521,7 +501,7 @@ export default function UsersPage() {
                 value={membership.orgId}
                 onChange={(e) => setMembership((prev) => ({ ...prev, orgId: e.target.value }))}
               >
-                <option value="">Select org…</option>
+                <option value="">Select org...</option>
                 {data?.orgs.map((org) => (
                   <option key={org.id} value={org.id}>
                     {org.name}

@@ -2,8 +2,9 @@
 
 import { PageHeader } from '@/components/page-header';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import useSWR from 'swr';
-import { fetchJSON } from '@/lib/utils/fetch-json';
+import { useQuery, useMutation } from 'convex/react';
+import { api } from '@/convex/_generated/api';
+import { Id } from '@/convex/_generated/dataModel';
 import { useSession } from 'next-auth/react';
 import { toast } from 'sonner';
 
@@ -33,17 +34,10 @@ type BlueBookEntry = {
   modelPlanCode: string | null;
   modelPlanSqft: string | null;
   source?: string | null; // 'scraped' or 'manual'
-  createdAt: string;
-  updatedAt: string;
+  createdAt: number;
+  updatedAt?: number;
   assignedForemanName?: string | null;
   crewName?: string | null;
-};
-
-type BlueBookResponse = {
-  entries: BlueBookEntry[];
-  total: number;
-  page: number;
-  pageSize: number;
 };
 
 type Builder = {
@@ -58,23 +52,6 @@ type ModelPlan = {
   code: string | null;
   sqft: string | null;
 };
-
-const fetcher = async (url: string): Promise<BlueBookResponse> => {
-  const data = await fetchJSON<BlueBookResponse | BlueBookEntry[]>(url);
-  if (Array.isArray(data)) {
-    return {
-      entries: data,
-      total: data.length,
-      page: 1,
-      pageSize: data.length || PAGE_SIZE,
-    };
-  }
-  return data;
-};
-
-const builderFetcher = (url: string) => fetchJSON<Builder[]>(url);
-
-const modelPlanFetcher = (url: string) => fetchJSON<ModelPlan[]>(url);
 
 function useDebounce<T>(value: T, delay = 300) {
   const [debounced, setDebounced] = useState(value);
@@ -148,19 +125,19 @@ type CommunityGroup = {
 const KNOWN_PHASES: Record<string, PhaseDefinition> = {
   '22702': {
     code: '22702',
-    title: '22702 – T3',
+    title: '22702 \u2013 T3',
     shorthand: 'T3',
     serviceNames: ['Frame Sweep'],
   },
   '22712': {
     code: '22712',
-    title: '22712 – T2',
+    title: '22712 \u2013 T2',
     shorthand: 'T2',
     serviceNames: ['Tubs & Windows', 'Q/A', 'Power Wash'],
   },
   '22714': {
     code: '22714',
-    title: '22714 – T1',
+    title: '22714 \u2013 T1',
     shorthand: 'T1',
     serviceNames: ['Final Clean', 'Touch up Clean'],
   },
@@ -283,28 +260,47 @@ export default function BlueBookPage() {
     setPage(1);
   }, [debouncedSearch, sort, activeBuilderId]);
 
-  const { data: buildersData } = useSWR('/api/builders', builderFetcher, {
-    revalidateOnFocus: false,
-  });
-  const { data: modelPlansData } = useSWR('/api/model-plans', modelPlanFetcher, {
-    revalidateOnFocus: false,
-  });
-  const { data: communitiesData } = useSWR('/api/communities', async (url) => {
-    const res = await fetchJSON<Array<{ id: string; name: string; builderId?: string | null }>>(url);
-    return res;
-  }, {
-    revalidateOnFocus: false,
-  });
-  const { data: servicesData } = useSWR('/api/services', async (url) => {
-    const res = await fetchJSON<Array<{ id: string; name: string; code?: string | null }>>(url);
-    return res;
-  }, {
-    revalidateOnFocus: false,
-  });
-  const availableBuilders = buildersData || [];
-  const modelPlans = useMemo(() => modelPlansData ?? [], [modelPlansData]);
-  const communities = useMemo(() => communitiesData ?? [], [communitiesData]);
-  const services = useMemo(() => servicesData ?? [], [servicesData]);
+  // Convex queries for reference data
+  const buildersData = useQuery(api.queries.getBuilders, {});
+  const modelPlansData = useQuery(api.queries.getModelPlans, {});
+  const communitiesData = useQuery(api.queries.getCommunities, {});
+  const servicesData = useQuery(api.queries.getServices, {});
+
+  // Convex mutations
+  const updateEntry = useMutation(api.blueBook.update);
+  const createEntry = useMutation(api.blueBook.create);
+  const removeEntry = useMutation(api.blueBook.remove);
+
+  const availableBuilders: Builder[] = useMemo(() =>
+    (buildersData ?? []).map((b: any) => ({ id: b._id, name: b.name })),
+    [buildersData]
+  );
+  const modelPlans: ModelPlan[] = useMemo(() =>
+    (modelPlansData ?? []).map((p: any) => ({
+      id: p._id,
+      builderId: p.builderId ?? null,
+      name: p.name,
+      code: p.code ?? null,
+      sqft: p.sqft ?? null,
+    })),
+    [modelPlansData]
+  );
+  const communities = useMemo(() =>
+    (communitiesData ?? []).map((c: any) => ({
+      id: c._id,
+      name: c.name,
+      builderId: c.builderId ?? null,
+    })),
+    [communitiesData]
+  );
+  const services = useMemo(() =>
+    (servicesData ?? []).map((s: any) => ({
+      id: s._id,
+      name: s.name,
+      code: s.code ?? null,
+    })),
+    [servicesData]
+  );
   const plansByBuilder = useMemo(() => {
     const map: Record<string, ModelPlan[]> = {};
     modelPlans.forEach((plan) => {
@@ -372,17 +368,22 @@ export default function BlueBookPage() {
     (builder) => !tabBuilderIds.includes(builder.id)
   );
 
-  const builderParam =
-    activeBuilderId && activeBuilderId !== 'all' ? `&builderId=${activeBuilderId}` : '';
-  const { data, error, isLoading, mutate } = useSWR(
-    `/api/blue-book?page=${page}&pageSize=${PAGE_SIZE}&sort=${sort}&search=${encodeURIComponent(
-      debouncedSearch
-    )}${builderParam}`,
-    fetcher,
-    { keepPreviousData: true, revalidateOnFocus: false }
-  );
+  // Convex query for blue book entries
+  const blueBookQueryArgs = useMemo(() => ({
+    page,
+    pageSize: PAGE_SIZE,
+    sort,
+    search: debouncedSearch || undefined,
+    builderId: (activeBuilderId && activeBuilderId !== 'all')
+      ? activeBuilderId as Id<"builders">
+      : undefined,
+  }), [page, PAGE_SIZE, sort, debouncedSearch, activeBuilderId]);
 
-  const entries = useMemo(() => data?.entries ?? [], [data]);
+  const data = useQuery(api.blueBook.list, blueBookQueryArgs);
+  const isLoading = data === undefined;
+  const error = false; // Convex throws on error
+
+  const entries: BlueBookEntry[] = useMemo(() => (data?.entries ?? []) as BlueBookEntry[], [data]);
   const total = data?.total ?? entries.length;
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
   const canPrev = page > 1;
@@ -393,16 +394,16 @@ export default function BlueBookPage() {
   );
   const formatAmount = useCallback(
     (value: string | null) => {
-      if (!value) return '—';
+      if (!value) return '\u2014';
       const numeric = Number(value);
-      if (!Number.isFinite(numeric)) return '—';
+      if (!Number.isFinite(numeric)) return '\u2014';
       return currencyFormatter.format(numeric);
     },
     [currencyFormatter]
   );
   const formatNumberAmount = useCallback(
     (value: number | null | undefined) => {
-      if (typeof value !== 'number' || !Number.isFinite(value)) return '—';
+      if (typeof value !== 'number' || !Number.isFinite(value)) return '\u2014';
       return currencyFormatter.format(value);
     },
     [currencyFormatter]
@@ -430,21 +431,9 @@ export default function BlueBookPage() {
 
     // Pre-fill from communities list (if activeBuilderId matches)
     communities.forEach(c => {
-      // Filter by activeBuilder (if 'all', show all; else match builderId)
-      // Note: activeBuilderId is not in scope of this memo directly unless added to dependencies? 
-      // It is NOT in the dependencies array [entries, phaseOverrides]. 
-      // We should use entries' builderIds or passed props? 
-      // Actually `activeBuilderId` state causes re-render, but this memo only depends on [entries, phaseOverrides].
-      // We need to add `communities` and `activeBuilderId` to dependencies or `filteredCommunities`.
-      // The `entries` are already filtered by API params. So we should only specific communities that match the criteria.
-      // But if we want to show EMPTY communities, we need "All communities matching filter".
-      // Since `entries` are filtered by API, we should trust the `communities` prop if it's filtered or if we filter it here.
-      // `activeBuilderId` is state.
       if (activeBuilderId && activeBuilderId !== 'all' && c.builderId !== activeBuilderId) return;
 
       const key = c.id;
-      // Need a way to match normaliseCommunityKey. normalise uses ID if present.
-      // c.id is guaranteed.
       communityMap.set(key, {
         key: key,
         builderName: availableBuilders.find(b => b.id === c.builderId)?.name ?? 'Unknown Builder',
@@ -456,8 +445,6 @@ export default function BlueBookPage() {
     });
 
     const normaliseCommunityKey = (entry: BlueBookEntry) => {
-      // Use community ID if available, otherwise use community name + builder ID to group
-      // This ensures same-named communities under same builder are grouped together
       if (entry.communityId) {
         return entry.communityId;
       }
@@ -496,8 +483,8 @@ export default function BlueBookPage() {
       community.lots.get(lotKey)!.entries.push(entry);
     });
 
-    const toTimestamp = (value: string | null) =>
-      value ? new Date(value).getTime() : Number.MAX_SAFE_INTEGER;
+    const toTimestamp = (value: string | number | null) =>
+      typeof value === 'number' ? value : value ? new Date(value).getTime() : Number.MAX_SAFE_INTEGER;
 
     const parseAmount = (value: string | null) => {
       if (!value) return 0;
@@ -644,7 +631,7 @@ export default function BlueBookPage() {
               const firstServiceName = orderedServices[0]?.name;
               phases.push({
                 code,
-                title: firstServiceName ? `${code} – ${firstServiceName}` : code,
+                title: firstServiceName ? `${code} \u2013 ${firstServiceName}` : code,
                 shorthand: code,
                 baseComplete,
                 overrideStatus,
@@ -1064,14 +1051,16 @@ export default function BlueBookPage() {
       try {
         await Promise.all(
           lot.entries.map((entry) =>
-            fetchJSON(`/api/blue-book/${entry.id}`, {
-              method: 'PATCH',
-              headers: { 'content-type': 'application/json' },
-              body: JSON.stringify({ modelPlanId: normalizedNext }),
+            updateEntry({
+              id: entry.id as Id<"blueBookEntries">,
+              ...( normalizedNext !== null
+                ? { modelPlanId: normalizedNext as Id<"modelPlans"> }
+                : { modelPlanId: null }
+              ),
             })
           )
         );
-        await mutate();
+        // No manual mutate needed — Convex auto-updates
       } catch (err) {
         console.error('Failed to update model plan', err);
         setPlanErrors((prev) => ({
@@ -1093,7 +1082,7 @@ export default function BlueBookPage() {
         });
       }
     },
-    [mutate]
+    [updateEntry]
   );
 
   const handleSave = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -1102,22 +1091,19 @@ export default function BlueBookPage() {
     setSaving(true);
     setFormError(null);
     try {
-      await fetchJSON(`/api/blue-book/${editingEntry.id}`, {
-        method: 'PATCH',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({
-          lot: formState.lot || null,
-          startDate: formState.startDate || null,
-          status: formState.status,
-          invoiceNumber: formState.invoiceNumber || null,
-          amount: formState.amount ? Number(formState.amount) : null,
-          accountCategoryName: formState.accountCategoryName || null,
-          accountCategoryCode: formState.accountCategoryCode || null,
-          checkNumber: formState.checkNumber || null,
-          checkDate: formState.checkDate || null,
-        }),
+      await updateEntry({
+        id: editingEntry.id as Id<"blueBookEntries">,
+        lot: formState.lot || undefined,
+        startDate: formState.startDate || undefined,
+        status: formState.status,
+        invoiceNumber: formState.invoiceNumber || undefined,
+        amount: formState.amount ? formState.amount : undefined,
+        accountCategoryName: formState.accountCategoryName || undefined,
+        accountCategoryCode: formState.accountCategoryCode || undefined,
+        checkNumber: formState.checkNumber || undefined,
+        checkDate: formState.checkDate || undefined,
       });
-      await mutate();
+      // No manual mutate needed — Convex auto-updates
       setEditingEntry(null);
     } catch (err) {
       const message =
@@ -1133,25 +1119,21 @@ export default function BlueBookPage() {
     setSaving(true);
     setFormError(null);
     try {
-      await fetchJSON('/api/blue-book', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({
-          builderId: formState.builderId,
-          communityId: formState.communityId,
-          serviceId: formState.serviceId || null,
-          lot: formState.lot || null,
-          startDate: formState.startDate || null,
-          status: formState.status || 'PENDING',
-          invoiceNumber: formState.invoiceNumber || null,
-          amount: formState.amount ? Number(formState.amount) : null,
-          accountCategoryName: formState.accountCategoryName || null,
-          accountCategoryCode: formState.accountCategoryCode || null,
-          checkNumber: formState.checkNumber || null,
-          checkDate: formState.checkDate || null,
-        }),
+      await createEntry({
+        builderId: formState.builderId as Id<"builders">,
+        communityId: formState.communityId ? formState.communityId as Id<"communities"> : undefined,
+        serviceId: formState.serviceId ? formState.serviceId as Id<"services"> : null,
+        lot: formState.lot || undefined,
+        startDate: formState.startDate || undefined,
+        status: formState.status || 'PENDING',
+        invoiceNumber: formState.invoiceNumber || undefined,
+        amount: formState.amount ? Number(formState.amount) : null,
+        accountCategoryName: formState.accountCategoryName || undefined,
+        accountCategoryCode: formState.accountCategoryCode || undefined,
+        checkNumber: formState.checkNumber || undefined,
+        checkDate: formState.checkDate || undefined,
       });
-      await mutate();
+      // No manual mutate needed — Convex auto-updates
       setIsCreatingManual(false);
       setFormState({
         lot: '',
@@ -1191,10 +1173,8 @@ export default function BlueBookPage() {
     setSaving(true);
     setFormError(null);
     try {
-      await fetchJSON(`/api/blue-book/${entryId}`, {
-        method: 'DELETE',
-      });
-      await mutate();
+      await removeEntry({ id: entryId as Id<"blueBookEntries"> });
+      // No manual mutate needed — Convex auto-updates
       if (editingEntry?.id === entryId) {
         setEditingEntry(null);
       }
@@ -1284,7 +1264,7 @@ export default function BlueBookPage() {
 
         {isLoading && (
           <div className="bg-white dark:bg-slate-800 rounded-lg border border-gray-200 dark:border-slate-700 p-6 shadow-sm">
-            <p className="text-gray-600 dark:text-gray-400">Loading entries…</p>
+            <p className="text-gray-600 dark:text-gray-400">Loading entries...</p>
           </div>
         )}
 
@@ -1309,7 +1289,7 @@ export default function BlueBookPage() {
             );
             const phaseSummary =
               phaseCounts.total > 0
-                ? ` · ${phaseCounts.complete}/${phaseCounts.total} phase${phaseCounts.total === 1 ? '' : 's'
+                ? ` \u00B7 ${phaseCounts.complete}/${phaseCounts.total} phase${phaseCounts.total === 1 ? '' : 's'
                 } logged`
                 : '';
 
@@ -1327,13 +1307,13 @@ export default function BlueBookPage() {
                       {group.communityName || 'Unknown Community'}
                     </p>
                     <p className="text-xs text-gray-500 dark:text-gray-400">
-                      {`${group.builderName || 'Unknown Builder'} · ${totalLots} lot${totalLots === 1 ? '' : 's'
-                        } · ${totalChecks} check${totalChecks === 1 ? '' : 's'}${phaseSummary}`}
+                      {`${group.builderName || 'Unknown Builder'} \u00B7 ${totalLots} lot${totalLots === 1 ? '' : 's'
+                        } \u00B7 ${totalChecks} check${totalChecks === 1 ? '' : 's'}${phaseSummary}`}
                     </p>
                   </div>
                   <div className="flex items-center gap-4 text-sm text-gray-600 dark:text-gray-300">
                     <span>{formatNumberAmount(group.totalAmount)}</span>
-                    <span>{communityOpen ? '▲' : '▼'}</span>
+                    <span>{communityOpen ? '\u25B2' : '\u25BC'}</span>
                   </div>
                 </button>
                 {communityOpen && (
@@ -1365,9 +1345,9 @@ export default function BlueBookPage() {
                           modelPlans.find((plan) => plan.id === effectivePlanId) ??
                           null
                           : null;
-                      const planName = selectedPlan?.name ?? lot.modelPlanName ?? '—';
-                      const planCode = selectedPlan?.code ?? lot.modelPlanCode ?? '—';
-                      const planSqft = selectedPlan?.sqft ?? lot.modelPlanSqft ?? '—';
+                      const planName = selectedPlan?.name ?? lot.modelPlanName ?? '\u2014';
+                      const planCode = selectedPlan?.code ?? lot.modelPlanCode ?? '\u2014';
+                      const planSqft = selectedPlan?.sqft ?? lot.modelPlanSqft ?? '\u2014';
                       const isSavingPlan = Boolean(savingPlanSelections[lot.key]);
                       const planError = planErrors[lot.key];
                       const phaseStatusText = lot.phases.length
@@ -1386,12 +1366,12 @@ export default function BlueBookPage() {
                                 Lot {lot.lotLabel}
                               </p>
                               <p className="text-xs text-gray-500 dark:text-gray-400">
-                                {`Next activity: ${nextActivityLabel} · ${phaseStatusText}`}
+                                {`Next activity: ${nextActivityLabel} \u00B7 ${phaseStatusText}`}
                               </p>
                             </div>
                             <div className="flex items-center gap-4 text-xs text-gray-500 dark:text-gray-300">
                               <span>{formatNumberAmount(lotTotalAmount)}</span>
-                              <span>{lotOpen ? '▲' : '▼'}</span>
+                              <span>{lotOpen ? '\u25B2' : '\u25BC'}</span>
                             </div>
                           </button>
                           {lotOpen && (
@@ -1404,7 +1384,7 @@ export default function BlueBookPage() {
                                     </div>
                                     {isSavingPlan && (
                                       <span className="text-xs text-blue-600 dark:text-blue-300">
-                                        Saving…
+                                        Saving...
                                       </span>
                                     )}
                                   </div>
@@ -1445,10 +1425,10 @@ export default function BlueBookPage() {
                                       {planName}
                                     </p>
                                     <p className="text-xs text-gray-500 dark:text-gray-400">
-                                      Code: {planCode || '—'}
+                                      Code: {planCode || '\u2014'}
                                     </p>
                                     <p className="text-xs text-gray-500 dark:text-gray-400">
-                                      Sq Ft: {planSqft || '—'}
+                                      Sq Ft: {planSqft || '\u2014'}
                                     </p>
                                   </div>
                                 </div>
@@ -1608,24 +1588,24 @@ export default function BlueBookPage() {
                                         {lot.entries.map((entry) => (
                                           <tr key={entry.id} className="bg-white dark:bg-slate-900">
                                             <td className="px-4 py-3 text-gray-900 dark:text-white">
-                                              {entry.checkNumber || '—'}
+                                              {entry.checkNumber || '\u2014'}
                                             </td>
                                             <td className="px-4 py-3 text-gray-900 dark:text-white">
                                               {entry.checkDate
                                                 ? new Date(entry.checkDate).toLocaleDateString()
-                                                : '—'}
+                                                : '\u2014'}
                                             </td>
                                             <td className="px-4 py-3 text-gray-900 dark:text-white">
                                               {entry.accountCategoryCode
-                                                ? `${entry.accountCategoryCode} – ${entry.accountCategoryName || ''}`.trim()
-                                                : entry.serviceName || '—'}
+                                                ? `${entry.accountCategoryCode} \u2013 ${entry.accountCategoryName || ''}`.trim()
+                                                : entry.serviceName || '\u2014'}
                                             </td>
                                             <td className="px-4 py-3 text-gray-900 dark:text-white">
-                                              {entry.assignedForemanName || '—'}
+                                              {entry.assignedForemanName || '\u2014'}
                                               {entry.crewName ? ` / ${entry.crewName}` : ''}
                                             </td>
                                             <td className="px-4 py-3 text-gray-900 dark:text-white">
-                                              {entry.invoiceNumber || '—'}
+                                              {entry.invoiceNumber || '\u2014'}
                                             </td>
                                             <td className="px-4 py-3 text-gray-900 dark:text-white">
                                               {formatAmount(entry.amount)}
@@ -1642,7 +1622,7 @@ export default function BlueBookPage() {
                                                 </span>
                                                 {entry.source === 'manual' && (
                                                   <span className="inline-flex items-center gap-1 rounded-full bg-purple-100 px-2 py-1 text-xs font-semibold text-purple-800 dark:bg-purple-900 dark:text-purple-200">
-                                                    ✏️ Manual
+                                                    Manual
                                                   </span>
                                                 )}
                                               </div>
@@ -1660,7 +1640,7 @@ export default function BlueBookPage() {
                                                 onClick={(e) => handleDelete(entry.id, e)}
                                                 title="Delete Entry"
                                               >
-                                                ❌
+                                                X
                                               </button>
                                             </td>
                                           </tr>
@@ -1686,7 +1666,7 @@ export default function BlueBookPage() {
 
         <div className="mt-6 flex items-center justify-between rounded-lg border border-gray-200 bg-white p-4 text-sm shadow-sm dark:border-slate-700 dark:bg-slate-800 dark:text-gray-200">
           <span>
-            Page {page} of {totalPages} · {total} total entries
+            Page {page} of {totalPages} \u00B7 {total} total entries
           </span>
           <div className="flex gap-2">
             <button
@@ -1718,12 +1698,12 @@ export default function BlueBookPage() {
                     <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Edit Entry</h3>
                     {editingEntry.source === 'manual' && (
                       <span className="inline-flex items-center gap-1 rounded-full bg-purple-100 px-2 py-1 text-xs font-semibold text-purple-800 dark:bg-purple-900 dark:text-purple-200">
-                        ✏️ Manual Entry
+                        Manual Entry
                       </span>
                     )}
                   </div>
                   <p className="text-sm text-gray-500 dark:text-gray-400">
-                    Check {editingEntry.checkNumber || 'N/A'} · Invoice {editingEntry.invoiceNumber || 'N/A'}
+                    Check {editingEntry.checkNumber || 'N/A'} \u00B7 Invoice {editingEntry.invoiceNumber || 'N/A'}
                   </p>
                 </div>
                 <button
@@ -1828,7 +1808,7 @@ export default function BlueBookPage() {
                     onClick={() => handleDelete()}
                     disabled={saving}
                   >
-                    {saving ? 'Deleting…' : 'Delete Entry'}
+                    {saving ? 'Deleting...' : 'Delete Entry'}
                   </button>
                   <div className="flex gap-3 ml-auto">
                     <button
@@ -1844,7 +1824,7 @@ export default function BlueBookPage() {
                       className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
                       disabled={saving}
                     >
-                      {saving ? 'Saving…' : 'Save Changes'}
+                      {saving ? 'Saving...' : 'Save Changes'}
                     </button>
                   </div>
                 </div>
@@ -2014,7 +1994,7 @@ export default function BlueBookPage() {
                     className="rounded-lg bg-green-600 px-4 py-2 text-sm font-semibold text-white hover:bg-green-700 disabled:cursor-not-allowed disabled:opacity-50"
                     disabled={saving}
                   >
-                    {saving ? 'Creating…' : 'Create Entry'}
+                    {saving ? 'Creating...' : 'Create Entry'}
                   </button>
                 </div>
               </form>
