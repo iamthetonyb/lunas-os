@@ -8,6 +8,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useQuery, useMutation } from 'convex/react';
 import { api } from '@/convex/_generated/api';
 import { Id } from '@/convex/_generated/dataModel';
+import { useTranslation } from 'react-i18next';
 
 const schema = z.object({
   builderId: z.string().min(1, 'Builder is required'),
@@ -54,6 +55,7 @@ interface ModelPlan {
 }
 
 export function RatesCrud() {
+  const { t } = useTranslation();
   const rates = useQuery(api.contractRates.list) as Rate[] | undefined;
   const builders = useQuery(api.queries.getBuilders) as Builder[] | undefined;
   const services = useQuery(api.queries.getServices) as Service[] | undefined;
@@ -183,7 +185,7 @@ export function RatesCrud() {
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
           </svg>
-          Add Rate
+          {t('contracts.addRate')}
         </button>
       </div>
 
@@ -209,22 +211,22 @@ export function RatesCrud() {
               <thead className="bg-gray-50 dark:bg-slate-800">
                 <tr>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                    Builder
+                    {t('common.builder')}
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                    Service
+                    {t('common.service')}
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                    Model/Plan
+                    {t('intake.modelPlan')}
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                    Rate
+                    {t('contracts.rate')}
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                    Effective Date
+                    {t('contracts.effectiveDate')}
                   </th>
                   <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                    Actions
+                    {t('common.actions')}
                   </th>
                 </tr>
               </thead>
@@ -270,7 +272,7 @@ export function RatesCrud() {
                           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                           </svg>
-                          Edit
+                          {t('common.edit')}
                         </button>
                         <button
                           onClick={() => handleDelete(rate._id)}
@@ -283,14 +285,14 @@ export function RatesCrud() {
                                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                                 <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                               </svg>
-                              Deleting...
+                              {t('common.loading')}
                             </>
                           ) : (
                             <>
                               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                               </svg>
-                              Delete
+                              {t('common.delete')}
                             </>
                           )}
                         </button>
@@ -336,14 +338,14 @@ export function RatesCrud() {
                     className="text-lg font-semibold leading-6 text-gray-900 dark:text-gray-100 mb-4 flex items-center gap-2"
                   >
                     <span className="text-2xl">💵</span>
-                    {selectedRate ? 'Edit Rate' : 'Add New Rate'}
+                    {selectedRate ? t('contracts.editRate') : t('contracts.addRate')}
                   </Dialog.Title>
 
                   <form onSubmit={onSubmit} className="space-y-4">
                     <div className="grid grid-cols-2 gap-4">
                       <div>
                         <label htmlFor="builderId" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                          Builder
+                          {t('common.builder')}
                         </label>
                         <select
                           id="builderId"
@@ -364,7 +366,7 @@ export function RatesCrud() {
 
                       <div>
                         <label htmlFor="serviceId" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                          Service
+                          {t('common.service')}
                         </label>
                         <select
                           id="serviceId"
@@ -426,7 +428,7 @@ export function RatesCrud() {
 
                       <div>
                         <label htmlFor="basis" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                          Basis
+                          {t('contracts.basis')}
                         </label>
                         <select
                           id="basis"
@@ -447,7 +449,7 @@ export function RatesCrud() {
                     <div className="grid grid-cols-2 gap-4">
                       <div>
                         <label htmlFor="effectiveOn" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                          Effective Date
+                          {t('contracts.effectiveDate')}
                         </label>
                         <input
                           id="effectiveOn"
@@ -483,7 +485,7 @@ export function RatesCrud() {
                         }}
                         className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 font-medium transition-colors"
                       >
-                        Cancel
+                        {t('common.cancel')}
                       </button>
                       <button
                         type="submit"
@@ -496,14 +498,14 @@ export function RatesCrud() {
                               <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                               <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                             </svg>
-                            Saving...
+                            {t('common.loading')}
                           </>
                         ) : (
                           <>
                             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                             </svg>
-                            Save Rate
+                            {t('common.save')}
                           </>
                         )}
                       </button>
@@ -556,25 +558,25 @@ export function RatesCrud() {
                       <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4 border border-blue-200 dark:border-blue-800">
                         <div className="space-y-3">
                           <div>
-                            <span className="text-xs font-medium text-blue-700 dark:text-blue-300 uppercase tracking-wider">Builder</span>
+                            <span className="text-xs font-medium text-blue-700 dark:text-blue-300 uppercase tracking-wider">{t('common.builder')}</span>
                             <p className="text-sm font-semibold text-blue-900 dark:text-blue-100 mt-1">
                               {getBuilderName(selectedRateForPreview.builderId)}
                             </p>
                           </div>
                           <div>
-                            <span className="text-xs font-medium text-blue-700 dark:text-blue-300 uppercase tracking-wider">Service</span>
+                            <span className="text-xs font-medium text-blue-700 dark:text-blue-300 uppercase tracking-wider">{t('common.service')}</span>
                             <p className="text-sm font-semibold text-blue-900 dark:text-blue-100 mt-1">
                               {getServiceName(selectedRateForPreview.serviceId)}
                             </p>
                           </div>
                           <div>
-                            <span className="text-xs font-medium text-blue-700 dark:text-blue-300 uppercase tracking-wider">Model/Plan</span>
+                            <span className="text-xs font-medium text-blue-700 dark:text-blue-300 uppercase tracking-wider">{t('intake.modelPlan')}</span>
                             <p className="text-sm font-semibold text-blue-900 dark:text-blue-100 mt-1">
                               {getModelPlanName(selectedRateForPreview.modelPlanId)}
                             </p>
                           </div>
                           <div className="pt-2 border-t border-blue-200 dark:border-blue-700">
-                            <span className="text-xs font-medium text-blue-700 dark:text-blue-300 uppercase tracking-wider">Rate</span>
+                            <span className="text-xs font-medium text-blue-700 dark:text-blue-300 uppercase tracking-wider">{t('contracts.rate')}</span>
                             <p className="text-2xl font-bold text-green-600 dark:text-green-400 mt-1">
                               ${selectedRateForPreview.rate}
                             </p>
@@ -599,7 +601,7 @@ export function RatesCrud() {
                         onClick={() => setIsPreviewOpen(false)}
                         className="w-full px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors"
                       >
-                        Close
+                        {t('common.close')}
                       </button>
                     </div>
                   )}
