@@ -46,11 +46,25 @@ export default function DashboardPage() {
   }).length;
 
   const stats = [
-    { name: t('dashboard.activeJobs'), value: (activeJobCount ?? 0).toString(), change: (activeJobCount ?? 0) > 0 ? `+${activeJobCount}` : '0', icon: '📋' },
-    { name: t('dashboard.pendingIntakes'), value: (pendingIntakeCount ?? 0).toString(), change: (pendingIntakeCount ?? 0) > 0 ? `+${pendingIntakeCount}` : '0', icon: '📝' },
-    { name: t('dashboard.scheduledToday'), value: (scheduledTodayCount ?? 0).toString(), change: '0', icon: '📅' },
-    { name: t('dashboard.dispatchBatches'), value: (dispatchBatches?.length ?? 0).toString(), change: (dispatchBatches?.length ?? 0) > 0 ? `+${dispatchBatches?.length}` : '0', icon: '🚀' },
+    { name: t('dashboard.activeJobs'), value: (activeJobCount ?? 0).toString(), change: (activeJobCount ?? 0) > 0 ? `+${activeJobCount}` : '0', color: 'blue' as const },
+    { name: t('dashboard.pendingIntakes'), value: (pendingIntakeCount ?? 0).toString(), change: (pendingIntakeCount ?? 0) > 0 ? `+${pendingIntakeCount}` : '0', color: 'amber' as const },
+    { name: t('dashboard.scheduledToday'), value: (scheduledTodayCount ?? 0).toString(), change: '0', color: 'emerald' as const },
+    { name: t('dashboard.dispatchBatches'), value: (dispatchBatches?.length ?? 0).toString(), change: (dispatchBatches?.length ?? 0) > 0 ? `+${dispatchBatches?.length}` : '0', color: 'violet' as const },
   ];
+
+  const colorMap = {
+    blue: 'from-blue-500/10 to-blue-500/5 dark:from-blue-500/20 dark:to-blue-500/5 border-blue-200 dark:border-blue-800/50',
+    amber: 'from-amber-500/10 to-amber-500/5 dark:from-amber-500/20 dark:to-amber-500/5 border-amber-200 dark:border-amber-800/50',
+    emerald: 'from-emerald-500/10 to-emerald-500/5 dark:from-emerald-500/20 dark:to-emerald-500/5 border-emerald-200 dark:border-emerald-800/50',
+    violet: 'from-violet-500/10 to-violet-500/5 dark:from-violet-500/20 dark:to-violet-500/5 border-violet-200 dark:border-violet-800/50',
+  };
+
+  const dotColorMap = {
+    blue: 'bg-blue-500',
+    amber: 'bg-amber-500',
+    emerald: 'bg-emerald-500',
+    violet: 'bg-violet-500',
+  };
 
   return (
     <>
@@ -61,18 +75,14 @@ export default function DashboardPage() {
 
       <main className="px-6 py-6">
         {/* Stats Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
           {stats.map((stat) => (
-            <div key={stat.name} className="bg-white dark:bg-slate-800 rounded-lg shadow-sm p-6 border border-gray-200 dark:border-slate-700">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-2xl">{stat.icon}</span>
-                <span className={`text-xs font-semibold px-2 py-1 rounded ${stat.change.startsWith('+') ? 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-200' : 'bg-gray-100 text-gray-700 dark:bg-gray-900 dark:text-gray-300'
-                  }`}>
-                  {stat.change}
-                </span>
+            <div key={stat.name} className={`bg-gradient-to-br ${colorMap[stat.color]} rounded-xl p-5 border transition-all duration-200 hover:shadow-md`}>
+              <div className="flex items-center gap-2 mb-3">
+                <div className={`w-2 h-2 rounded-full ${dotColorMap[stat.color]}`} />
+                <h3 className="text-sm font-medium text-gray-600 dark:text-gray-400">{stat.name}</h3>
               </div>
-              <h3 className="text-sm font-medium text-gray-600 dark:text-gray-400">{stat.name}</h3>
-              <p className="text-2xl font-bold text-gray-900 dark:text-white mt-1">{stat.value}</p>
+              <p className="text-3xl font-bold text-gray-900 dark:text-white tracking-tight">{stat.value}</p>
             </div>
           ))}
         </div>
