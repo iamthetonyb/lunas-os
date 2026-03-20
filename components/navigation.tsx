@@ -103,18 +103,22 @@ const iconMap: Record<string, () => React.ReactElement> = {
   Settings: IconSettings,
 };
 
-const baseNavigation = [
+// Main operations nav — the core workflow
+const opsNavigation = [
   { key: 'Dashboard', tKey: 'navigation.dashboard', href: '/dashboard' },
   { key: 'Intake', tKey: 'navigation.intake', href: '/intake' },
   { key: 'Schedule', tKey: 'navigation.schedule', href: '/schedule' },
   { key: 'Dispatch', tKey: 'navigation.dispatch', href: '/dispatch' },
   { key: 'Blue Book', tKey: 'navigation.blueBook', href: '/blue-book' },
   { key: 'Extra Work', tKey: 'navigation.extraWork', href: '/extra-work' },
+];
+
+// Admin/config nav — below the divider
+const adminNavigation = [
   { key: 'Contracts', tKey: 'navigation.contracts', href: '/contracts' },
   { key: 'Invoicing', tKey: 'navigation.invoicing', href: '/invoicing' },
   { key: 'Import', tKey: 'navigation.import', href: '/import' },
   { key: 'Users', tKey: 'navigation.users', href: '/users' },
-  { key: 'Settings', tKey: 'navigation.settings', href: '/settings' },
 ];
 
 export function Navigation() {
@@ -132,11 +136,13 @@ export function Navigation() {
     setMounted(true);
   }, []);
 
-  const contractorAllowed = new Set(['Dashboard', 'Intake', 'Schedule', 'Settings']);
-  const navigation =
+  const contractorAllowed = new Set(['Dashboard', 'Intake', 'Schedule']);
+  const opsNav =
     orgRole === 'contractor'
-      ? baseNavigation.filter((item) => contractorAllowed.has(item.key))
-      : baseNavigation;
+      ? opsNavigation.filter((item) => contractorAllowed.has(item.key))
+      : opsNavigation;
+  const adminNav =
+    orgRole === 'contractor' ? [] : adminNavigation;
 
   const userDisplayName = session?.user?.name ?? 'User';
   const userInitials = userDisplayName
@@ -175,8 +181,9 @@ export function Navigation() {
 
       {/* Navigation Items */}
       <div className="px-3 py-3 flex-1 overflow-y-auto">
+        {/* Operations */}
         <div className="space-y-0.5">
-          {navigation.map((item) => {
+          {opsNav.map((item) => {
             const isActive = pathname === item.href || pathname?.startsWith(item.href + '/');
             const Icon = iconMap[item.key];
             return (
@@ -191,7 +198,40 @@ export function Navigation() {
                   }
                 `}
               >
-                {/* Active indicator bar */}
+                {isActive && (
+                  <div className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-6 bg-blue-600 dark:bg-blue-400 rounded-r-full" />
+                )}
+                <span className={`flex-shrink-0 ${isActive ? 'text-blue-600 dark:text-blue-400' : 'text-gray-400 dark:text-gray-500 group-hover:text-gray-600 dark:group-hover:text-gray-300'}`}>
+                  {Icon && <Icon />}
+                </span>
+                <span className="text-sm">{t(item.tKey)}</span>
+              </Link>
+            );
+          })}
+        </div>
+
+        {/* Divider */}
+        {adminNav.length > 0 && (
+          <div className="my-3 mx-2 border-t border-gray-200 dark:border-slate-700/60" />
+        )}
+
+        {/* Admin / Config */}
+        <div className="space-y-0.5">
+          {adminNav.map((item) => {
+            const isActive = pathname === item.href || pathname?.startsWith(item.href + '/');
+            const Icon = iconMap[item.key];
+            return (
+              <Link
+                key={item.key}
+                href={item.href}
+                className={`
+                  group flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-150 relative
+                  ${isActive
+                    ? 'bg-blue-50 dark:bg-blue-500/10 text-blue-700 dark:text-blue-400 font-semibold'
+                    : 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-slate-800 hover:text-gray-900 dark:hover:text-gray-200'
+                  }
+                `}
+              >
                 {isActive && (
                   <div className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-6 bg-blue-600 dark:bg-blue-400 rounded-r-full" />
                 )}
@@ -228,9 +268,9 @@ export function Navigation() {
           </div>
         )}
 
-        {/* User Info */}
+        {/* User Info + Settings */}
         <div className="px-4 py-3 border-t border-gray-100 dark:border-slate-800">
-          <div className="flex items-center gap-3 mb-3">
+          <div className="flex items-center gap-3 mb-2">
             <div className="w-9 h-9 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center shadow-sm">
               <span className="text-white text-xs font-bold">{userInitials}</span>
             </div>
@@ -241,12 +281,25 @@ export function Navigation() {
               <p className="text-[11px] text-gray-500 dark:text-gray-400">{userRoleLabel}</p>
             </div>
           </div>
-          <button
-            onClick={() => signOut({ callbackUrl: '/login' })}
-            className="w-full px-3 py-2 text-sm font-medium text-gray-600 dark:text-gray-400 rounded-lg hover:bg-gray-100 dark:hover:bg-slate-800 hover:text-red-600 dark:hover:text-red-400 transition-colors"
-          >
-            {t('navigation.logout')}
-          </button>
+          <div className="flex items-center gap-1">
+            <Link
+              href="/settings"
+              className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-2 text-sm font-medium rounded-lg transition-colors ${
+                pathname === '/settings'
+                  ? 'bg-blue-50 dark:bg-blue-500/10 text-blue-700 dark:text-blue-400'
+                  : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-slate-800'
+              }`}
+            >
+              <IconSettings />
+              <span>{t('navigation.settings')}</span>
+            </Link>
+            <button
+              onClick={() => signOut({ callbackUrl: '/login' })}
+              className="flex-1 px-3 py-2 text-sm font-medium text-gray-600 dark:text-gray-400 rounded-lg hover:bg-gray-100 dark:hover:bg-slate-800 hover:text-red-600 dark:hover:text-red-400 transition-colors"
+            >
+              {t('navigation.logout')}
+            </button>
+          </div>
         </div>
       </div>
     </nav>

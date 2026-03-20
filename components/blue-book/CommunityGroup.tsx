@@ -7,7 +7,7 @@ import { LotCard } from './LotCard';
 type Props = {
     group: CommunityGroupType;
     onEditEntry: (entryId: string) => void;
-    onPhaseOverride: (lot: string, phaseCode: string, complete: boolean) => void;
+    onPhaseOverride: (communityId: string, lot: string, phaseCode: string, complete: boolean) => void;
 };
 
 export function CommunityGroup({ group, onEditEntry, onPhaseOverride }: Props) {
@@ -59,7 +59,9 @@ export function CommunityGroup({ group, onEditEntry, onPhaseOverride }: Props) {
                             key={lot.key}
                             lot={lot}
                             onEditEntry={onEditEntry}
-                            onPhaseOverride={onPhaseOverride}
+                            onPhaseOverride={(lotName, phaseCode, complete) =>
+                                onPhaseOverride(group.communityId ?? '', lotName, phaseCode, complete)
+                            }
                         />
                     ))}
                 </div>

@@ -208,14 +208,58 @@ export const update = mutation({
 export const remove = mutation({
   args: { id: v.id("jobRequests") },
   handler: async (ctx, args) => {
-    // Delete associated services first
+    // 1. Delete associated jobRequestServices and their downstream records
     const services = await ctx.db
       .query("jobRequestServices")
       .withIndex("by_jobRequest", (q) => q.eq("jobRequestId", args.id))
       .collect();
+
+    const batchIdsToCheck = new Set<string>();
+
     for (const svc of services) {
+      // Delete assignments referencing this service
+      const assignments = await ctx.db
+        .query("assignments")
+        .filter((q) => q.eq(q.field("jobRequestServiceId"), svc._id))
+        .collect();
+      for (const a of assignments) {
+        if (a.dispatchBatchId) batchIdsToCheck.add(a.dispatchBatchId);
+        await ctx.db.delete(a._id);
+      }
+
+      // Delete blue book entries auto-created from this service
+      const bbEntries = await ctx.db
+        .query("blueBookEntries")
+        .withIndex("by_jobRequestService", (q) => q.eq("jobRequestServiceId", svc._id))
+        .collect();
+      for (const bb of bbEntries) {
+        await ctx.db.delete(bb._id);
+      }
+
       await ctx.db.delete(svc._id);
     }
+
+    // 2. Also delete blue book entries linked to the job request itself
+    const bbByJr = await ctx.db
+      .query("blueBookEntries")
+      .withIndex("by_jobRequest", (q) => q.eq("jobRequestId", args.id))
+      .collect();
+    for (const bb of bbByJr) {
+      await ctx.db.delete(bb._id);
+    }
+
+    // 3. Clean up empty dispatch batches (batches with no remaining assignments)
+    for (const batchId of batchIdsToCheck) {
+      const remaining = await ctx.db
+        .query("assignments")
+        .filter((q) => q.eq(q.field("dispatchBatchId"), batchId))
+        .first();
+      if (!remaining) {
+        await ctx.db.delete(batchId as any);
+      }
+    }
+
+    // 4. Delete the job request itself
     await ctx.db.delete(args.id);
     return { success: true };
   },

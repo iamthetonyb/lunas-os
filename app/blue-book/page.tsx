@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useCallback, useEffect } from 'react';
-import { useQuery } from 'convex/react';
+import { useQuery, useMutation } from 'convex/react';
 import { api } from '@/convex/_generated/api';
 import { useSession } from 'next-auth/react';
 import { toast } from 'sonner';
@@ -143,15 +143,27 @@ export default function BlueBookPage() {
         [entries]
     );
 
+    const setOverrideMutation = useMutation(api.blueBookPhases.setOverride);
+
     const handlePhaseOverride = useCallback(
-        async (lot: string, phaseCode: string, complete: boolean) => {
+        async (communityId: string, lot: string, phaseCode: string, complete: boolean) => {
+            if (!filters.builderId || !communityId) {
+                toast.error('Select a builder first');
+                return;
+            }
             try {
-                await setOverride(lot, phaseCode, complete);
+                await setOverrideMutation({
+                    builderId: filters.builderId as Id<'builders'>,
+                    communityId: communityId as Id<'communities'>,
+                    lot,
+                    phaseCode,
+                    phaseComplete: complete,
+                });
             } catch {
                 toast.error('Failed to update phase');
             }
         },
-        [setOverride]
+        [filters.builderId, setOverrideMutation]
     );
 
     return (
