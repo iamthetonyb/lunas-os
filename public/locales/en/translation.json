@@ -318,7 +318,11 @@
         "unitLabel": "Unit",
         "effectiveDate": "Effective Date",
         "expiresDate": "Expires",
-        "noRates": "No contract rates found"
+        "noRates": "No contract rates found",
+        "code": "Code",
+        "category": "Category",
+        "unitType": "Unit Type",
+        "services": "Services"
     },
     "invoicing": {
         "title": "Invoicing",

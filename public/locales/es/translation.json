@@ -318,7 +318,11 @@
         "unitLabel": "Unidad",
         "effectiveDate": "Fecha Efectiva",
         "expiresDate": "Vence",
-        "noRates": "No se encontraron tarifas"
+        "noRates": "No se encontraron tarifas",
+        "code": "Código",
+        "category": "Categoría",
+        "unitType": "Tipo de Unidad",
+        "services": "Servicios"
     },
     "invoicing": {
         "title": "Facturación",
