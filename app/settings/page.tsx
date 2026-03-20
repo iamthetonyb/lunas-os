@@ -8,6 +8,7 @@ import { useQuery, useMutation } from 'convex/react';
 import { api } from '@/convex/_generated/api';
 import { Id } from '@/convex/_generated/dataModel';
 import { useTranslation } from 'react-i18next';
+import { useSession } from 'next-auth/react';
 
 type UserProfile = {
   id: string;
@@ -19,10 +20,9 @@ type UserProfile = {
 };
 
 export default function SettingsPage() {
-  const { i18n } = useTranslation();
-  // TODO: Replace this with the actual logged-in user ID from your auth context
-  // For now, this uses a placeholder. You'll need to wire up the real userId.
-  const [userId, setUserId] = useState<string | null>(null);
+  const { t, i18n } = useTranslation();
+  const { data: session } = useSession();
+  const userId = (session?.user as any)?.id as string | null;
   const profile = useQuery(
     api.userFunctions.getProfile,
     userId ? { userId: userId as Id<"users"> } : "skip"
@@ -81,13 +81,13 @@ export default function SettingsPage() {
     }
   };
 
-  if (isLoading) return <div className="p-8">Loading...</div>;
+  if (isLoading) return <div className="p-8">{t('common.loading')}</div>;
 
   return (
     <>
       <PageHeader
-        title="Settings"
-        description="Configure your personal preferences and notification settings"
+        title={t('settings.title')}
+        description={t('settings.description')}
       />
       <main className="px-6 py-6 max-w-4xl">
         <form onSubmit={handleSubmit} className="space-y-6">
@@ -104,12 +104,12 @@ export default function SettingsPage() {
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="bg-white dark:bg-slate-800 rounded-lg shadow-sm border border-gray-200 dark:border-slate-700 p-6">
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">General Settings</h3>
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">{t('settings.generalSettings')}</h3>
 
               <div className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Display Name
+                    {t('settings.displayName')}
                   </label>
                   <input
                     type="text"
@@ -121,26 +121,26 @@ export default function SettingsPage() {
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Language Preference
+                    {t('settings.preferredLanguage')}
                   </label>
                   <select
                     value={formData.preferredLang}
                     onChange={(e) => setFormData({ ...formData, preferredLang: e.target.value as any })}
                     className="w-full px-4 py-2 border border-gray-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-gray-900 dark:text-white"
                   >
-                    <option value="EN">English</option>
-                    <option value="ES_MX">Spanish (Español)</option>
+                    <option value="EN">{t('settings.english')}</option>
+                    <option value="ES_MX">{t('settings.spanish')}</option>
                   </select>
                 </div>
               </div>
             </div>
 
             <div className="bg-white dark:bg-slate-800 rounded-lg shadow-sm border border-gray-200 dark:border-slate-700 p-6">
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Notifications</h3>
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">{t('settings.notifications')}</h3>
 
               <div className="space-y-4">
                 <p className="text-sm text-gray-500 dark:text-gray-400">
-                  How would you prefer to be contacted for job updates and dispatches?
+                  {t('settings.contactPreference')}
                 </p>
 
                 <div className="space-y-2">
@@ -167,7 +167,7 @@ export default function SettingsPage() {
               disabled={busy}
               className="px-6 py-2 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
             >
-              {busy ? 'Saving...' : 'Save All Settings'}
+              {busy ? t('settings.saving') : t('settings.saveChanges')}
             </button>
           </div>
         </form>

@@ -10,6 +10,21 @@ import { api } from "@/convex/_generated/api";
 export function createTools() {
     const client = getConvexClient();
 
+    // Auto-log write operations to the decision audit trail
+    async function logAction(action: string, input: Record<string, any>, output: any) {
+        try {
+            await client.mutation(api.ai.logDecision, {
+                action,
+                input: JSON.stringify(input),
+                output: JSON.stringify(output),
+                confidence: 0.85,
+                source: "chat" as const,
+            });
+        } catch {
+            // Don't let logging failures break tool execution
+        }
+    }
+
     return {
         // ── Read Operations ──────────────────────────────────────────
 
@@ -196,13 +211,12 @@ export function createTools() {
                     .describe("Foreman name to assign"),
             }),
             execute: async ({ jobId, foremanName }) => {
-                return await client.mutation(
+                const result = await client.mutation(
                     api.mutations.assignForeman,
-                    {
-                        jobId: jobId as any,
-                        foremanName,
-                    }
+                    { jobId: jobId as any, foremanName }
                 );
+                await logAction("assign_foreman", { jobId, foremanName }, result);
+                return result;
             },
         }),
 
@@ -215,13 +229,12 @@ export function createTools() {
                     .describe("Crew name to assign"),
             }),
             execute: async ({ jobId, crewName }) => {
-                return await client.mutation(
+                const result = await client.mutation(
                     api.mutations.assignCrew,
-                    {
-                        jobId: jobId as any,
-                        crewName,
-                    }
+                    { jobId: jobId as any, crewName }
                 );
+                await logAction("assign_crew", { jobId, crewName }, result);
+                return result;
             },
         }),
 
@@ -238,14 +251,12 @@ export function createTools() {
                     .describe("Reason for rescheduling"),
             }),
             execute: async ({ jobId, newDate, reason }) => {
-                return await client.mutation(
+                const result = await client.mutation(
                     api.mutations.rescheduleJob,
-                    {
-                        jobId: jobId as any,
-                        newDate,
-                        reason,
-                    }
+                    { jobId: jobId as any, newDate, reason }
                 );
+                await logAction("reschedule", { jobId, newDate, reason }, result);
+                return result;
             },
         }),
 
@@ -266,15 +277,12 @@ export function createTools() {
                 crewName,
                 serviceDate,
             }) => {
-                return await client.mutation(
+                const result = await client.mutation(
                     api.mutations.dispatchJob,
-                    {
-                        jobId: jobId as any,
-                        foremanName,
-                        crewName,
-                        serviceDate,
-                    }
+                    { jobId: jobId as any, foremanName, crewName, serviceDate }
                 );
+                await logAction("dispatch", { jobId, foremanName, crewName, serviceDate }, result);
+                return result;
             },
         }),
 
@@ -313,7 +321,7 @@ export function createTools() {
                     .describe("List of services needed"),
             }),
             execute: async (args) => {
-                return await client.mutation(
+                const result = await client.mutation(
                     api.mutations.createJobRequest,
                     {
                         builderId: (args.builderId as any) || undefined,
@@ -328,6 +336,8 @@ export function createTools() {
                         services: args.services,
                     }
                 );
+                await logAction("create_intake", args, result);
+                return result;
             },
         }),
 
@@ -351,10 +361,12 @@ export function createTools() {
                 for (const [k, v] of Object.entries(updates)) {
                     if (v !== undefined) filtered[k] = v;
                 }
-                return await client.mutation(
+                const result = await client.mutation(
                     api.jobRequests.update,
                     filtered as any
                 );
+                await logAction("update_job_request", { id, ...updates }, result);
+                return result;
             },
         }),
 

@@ -1,6 +1,6 @@
 /**
  * AI Chat API route — GPT-5.4 Nano via OpenRouter (primary) or OpenAI (fallback).
- * Edge runtime for fastest cold starts. Zero tokens until a message arrives.
+ * Node.js runtime (ConvexHttpClient requires Node). Write operations auto-log to audit trail.
  */
 import {
     streamText,
@@ -35,18 +35,20 @@ export async function POST(req: Request) {
         userName,
         userRole,
         currentPage,
+        preferredLang,
     }: {
         messages: UIMessage[];
         userName?: string;
         userRole?: string;
         currentPage?: string;
+        preferredLang?: string;
     } = body;
 
     const tools = createTools();
 
     const result = streamText({
         model: getModel(),
-        system: buildSystemPrompt({ userName, userRole, currentPage }),
+        system: buildSystemPrompt({ userName, userRole, currentPage, preferredLang }),
         messages: await convertToModelMessages(messages),
         tools,
         stopWhen: stepCountIs(5),

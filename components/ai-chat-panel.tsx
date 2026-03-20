@@ -16,7 +16,7 @@ interface SpeechRecognitionErrorEvent {
 }
 
 export default function AIChatPanel({ onClose }: { onClose: () => void }) {
-    const { t } = useTranslation();
+    const { t, i18n } = useTranslation();
     const [voiceMode, setVoiceMode] = useState(false);
     const [listening, setListening] = useState(false);
     const [ttsEnabled, setTtsEnabled] = useState(true);
@@ -27,7 +27,6 @@ export default function AIChatPanel({ onClose }: { onClose: () => void }) {
 
     const { data: session } = useSession();
     const pathname = usePathname();
-
     const transport = useMemo(
         () =>
             new DefaultChatTransport({
@@ -36,9 +35,10 @@ export default function AIChatPanel({ onClose }: { onClose: () => void }) {
                     userName: session?.user?.name || 'Team Member',
                     userRole: (session?.user as any)?.role || 'ADMIN',
                     currentPage: pathname,
+                    preferredLang: i18n.language === 'es' ? 'ES' : 'EN',
                 },
             }),
-        [session?.user, pathname]
+        [session?.user, pathname, i18n.language]
     );
 
     const { messages, sendMessage, status, error } = useChat({ transport });
