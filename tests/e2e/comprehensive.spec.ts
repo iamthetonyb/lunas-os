@@ -10,8 +10,8 @@ describe('Comprehensive E2E Tests', () => {
 
   beforeAll(async () => {
     browser = await puppeteer.launch({ 
-      headless: true, // Use true instead of 'new' for better stability
-      executablePath: '/Users/abenton333/.cache/puppeteer/chromium/mac_arm-1083080/chrome-mac/Chromium.app/Contents/MacOS/Chromium',
+      headless: 'new',
+      executablePath: process.env.CHROME_PATH || '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
       args: [
         '--no-sandbox', 
         '--disable-setuid-sandbox',
@@ -56,8 +56,8 @@ describe('Comprehensive E2E Tests', () => {
       await page.goto(`${BASE_URL}/login`);
       await page.waitForSelector('input[name="email"]');
       
-      await page.type('input[name="email"]', 'dispatcher@lunas.com');
-      await page.type('input[name="password"]', 'password');
+      await page.type('input[name="email"]', 'admin@lunas.local');
+      await page.type('input[name="password"]', 'dev');
       
       await Promise.all([
         page.waitForNavigation({ waitUntil: 'networkidle2' }),

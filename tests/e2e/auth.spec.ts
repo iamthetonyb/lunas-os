@@ -6,7 +6,7 @@ describe('Auth smoke test', () => {
   let page: puppeteer.Page;
 
   beforeAll(async () => {
-    browser = await puppeteer.launch({ headless: 'new', executablePath: '/Users/abenton333/.cache/puppeteer/chromium/mac_arm-1083080/chrome-mac/Chromium.app/Contents/MacOS/Chromium' });
+    browser = await puppeteer.launch({ headless: 'new', executablePath: process.env.CHROME_PATH || '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome', args: ['--no-sandbox', '--disable-setuid-sandbox'] });
     page = await browser.newPage();
   });
 
@@ -27,8 +27,8 @@ describe('Auth smoke test', () => {
     expect(passwordInput).not.toBeNull();
 
     // Type into the inputs
-    await page.type('input[name="email"]', 'dispatcher@lunas.com');
-    await page.type('input[name="password"]', 'password');
+    await page.type('input[name="email"]', 'admin@lunas.local');
+    await page.type('input[name="password"]', 'dev');
 
     // Click the submit button
     await page.click('button[type="submit"]');
