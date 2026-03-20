@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useMemo } from 'react';
 import { useQuery, useMutation } from 'convex/react';
 import { api } from '@/convex/_generated/api';
 import { useSession } from 'next-auth/react';
@@ -19,7 +19,6 @@ import { PhaseConfigEditor } from '@/components/blue-book/PhaseConfigEditor';
 import { BlueBookPagination } from '@/components/blue-book/BlueBookPagination';
 
 import { useBlueBookFilters } from '@/hooks/useBlueBookFilters';
-import { usePhaseOverrides } from '@/hooks/usePhaseOverrides';
 import { useCommunityGroups } from '@/hooks/useCommunityGroups';
 
 const PAGE_SIZE = 500;
@@ -110,12 +109,26 @@ export default function BlueBookPage() {
             ? (dbPhaseConfigs as unknown as PhaseDefinition[])
             : DEFAULT_PHASES;
 
-    // Phase overrides — need a representative communityId for the hook
-    // We pass null when no builder selected; the hook handles "skip" internally
-    const { overrides, setOverride } = usePhaseOverrides(
-        filters.builderId,
-        null // community-level override queries happen inside CommunityGroup
+    // Phase overrides — query ALL overrides for this builder (across all communities)
+    const rawOverrides = useQuery(
+        api.blueBookPhases.getOverridesByBuilder,
+        filters.builderId
+            ? { builderId: filters.builderId as Id<'builders'> }
+            : 'skip'
     );
+
+    const overrides = useMemo(() => {
+        const map = new Map<string, { phase?: boolean; services?: Record<string, boolean> }>();
+        if (!rawOverrides) return map;
+        for (const o of rawOverrides) {
+            const key = `${o.lot}:${o.phaseCode}`;
+            map.set(key, {
+                phase: o.phaseComplete ?? undefined,
+                services: o.serviceOverrides ? JSON.parse(o.serviceOverrides) : undefined,
+            });
+        }
+        return map;
+    }, [rawOverrides]);
 
     // ── Derived data ─────────────────────────────────────────────────
     // Convex returns Doc types with Id<T> | undefined; cast to string | null for components
@@ -164,6 +177,43 @@ export default function BlueBookPage() {
             }
         },
         [filters.builderId, setOverrideMutation]
+    );
+
+    const handleServiceToggle = useCallback(
+        async (communityId: string, lot: string, phaseCode: string, serviceName: string, complete: boolean) => {
+            if (!filters.builderId || !communityId) {
+                toast.error('Select a builder first');
+                return;
+            }
+            try {
+                // Get current service overrides for this phase, then toggle the specific service
+                const phase = communityGroups
+                    .find((g) => g.communityId === communityId)
+                    ?.lots.find((l) => l.lot === lot)
+                    ?.phases.find((p) => p.code === phaseCode);
+
+                const currentOverrides: Record<string, boolean> = {};
+                if (phase) {
+                    for (const svc of phase.services) {
+                        if (svc.overrideStatus !== undefined) {
+                            currentOverrides[svc.name] = svc.overrideStatus;
+                        }
+                    }
+                }
+                currentOverrides[serviceName] = complete;
+
+                await setOverrideMutation({
+                    builderId: filters.builderId as Id<'builders'>,
+                    communityId: communityId as Id<'communities'>,
+                    lot,
+                    phaseCode,
+                    serviceOverrides: JSON.stringify(currentOverrides),
+                });
+            } catch {
+                toast.error('Failed to update service');
+            }
+        },
+        [filters.builderId, setOverrideMutation, communityGroups]
     );
 
     return (
@@ -232,6 +282,7 @@ export default function BlueBookPage() {
                                             group={group}
                                             onEditEntry={handleEditEntry}
                                             onPhaseOverride={handlePhaseOverride}
+                                            onServiceToggle={handleServiceToggle}
                                         />
                                     ))}
                                 </div>

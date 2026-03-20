@@ -126,6 +126,20 @@ export const getOverridesByBuilderCommunity = query({
     },
 });
 
+export const getOverridesByBuilder = query({
+    args: {
+        builderId: v.id("builders"),
+    },
+    handler: async (ctx, args) => {
+        return await ctx.db
+            .query("phaseOverrides")
+            .withIndex("by_builder_community", (q) =>
+                q.eq("builderId", args.builderId)
+            )
+            .collect();
+    },
+});
+
 /**
  * Seed default Pulte phases if none exist for a builder.
  * Safe to call multiple times — only inserts if builder has 0 phases.

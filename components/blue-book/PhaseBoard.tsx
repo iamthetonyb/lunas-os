@@ -7,9 +7,10 @@ type Props = {
     phases: LotPhase[];
     lot: string;
     onPhaseOverride: (lot: string, phaseCode: string, complete: boolean) => void;
+    onServiceToggle: (lot: string, phaseCode: string, serviceName: string, complete: boolean) => void;
 };
 
-export function PhaseBoard({ phases, lot, onPhaseOverride }: Props) {
+export function PhaseBoard({ phases, lot, onPhaseOverride, onServiceToggle }: Props) {
     const [expanded, setExpanded] = useState<string | null>(null);
 
     if (!phases.length) return null;
@@ -89,15 +90,20 @@ export function PhaseBoard({ phases, lot, onPhaseOverride }: Props) {
                         </button>
                     </div>
                     {expandedPhase.services.map((svc) => (
-                        <div
+                        <button
                             key={svc.name}
-                            className="flex items-center gap-2 text-xs py-0.5"
+                            type="button"
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                onServiceToggle(lot, expandedPhase.code, svc.name, !svc.isLogged);
+                            }}
+                            className="flex items-center gap-2 text-xs py-1 px-1 -mx-1 rounded hover:bg-gray-100 dark:hover:bg-slate-700/50 transition-colors cursor-pointer w-full text-left"
                         >
                             <span
-                                className={`w-4 h-4 rounded flex items-center justify-center text-[11px] flex-shrink-0 ${
+                                className={`w-4 h-4 rounded flex items-center justify-center text-[11px] flex-shrink-0 transition-colors ${
                                     svc.isLogged
                                         ? 'bg-green-500 text-white'
-                                        : 'bg-gray-200 dark:bg-gray-700 text-gray-400 border border-gray-300 dark:border-gray-600'
+                                        : 'bg-gray-200 dark:bg-gray-700 text-gray-400 border border-gray-300 dark:border-gray-600 hover:border-green-400'
                                 }`}
                             >
                                 {svc.isLogged ? '\u2713' : ''}
@@ -116,7 +122,7 @@ export function PhaseBoard({ phases, lot, onPhaseOverride }: Props) {
                                     {svc.entries.length} {svc.entries.length === 1 ? 'entry' : 'entries'}
                                 </span>
                             )}
-                        </div>
+                        </button>
                     ))}
                 </div>
             )}

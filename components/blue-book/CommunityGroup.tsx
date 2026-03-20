@@ -8,9 +8,10 @@ type Props = {
     group: CommunityGroupType;
     onEditEntry: (entryId: string) => void;
     onPhaseOverride: (communityId: string, lot: string, phaseCode: string, complete: boolean) => void;
+    onServiceToggle: (communityId: string, lot: string, phaseCode: string, serviceName: string, complete: boolean) => void;
 };
 
-export function CommunityGroup({ group, onEditEntry, onPhaseOverride }: Props) {
+export function CommunityGroup({ group, onEditEntry, onPhaseOverride, onServiceToggle }: Props) {
     const [isExpanded, setIsExpanded] = useState(true);
     const completionPct = group.totalEntries > 0
         ? Math.round((group.completedEntries / group.totalEntries) * 100)
@@ -61,6 +62,9 @@ export function CommunityGroup({ group, onEditEntry, onPhaseOverride }: Props) {
                             onEditEntry={onEditEntry}
                             onPhaseOverride={(lotName, phaseCode, complete) =>
                                 onPhaseOverride(group.communityId ?? '', lotName, phaseCode, complete)
+                            }
+                            onServiceToggle={(lotName, phaseCode, serviceName, complete) =>
+                                onServiceToggle(group.communityId ?? '', lotName, phaseCode, serviceName, complete)
                             }
                         />
                     ))}

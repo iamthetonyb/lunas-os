@@ -7,9 +7,10 @@ type Props = {
     lot: LotSummary;
     onEditEntry: (entryId: string) => void;
     onPhaseOverride: (lot: string, phaseCode: string, complete: boolean) => void;
+    onServiceToggle: (lot: string, phaseCode: string, serviceName: string, complete: boolean) => void;
 };
 
-export function LotCard({ lot, onEditEntry, onPhaseOverride }: Props) {
+export function LotCard({ lot, onEditEntry, onPhaseOverride, onServiceToggle }: Props) {
     const totalAmount = lot.entries.reduce((sum, e) => {
         const amt = parseFloat(e.amount ?? '0');
         return sum + (isNaN(amt) ? 0 : amt);
@@ -45,6 +46,7 @@ export function LotCard({ lot, onEditEntry, onPhaseOverride }: Props) {
                 phases={lot.phases}
                 lot={lot.lot}
                 onPhaseOverride={onPhaseOverride}
+                onServiceToggle={onServiceToggle}
             />
 
             {/* Entry table */}
