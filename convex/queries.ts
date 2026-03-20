@@ -86,16 +86,16 @@ export const getScheduleJobs = query({
         endDate: v.string()
     },
     handler: async (ctx, args) => {
-        // Get job request services within date range
-        const jobServices = await ctx.db
+        // Get ALL job request services (we filter by effective date below)
+        const allJobServices = await ctx.db
             .query("jobRequestServices")
-            .filter((q) =>
-                q.and(
-                    q.gte(q.field("scheduledDate"), args.startDate),
-                    q.lte(q.field("scheduledDate"), args.endDate)
-                )
-            )
             .collect();
+
+        // Filter by effective date: rescheduledDate takes priority over scheduledDate
+        const jobServices = allJobServices.filter((jrs) => {
+            const effectiveDate = jrs.rescheduledDate ?? jrs.scheduledDate ?? "";
+            return effectiveDate >= args.startDate && effectiveDate <= args.endDate;
+        });
 
         // Enrich with job request details
         const enrichedJobs = await Promise.all(
@@ -113,9 +113,13 @@ export const getScheduleJobs = query({
                     builderName = builder?.name ?? null;
                 }
 
+                const effectiveDate = jrs.rescheduledDate ?? jrs.scheduledDate;
+                const wasRescheduled = !!jrs.rescheduledDate && jrs.rescheduledDate !== jrs.scheduledDate;
+
                 return {
                     id: jrs._id,
-                    startDate: jrs.scheduledDate,
+                    startDate: effectiveDate,
+                    originalStartDate: wasRescheduled ? jrs.scheduledDate : null,
                     builderName,
                     communityName,
                     lot: jobRequest?.lot ?? null,
@@ -125,6 +129,8 @@ export const getScheduleJobs = query({
                     assignedForemanName: jrs.assignedForemanName,
                     assignedCrewName: jrs.assignedCrewName,
                     rescheduledDate: jrs.rescheduledDate,
+                    requestedBy: jobRequest?.requestedBy ?? null,
+                    isExtraWork: jobRequest?.isExtraWork ?? false,
                 };
             })
         );

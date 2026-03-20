@@ -344,6 +344,7 @@ export function IntakeForm() {
         requestedBy: data.requestedBy,
         contactPhone: data.contact,
         contactEmail: undefined,
+        isExtraWork: requiresNotes ? true : undefined,
         services: serviceEntries,
       });
 

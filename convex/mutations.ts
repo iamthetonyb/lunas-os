@@ -29,7 +29,7 @@ export const assignCrew = mutation({
     },
 });
 
-// Reschedule a job
+// Reschedule a job — keeps original scheduledDate intact, sets rescheduledDate
 export const rescheduleJob = mutation({
     args: {
         jobId: v.id("jobRequestServices"),
@@ -40,7 +40,6 @@ export const rescheduleJob = mutation({
         await ctx.db.patch(args.jobId, {
             rescheduledDate: args.newDate,
             rescheduledReason: args.reason ?? undefined,
-            scheduledDate: args.newDate, // Update the scheduled date as well
         });
         return { success: true };
     },
@@ -117,6 +116,7 @@ export const createJobRequest = mutation({
         requestedBy: v.optional(v.string()),
         contactPhone: v.optional(v.string()),
         contactEmail: v.optional(v.string()),
+        isExtraWork: v.optional(v.boolean()),
         services: v.array(v.object({
             serviceId: v.optional(v.id("services")),
             serviceName: v.string(),
@@ -137,16 +137,18 @@ export const createJobRequest = mutation({
             requestedBy: args.requestedBy,
             contactPhone: args.contactPhone,
             contactEmail: args.contactEmail,
+            isExtraWork: args.isExtraWork,
             createdAt: Date.now(),
         });
 
-        // Create job request services
+        // Create job request services — auto-assign foreman from requestedBy
         for (const service of args.services) {
             await ctx.db.insert("jobRequestServices", {
                 jobRequestId,
                 serviceId: service.serviceId,
                 serviceName: service.serviceName,
                 walkTime: service.walkTime,
+                assignedForemanName: args.requestedBy,
                 status: "PENDING",
                 scheduledDate: args.dueDate,
                 createdAt: Date.now(),

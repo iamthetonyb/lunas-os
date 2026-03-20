@@ -64,12 +64,10 @@ export function JobCard({
         setStatus(job.status);
     }, [job.status]);
 
-    const foreman = job.foremanName || 'Unassigned Foreman';
+    const assignedForeman = selectedForemanName || job.assignedForemanName;
     const builder = job.builderName || '—';
-    const community = job.communityName || '—';
     const serviceLabel = job.serviceDisplay || '—';
 
-    const serviceLower = serviceLabel.toLowerCase();
     const isExtraWork = job.isExtraWork === true;
 
     const rawWalkTime = job.walkTime ?? job.walk_time ?? null;
@@ -79,7 +77,7 @@ export function JobCard({
     const startDateStamp = job.startDate ? formatDisplayDate(job.startDate) : null;
 
     const statusUpper = (status || '').toUpperCase();
-    const isRescheduled = !!rescheduledDate;
+    const isRescheduled = !!job.rescheduledDate || !!rescheduledDate;
     const isComplete = statusUpper === 'COMPLETE';
     const isDispatched = statusUpper === 'SENT' || statusUpper === 'DISPATCHED';
 
@@ -101,23 +99,16 @@ export function JobCard({
         <tr className={rowColor}>
             {!isContractor && (
                 <td className="px-4 py-2 text-sm text-gray-900 dark:text-gray-300">
-                    {/* Show dropdown if foreman is unassigned, regardless of isScraped */}
-                    {!selectedForemanName && !job.assignedForemanName && foreman === 'Unassigned Foreman' ? (
-                        <select
-                            className="block w-full rounded-md border-0 py-1.5 pl-3 pr-10 text-gray-900 ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-blue-600 sm:text-sm sm:leading-6 dark:bg-slate-700 dark:text-white dark:ring-slate-600"
-                            value={selectedForemanName || ''}
-                            onChange={(e) => onForemanChange(job.id, e.target.value)}
-                        >
-                            <option value="">Select Foreman...</option>
-                            {foremenDirectory.map((f) => (
-                                <option key={f.id} value={f.name}>{f.name}</option>
-                            ))}
-                        </select>
-                    ) : (
-                        <span className="font-medium text-gray-900 dark:text-white">
-                            {foreman}
-                        </span>
-                    )}
+                    <select
+                        className="block w-full rounded-md border-0 py-1.5 pl-3 pr-10 text-gray-900 ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-blue-600 sm:text-sm sm:leading-6 dark:bg-slate-700 dark:text-white dark:ring-slate-600"
+                        value={assignedForeman || ''}
+                        onChange={(e) => onForemanChange(job.id, e.target.value)}
+                    >
+                        <option value="">Unassigned</option>
+                        {foremenDirectory.map((f) => (
+                            <option key={f.id} value={f.name}>{f.name}</option>
+                        ))}
+                    </select>
                 </td>
             )}
             <td className="px-4 py-2 text-sm text-gray-900 dark:text-white">{builder}</td>
