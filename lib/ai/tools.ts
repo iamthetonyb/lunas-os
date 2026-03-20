@@ -438,8 +438,9 @@ export function createTools() {
                 "Analyze AI performance — shows approval rates, confidence calibration, and evolution insights. Use when an admin asks 'how well is the AI doing?' or 'are the auto-assignments working?'",
             inputSchema: z.object({}),
             execute: async () => {
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 return await client.action(
-                    api.insights.analyzeEvolution,
+                    (api as any).insights.analyzeEvolution,
                     {}
                 );
             },
