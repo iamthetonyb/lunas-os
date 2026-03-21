@@ -144,6 +144,7 @@ export const getScheduleJobs = query({
 
             return {
                 id: jrs._id,
+                jobRequestId: jrs.jobRequestId,
                 startDate: effectiveDate,
                 originalStartDate: wasRescheduled ? jrs.scheduledDate : null,
                 builderName,

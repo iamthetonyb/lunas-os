@@ -66,6 +66,7 @@ function getServiceRowColor(serviceName: string, isDispatched: boolean, isResche
 
 type UpcomingJob = {
   id: string;
+  jobRequestId?: string;
   startDate: string | null;
   builderName?: string | null;
   communityName?: string | null;
@@ -90,6 +91,7 @@ type DecoratedJob = UpcomingJob & {
   foremanId: string;
   foremanName: string;
   serviceDisplay: string;
+  serviceIds: string[]; // all service IDs in this group
 };
 
 type DraftAssignment = {
@@ -188,10 +190,15 @@ export default function SchedulePage() {
   const rescheduleJobMutation = useMutation(api.mutations.rescheduleJob);
   const completeJobMutation = useMutation(api.assignmentFunctions.complete);
 
-  // Handle inline foreman selection - persist to database (Convex reactivity updates UI automatically)
+  // Handle inline foreman selection — applies to all services in a grouped job
   const handleForemanChange = async (jobId: string, foremanName: string) => {
+    // Find the grouped job to get all service IDs
+    const groupedJob = decoratedJobs.find(j => j.id === jobId);
+    const ids = groupedJob?.serviceIds ?? [jobId];
     try {
-      await assignForemanMutation({ jobId: jobId as any, foremanName: foremanName || undefined });
+      await Promise.all(ids.map(id =>
+        assignForemanMutation({ jobId: id as any, foremanName: foremanName || undefined })
+      ));
     } catch (error) {
       console.error('Failed to save foreman assignment:', error);
     }
@@ -220,25 +227,38 @@ export default function SchedulePage() {
   const crews = useQuery(api.queries.getCrews, {}) ?? [];
   const crewNames = useMemo(() => crews.map((c: any) => c.name).sort(), [crews]);
 
-  const decoratedJobs = useMemo<DecoratedJob[]>(
-    () =>
-      (upcomingJobs ?? []).map((job) => {
-        const foreman = resolveForemanForJob(job as any, FOREMEN_DIRECTORY);
-        const serviceDisplay = job.serviceName
-          ? (job as any).accountCategoryCode
-            ? `${(job as any).accountCategoryCode} – ${job.serviceName}`
-            : job.serviceName
-          : (job as any).contractorName ?? '—';
+  const decoratedJobs = useMemo<DecoratedJob[]>(() => {
+    const jobs = upcomingJobs ?? [];
 
-        return {
-          ...job,
-          foremanId: foreman.id,
-          foremanName: foreman.name,
-          serviceDisplay,
-        } as DecoratedJob;
-      }),
-    [upcomingJobs, FOREMEN_DIRECTORY]
-  );
+    // Group services by jobRequestId so same job shows as one row
+    const grouped = new Map<string, typeof jobs>();
+    for (const job of jobs) {
+      const key = job.jobRequestId ?? job.id; // fallback to id if no jobRequestId
+      if (!grouped.has(key)) grouped.set(key, []);
+      grouped.get(key)!.push(job);
+    }
+
+    return Array.from(grouped.values()).map((group) => {
+      const primary = group[0];
+      const foreman = resolveForemanForJob(primary as any, FOREMEN_DIRECTORY);
+
+      // Combine service names from all entries in the group
+      const serviceNames = group
+        .map((j) => j.serviceName)
+        .filter(Boolean) as string[];
+      const serviceDisplay = serviceNames.length > 0
+        ? serviceNames.join(', ')
+        : (primary as any).contractorName ?? '—';
+
+      return {
+        ...primary,
+        foremanId: foreman.id,
+        foremanName: foreman.name,
+        serviceDisplay,
+        serviceIds: group.map((j) => j.id),
+      } as DecoratedJob;
+    });
+  }, [upcomingJobs, FOREMEN_DIRECTORY]);
 
   const foremanTabs = useMemo(() => {
     // If contractor, only show their own tab
