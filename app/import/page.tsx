@@ -12,9 +12,10 @@ type ParsedRow = Record<string, string>;
 
 type ImportTarget = 'blueBook' | 'jobRequests' | 'builders' | 'communities' | 'services' | 'unknown';
 
-const OCR_EXTENSIONS = ['pdf', 'png', 'jpg', 'jpeg', 'webp', 'tiff', 'bmp'];
-const SPREADSHEET_EXTENSIONS = ['csv', 'xlsx', 'xls', 'ods'];
+// Column → destination field mapping
+type FieldMapping = Record<string, string>; // sourceCol → destField or '__skip__'
 
+const OCR_EXTENSIONS = ['pdf', 'png', 'jpg', 'jpeg', 'webp', 'tiff', 'bmp'];
 const TARGET_LABELS: Record<ImportTarget, string> = {
     blueBook: 'Blue Book',
     jobRequests: 'Job Requests',
@@ -22,6 +23,55 @@ const TARGET_LABELS: Record<ImportTarget, string> = {
     communities: 'Communities',
     services: 'Services',
     unknown: 'Unknown',
+};
+
+// Destination fields per import target
+const TARGET_FIELDS: Record<Exclude<ImportTarget, 'unknown'>, { value: string; label: string }[]> = {
+    blueBook: [
+        { value: 'lot', label: 'Lot' },
+        { value: 'builderName', label: 'Builder Name' },
+        { value: 'communityName', label: 'Community Name' },
+        { value: 'serviceName', label: 'Service Name' },
+        { value: 'amount', label: 'Amount' },
+        { value: 'checkNumber', label: 'Check Number' },
+        { value: 'checkDate', label: 'Check Date' },
+        { value: 'checkTotal', label: 'Check Total' },
+        { value: 'invoiceNumber', label: 'Invoice Number' },
+        { value: 'isAch', label: 'Is ACH' },
+        { value: 'poNumber', label: 'PO Number' },
+        { value: 'accountCategoryName', label: 'Account Category' },
+        { value: 'accountCategoryCode', label: 'Account Category Code' },
+        { value: 'startDate', label: 'Start Date' },
+        { value: 'status', label: 'Status' },
+        { value: 'modelPlanCode', label: 'Model/Plan Code' },
+        { value: 'modelPlanSqft', label: 'Sq Ft' },
+        { value: 'assignedForemanName', label: 'Foreman' },
+        { value: 'crewName', label: 'Crew' },
+    ],
+    jobRequests: [
+        { value: 'lot', label: 'Lot' },
+        { value: 'builderName', label: 'Builder Name' },
+        { value: 'communityName', label: 'Community Name' },
+        { value: 'serviceName', label: 'Service Name' },
+        { value: 'dueDate', label: 'Due Date' },
+        { value: 'startDate', label: 'Start/Scheduled Date' },
+        { value: 'address', label: 'Address' },
+        { value: 'notes', label: 'Notes' },
+        { value: 'poNumber', label: 'PO Number' },
+        { value: 'assignedForemanName', label: 'Foreman' },
+        { value: 'crewName', label: 'Crew' },
+        { value: 'status', label: 'Status' },
+    ],
+    builders: [
+        { value: 'name', label: 'Builder Name' },
+    ],
+    communities: [
+        { value: 'name', label: 'Community Name' },
+        { value: 'builderName', label: 'Builder Name' },
+    ],
+    services: [
+        { value: 'name', label: 'Service Name' },
+    ],
 };
 
 export default function ImportPage() {
@@ -39,6 +89,8 @@ export default function ImportPage() {
     const [ocrConfidence, setOcrConfidence] = useState(0);
     const [detectionConfidence, setDetectionConfidence] = useState(0);
     const [unmappedCols, setUnmappedCols] = useState<string[]>([]);
+    const [fieldMapping, setFieldMapping] = useState<FieldMapping>({});
+    const [mappingConfirmed, setMappingConfirmed] = useState(false);
 
     // Convex data for resolving names → IDs
     const builders = useQuery(api.queries.getBuilders, {}) ?? [];
@@ -54,7 +106,6 @@ export default function ImportPage() {
     // Derived
     const fileExt = selectedFile?.name.split('.').pop()?.toLowerCase() ?? '';
     const isOcrFile = OCR_EXTENSIONS.includes(fileExt);
-    const isSpreadsheet = SPREADSHEET_EXTENSIONS.includes(fileExt);
     const columns = useMemo(() => {
         if (parsedRows.length === 0) return [];
         const allKeys = new Set<string>();
@@ -72,6 +123,8 @@ export default function ImportPage() {
             setImportResult(null);
             setOcrRawText(null);
             setOcrConfidence(0);
+            setFieldMapping({});
+            setMappingConfirmed(false);
         }
     };
 
@@ -93,6 +146,7 @@ export default function ImportPage() {
             if (!res.ok) throw new Error(data.error);
 
             setParsedRows(data.rows ?? []);
+            setMappingConfirmed(false);
 
             // Auto-detect data type from columns
             if (data.detectedType && data.detectedType !== 'unknown') {
@@ -100,6 +154,19 @@ export default function ImportPage() {
                 setDetectionConfidence(data.confidence ?? 0);
             }
             setUnmappedCols(data.unmappedColumns ?? []);
+
+            // Build initial field mapping from auto-detection
+            const autoMapping: FieldMapping = {};
+            if (data.fieldMapping) {
+                for (const [src, dest] of Object.entries(data.fieldMapping)) {
+                    autoMapping[src] = dest as string;
+                }
+            }
+            // Mark unmapped columns as skip
+            for (const col of data.unmappedColumns ?? []) {
+                if (!autoMapping[col]) autoMapping[col] = '__skip__';
+            }
+            setFieldMapping(autoMapping);
 
             if (data.ocrText) {
                 setOcrRawText(data.ocrText);
@@ -124,13 +191,27 @@ export default function ImportPage() {
         return list.find((item) => item.name.toLowerCase() === lower)?._id;
     };
 
+    // Remap a raw row using the user-confirmed field mapping
+    const remapRow = (row: ParsedRow): ParsedRow => {
+        const mapped: ParsedRow = {};
+        for (const [srcCol, destField] of Object.entries(fieldMapping)) {
+            if (destField === '__skip__' || !destField) continue;
+            const val = row[srcCol];
+            if (val !== undefined && val !== '') {
+                mapped[destField] = val;
+            }
+        }
+        return mapped;
+    };
+
     const handleImport = async () => {
-        if (parsedRows.length === 0 || importTarget === 'unknown') return;
+        if (parsedRows.length === 0 || importTarget === 'unknown' || !mappingConfirmed) return;
         setImporting(true);
         let success = 0;
         let errors = 0;
 
-        for (const row of parsedRows) {
+        for (const raw of parsedRows) {
+            const row = remapRow(raw);
             try {
                 if (importTarget === 'blueBook') {
                     const builderId = resolveId(row.builderName, builders);
@@ -169,11 +250,11 @@ export default function ImportPage() {
                         services,
                     });
                 } else if (importTarget === 'builders') {
-                    const name = row.builderName || row.name;
+                    const name = row.name || row.builderName;
                     if (!name) { errors++; continue; }
                     await createBuilder({ name });
                 } else if (importTarget === 'communities') {
-                    const name = row.communityName || row.name;
+                    const name = row.name || row.communityName;
                     if (!name) { errors++; continue; }
                     const builderId = resolveId(row.builderName, builders);
                     await createCommunity({
@@ -181,7 +262,7 @@ export default function ImportPage() {
                         builderId: builderId as Id<'builders'> | undefined,
                     });
                 } else if (importTarget === 'services') {
-                    const name = row.serviceName || row.name;
+                    const name = row.name || row.serviceName;
                     if (!name) { errors++; continue; }
                     await createService({ name });
                 }
@@ -209,8 +290,41 @@ export default function ImportPage() {
         setOcrConfidence(0);
         setDetectionConfidence(0);
         setUnmappedCols([]);
+        setFieldMapping({});
+        setMappingConfirmed(false);
         if (fileInputRef.current) fileInputRef.current.value = '';
     };
+
+    const handleChangeTarget = (target: ImportTarget) => {
+        setImportTarget(target);
+        setMappingConfirmed(false);
+        // Re-evaluate mapping: keep matched fields, skip rest
+        if (target !== 'unknown' && columns.length > 0) {
+            const fields = TARGET_FIELDS[target];
+            const fieldValues = new Set(fields.map(f => f.value));
+            const newMapping: FieldMapping = {};
+            for (const col of columns) {
+                const current = fieldMapping[col];
+                if (current && current !== '__skip__' && fieldValues.has(current)) {
+                    newMapping[col] = current;
+                } else if (fieldValues.has(col)) {
+                    newMapping[col] = col;
+                } else {
+                    newMapping[col] = '__skip__';
+                }
+            }
+            setFieldMapping(newMapping);
+        }
+    };
+
+    const handleMappingChange = (sourceCol: string, destField: string) => {
+        setFieldMapping(prev => ({ ...prev, [sourceCol]: destField }));
+        setMappingConfirmed(false);
+    };
+
+    // Count how many columns are mapped (not skipped)
+    const mappedCount = Object.values(fieldMapping).filter(v => v && v !== '__skip__').length;
+    const availableFields = importTarget !== 'unknown' ? TARGET_FIELDS[importTarget] : [];
 
     return (
         <>
@@ -224,7 +338,7 @@ export default function ImportPage() {
                     {(['blueBook', 'jobRequests', 'builders', 'communities', 'services'] as ImportTarget[]).map((target) => (
                         <button
                             key={target}
-                            onClick={() => setImportTarget(target)}
+                            onClick={() => handleChangeTarget(target)}
                             className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
                                 importTarget === target
                                     ? 'bg-blue-600 text-white'
@@ -263,7 +377,7 @@ export default function ImportPage() {
                                 Click to select a file
                             </p>
                             <p className="text-xs text-gray-500 dark:text-gray-500">
-                                CSV, Excel, PDF, or Image (PNG, JPG) — OCR powered by Tesseract.js
+                                CSV, Excel, PDF, or Image (PNG, JPG) — OCR powered by PaddleOCR v5
                             </p>
                         </div>
                     ) : (
@@ -340,19 +454,144 @@ export default function ImportPage() {
                     </details>
                 )}
 
-                {/* Preview table */}
-                {parsedRows.length > 0 && (
+                {/* Step 2: Column Mapping */}
+                {parsedRows.length > 0 && !mappingConfirmed && (
                     <div className="bg-white dark:bg-slate-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
-                        {unmappedCols.length > 0 && (
-                            <div className="mb-3 px-3 py-2 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg text-xs text-yellow-800 dark:text-yellow-200">
-                                <strong>Unmapped columns:</strong> {unmappedCols.join(', ')} — these won't be imported. If they contain important data, check the column names match expected fields.
+                        <div className="flex items-center justify-between mb-4">
+                            <div>
+                                <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                                    Map Columns
+                                </h3>
+                                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                                    Review how each column maps to {TARGET_LABELS[importTarget]} fields. Change any mapping or skip columns you don&apos;t need.
+                                </p>
+                            </div>
+                            <span className="text-xs px-2 py-1 rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300">
+                                {mappedCount} of {columns.length} mapped
+                            </span>
+                        </div>
+
+                        <div className="space-y-2 mb-6">
+                            {columns.map((col) => {
+                                const dest = fieldMapping[col] || '__skip__';
+                                const isSkipped = dest === '__skip__';
+                                const sampleValues = parsedRows
+                                    .slice(0, 3)
+                                    .map((r) => r[col])
+                                    .filter(Boolean)
+                                    .join(', ');
+                                return (
+                                    <div
+                                        key={col}
+                                        className={`flex items-center gap-3 px-3 py-2 rounded-lg border transition-colors ${
+                                            isSkipped
+                                                ? 'border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-slate-900/50 opacity-60'
+                                                : 'border-blue-200 dark:border-blue-800 bg-blue-50/50 dark:bg-blue-900/10'
+                                        }`}
+                                    >
+                                        <div className="w-1/3 min-w-0">
+                                            <p className="text-sm font-medium text-gray-900 dark:text-white truncate">{col}</p>
+                                            {sampleValues && (
+                                                <p className="text-[10px] text-gray-400 dark:text-gray-500 truncate mt-0.5">
+                                                    e.g. {sampleValues}
+                                                </p>
+                                            )}
+                                        </div>
+                                        <svg className="w-4 h-4 text-gray-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
+                                        </svg>
+                                        <select
+                                            value={dest}
+                                            onChange={(e) => handleMappingChange(col, e.target.value)}
+                                            className="flex-1 text-sm rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-slate-700 text-gray-900 dark:text-white px-2 py-1.5"
+                                        >
+                                            <option value="__skip__">-- Skip (don&apos;t import) --</option>
+                                            {availableFields.map((f) => (
+                                                <option key={f.value} value={f.value}>{f.label}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                );
+                            })}
+                        </div>
+
+                        {/* Sample preview with current mapping */}
+                        {mappedCount > 0 && (
+                            <div className="mb-4">
+                                <h4 className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-2 uppercase tracking-wide">Preview with mapping (first 3 rows)</h4>
+                                <div className="overflow-x-auto">
+                                    <table className="min-w-full text-xs">
+                                        <thead className="bg-gray-50 dark:bg-slate-700">
+                                            <tr>
+                                                {Object.entries(fieldMapping)
+                                                    .filter(([, v]) => v && v !== '__skip__')
+                                                    .map(([, dest]) => {
+                                                        const label = availableFields.find(f => f.value === dest)?.label || dest;
+                                                        return (
+                                                            <th key={dest} className="px-3 py-1.5 text-left text-gray-600 dark:text-gray-300 font-medium whitespace-nowrap">
+                                                                {label}
+                                                            </th>
+                                                        );
+                                                    })}
+                                            </tr>
+                                        </thead>
+                                        <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
+                                            {parsedRows.slice(0, 3).map((raw, i) => {
+                                                const mapped = remapRow(raw);
+                                                return (
+                                                    <tr key={i} className="text-gray-700 dark:text-gray-300">
+                                                        {Object.entries(fieldMapping)
+                                                            .filter(([, v]) => v && v !== '__skip__')
+                                                            .map(([, dest]) => (
+                                                                <td key={dest} className="px-3 py-1.5 whitespace-nowrap max-w-[200px] truncate">
+                                                                    {mapped[dest] || <span className="text-gray-300 dark:text-gray-600">—</span>}
+                                                                </td>
+                                                            ))}
+                                                    </tr>
+                                                );
+                                            })}
+                                        </tbody>
+                                    </table>
+                                </div>
                             </div>
                         )}
+
+                        <div className="flex items-center justify-between pt-4 border-t border-gray-200 dark:border-gray-700">
+                            <p className="text-xs text-gray-500 dark:text-gray-400">
+                                {mappedCount === 0
+                                    ? 'Map at least one column to proceed'
+                                    : `${mappedCount} column${mappedCount > 1 ? 's' : ''} will be imported`}
+                            </p>
+                            <button
+                                onClick={() => setMappingConfirmed(true)}
+                                disabled={mappedCount === 0}
+                                className="px-5 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                                Confirm Mapping
+                            </button>
+                        </div>
+                    </div>
+                )}
+
+                {/* Step 3: Final preview + import */}
+                {parsedRows.length > 0 && mappingConfirmed && (
+                    <div className="bg-white dark:bg-slate-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
                         <div className="flex items-center justify-between mb-4">
-                            <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-                                Preview ({parsedRows.length} rows)
-                            </h3>
+                            <div>
+                                <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                                    Ready to Import ({parsedRows.length} rows)
+                                </h3>
+                                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                                    Importing as <strong>{TARGET_LABELS[importTarget]}</strong> with {mappedCount} mapped field{mappedCount > 1 ? 's' : ''}
+                                </p>
+                            </div>
                             <div className="flex items-center gap-3">
+                                <button
+                                    onClick={() => setMappingConfirmed(false)}
+                                    className="px-3 py-2 text-sm text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 transition-colors"
+                                >
+                                    Edit Mapping
+                                </button>
                                 {importResult && (
                                     <span className="text-sm">
                                         <span className="text-green-600 font-medium">{importResult.success} imported</span>
@@ -376,24 +615,34 @@ export default function ImportPage() {
                                 <thead className="bg-gray-50 dark:bg-slate-700 sticky top-0">
                                     <tr>
                                         <th className="px-3 py-2 text-left text-gray-500 dark:text-gray-400 font-medium">#</th>
-                                        {columns.map((col) => (
-                                            <th key={col} className="px-3 py-2 text-left text-gray-500 dark:text-gray-400 font-medium whitespace-nowrap">
-                                                {col}
-                                            </th>
-                                        ))}
+                                        {Object.entries(fieldMapping)
+                                            .filter(([, v]) => v && v !== '__skip__')
+                                            .map(([, dest]) => {
+                                                const label = availableFields.find(f => f.value === dest)?.label || dest;
+                                                return (
+                                                    <th key={dest} className="px-3 py-2 text-left text-gray-500 dark:text-gray-400 font-medium whitespace-nowrap">
+                                                        {label}
+                                                    </th>
+                                                );
+                                            })}
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
-                                    {parsedRows.slice(0, 100).map((row, i) => (
-                                        <tr key={i} className="text-gray-700 dark:text-gray-300">
-                                            <td className="px-3 py-1.5 text-gray-400">{i + 1}</td>
-                                            {columns.map((col) => (
-                                                <td key={col} className="px-3 py-1.5 whitespace-nowrap max-w-[200px] truncate">
-                                                    {row[col] || '—'}
-                                                </td>
-                                            ))}
-                                        </tr>
-                                    ))}
+                                    {parsedRows.slice(0, 100).map((raw, i) => {
+                                        const mapped = remapRow(raw);
+                                        return (
+                                            <tr key={i} className="text-gray-700 dark:text-gray-300">
+                                                <td className="px-3 py-1.5 text-gray-400">{i + 1}</td>
+                                                {Object.entries(fieldMapping)
+                                                    .filter(([, v]) => v && v !== '__skip__')
+                                                    .map(([, dest]) => (
+                                                        <td key={dest} className="px-3 py-1.5 whitespace-nowrap max-w-[200px] truncate">
+                                                            {mapped[dest] || '—'}
+                                                        </td>
+                                                    ))}
+                                            </tr>
+                                        );
+                                    })}
                                 </tbody>
                             </table>
                             {parsedRows.length > 100 && (
