@@ -113,6 +113,12 @@
     "browser": "chromium",
     "revision": "1083080"
   },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "onnxruntime-node",
+      "sharp"
+    ]
+  },
   "engines": {
     "node": "20.x"
   }
