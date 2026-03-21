@@ -87,11 +87,18 @@ type UpcomingJob = {
   isExtraWork?: boolean | null;
 };
 
+type ServiceItem = {
+  id: string;
+  name: string;
+  status: string | null;
+};
+
 type DecoratedJob = UpcomingJob & {
   foremanId: string;
   foremanName: string;
   serviceDisplay: string;
   serviceIds: string[]; // all service IDs in this group
+  serviceItems: ServiceItem[]; // individual services with names + status
 };
 
 type DraftAssignment = {
@@ -110,6 +117,7 @@ type RescheduleModalState = {
   isOpen: boolean;
   job: DecoratedJob | null;
   selectedDate: string;
+  selectedServiceIds: Set<string>; // which services to reschedule
 };
 
 function resolveForemanForJob(job: UpcomingJob, foremenDir: ForemanConfig[]): ForemanConfig | typeof UNASSIGNED_FOREMAN {
@@ -175,6 +183,7 @@ export default function SchedulePage() {
     isOpen: false,
     job: null,
     selectedDate: '',
+    selectedServiceIds: new Set(),
   });
   const [rescheduledJobs, setRescheduledJobs] = useState<Map<string, string>>(new Map()); // jobId -> new date
   const [confirmDialog, setConfirmDialog] = useState<{
@@ -256,6 +265,11 @@ export default function SchedulePage() {
         foremanName: foreman.name,
         serviceDisplay,
         serviceIds: group.map((j) => j.id),
+        serviceItems: group.map((j) => ({
+          id: j.id,
+          name: j.serviceName ?? '—',
+          status: j.status ?? null,
+        })),
       } as DecoratedJob;
     });
   }, [upcomingJobs, FOREMEN_DIRECTORY]);
@@ -416,24 +430,45 @@ export default function SchedulePage() {
 
   const openRescheduleModal = (job: DecoratedJob) => {
     const nextDay = getNextBusinessDay(new Date());
+    // Default: all services selected
     setRescheduleModal({
       isOpen: true,
       job,
       selectedDate: nextDay.toISOString().split('T')[0],
+      selectedServiceIds: new Set(job.serviceIds),
     });
   };
 
   const closeRescheduleModal = () => {
-    setRescheduleModal({ isOpen: false, job: null, selectedDate: '' });
+    setRescheduleModal({ isOpen: false, job: null, selectedDate: '', selectedServiceIds: new Set() });
+  };
+
+  const toggleRescheduleService = (serviceId: string) => {
+    setRescheduleModal((prev) => {
+      const next = new Set(prev.selectedServiceIds);
+      if (next.has(serviceId)) {
+        next.delete(serviceId);
+      } else {
+        next.add(serviceId);
+      }
+      return { ...prev, selectedServiceIds: next };
+    });
   };
 
   const handleRescheduleConfirm = async () => {
-    if (!rescheduleModal.job || !rescheduleModal.selectedDate) return;
+    if (!rescheduleModal.job || !rescheduleModal.selectedDate || rescheduleModal.selectedServiceIds.size === 0) return;
     try {
-      await rescheduleJobMutation({
-        jobId: rescheduleModal.job.id as any,
-        newDate: rescheduleModal.selectedDate,
-      });
+      // Reschedule all selected services together
+      await Promise.all(
+        Array.from(rescheduleModal.selectedServiceIds).map((id) =>
+          rescheduleJobMutation({
+            jobId: id as any,
+            newDate: rescheduleModal.selectedDate,
+          })
+        )
+      );
+      const count = rescheduleModal.selectedServiceIds.size;
+      toast.success(`Rescheduled ${count} service${count > 1 ? 's' : ''}`);
       closeRescheduleModal();
     } catch (error) {
       console.error('Failed to reschedule job', error);
@@ -745,7 +780,35 @@ export default function SchedulePage() {
                     <div className="mb-4 p-3 bg-gray-50 dark:bg-slate-700 rounded-lg text-sm text-gray-900 dark:text-gray-100">
                       <p><strong>{t('common.community')}:</strong> {getFriendlyName(rescheduleModal.job.communityName || '')}</p>
                       <p><strong>{t('common.lot')}:</strong> {rescheduleModal.job.lot || '—'}</p>
-                      <p><strong>{t('common.service')}:</strong> {rescheduleModal.job.serviceDisplay}</p>
+                      {rescheduleModal.job.serviceItems.length <= 1 ? (
+                        <p><strong>{t('common.service')}:</strong> {rescheduleModal.job.serviceDisplay}</p>
+                      ) : (
+                        <div className="mt-2">
+                          <p className="font-medium text-gray-700 dark:text-gray-300 mb-1.5">Select services to reschedule:</p>
+                          <div className="space-y-1.5">
+                            {rescheduleModal.job.serviceItems.map((svc) => {
+                              const isComplete = svc.status === 'COMPLETE';
+                              return (
+                                <label
+                                  key={svc.id}
+                                  className={`flex items-center gap-2 px-2 py-1.5 rounded cursor-pointer hover:bg-gray-100 dark:hover:bg-slate-600 ${isComplete ? 'opacity-50' : ''}`}
+                                >
+                                  <input
+                                    type="checkbox"
+                                    checked={rescheduleModal.selectedServiceIds.has(svc.id)}
+                                    onChange={() => toggleRescheduleService(svc.id)}
+                                    className="rounded border-gray-300 dark:border-gray-500 text-purple-600 focus:ring-purple-500"
+                                  />
+                                  <span>{svc.name}</span>
+                                  {isComplete && (
+                                    <span className="text-[10px] px-1.5 py-0.5 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 rounded">DONE</span>
+                                  )}
+                                </label>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      )}
                     </div>
                   )}
 
@@ -773,10 +836,10 @@ export default function SchedulePage() {
                     </button>
                     <button
                       onClick={handleRescheduleConfirm}
-                      disabled={!rescheduleModal.selectedDate}
+                      disabled={!rescheduleModal.selectedDate || rescheduleModal.selectedServiceIds.size === 0}
                       className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                      {t('schedule.confirmReschedule')}
+                      {t('schedule.confirmReschedule')}{rescheduleModal.selectedServiceIds.size > 1 ? ` (${rescheduleModal.selectedServiceIds.size})` : ''}
                     </button>
                   </div>
                 </Dialog.Panel>
