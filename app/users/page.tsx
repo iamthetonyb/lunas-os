@@ -353,6 +353,7 @@ export default function UsersPage() {
   const [orgModalOpen, setOrgModalOpen] = useState(false);
   const [editingOrg, setEditingOrg] = useState<Org | null>(null);
   const [isDeletingOrg, setIsDeletingOrg] = useState(false);
+  const deleteUser = useMutation(api.mutations.deleteUser);
   const [confirmDialog, setConfirmDialog] = useState<{title: string; message: string; onConfirm: () => void} | null>(null);
 
   const sortedUsers = useMemo(() => {
@@ -453,6 +454,25 @@ export default function UsersPage() {
     setUserModalOpen(true);
   };
 
+  const handleDeleteUser = (user: AdminUser) => {
+    setConfirmDialog({
+      title: 'Delete User',
+      message: `Are you sure you want to delete ${user.name || user.email}? This will remove their account from both the app and auth system.`,
+      onConfirm: async () => {
+        try {
+          // Delete from Clerk first
+          await fetch(`/api/users?email=${encodeURIComponent(user.email)}`, { method: 'DELETE' });
+          // Then delete from Convex (memberships + user record)
+          await deleteUser({ userId: user.id as Id<"users"> });
+          toast.success('User deleted');
+        } catch (err: any) {
+          console.error(err);
+          toast.error(err.message || 'Failed to delete user');
+        }
+      },
+    });
+  };
+
   const handleUserModalClose = () => {
     setUserModalOpen(false);
     setEditingUser(null);
@@ -511,12 +531,20 @@ export default function UsersPage() {
                         )}
                       </td>
                       <td className="px-4 py-3">
-                        <button
-                          onClick={() => handleEditUser(user)}
-                          className="text-blue-600 hover:text-blue-800 font-medium text-sm"
-                        >
-                          {t('common.edit')}
-                        </button>
+                        <div className="flex items-center gap-3">
+                          <button
+                            onClick={() => handleEditUser(user)}
+                            className="text-blue-600 hover:text-blue-800 font-medium text-sm"
+                          >
+                            {t('common.edit')}
+                          </button>
+                          <button
+                            onClick={() => handleDeleteUser(user)}
+                            className="text-red-500 hover:text-red-700 font-medium text-sm"
+                          >
+                            {t('common.delete')}
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   ))}
