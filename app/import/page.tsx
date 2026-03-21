@@ -10,10 +10,19 @@ import type { Id } from '@/convex/_generated/dataModel';
 
 type ParsedRow = Record<string, string>;
 
-type ImportTarget = 'blueBook' | 'jobRequests';
+type ImportTarget = 'blueBook' | 'jobRequests' | 'builders' | 'communities' | 'services' | 'unknown';
 
 const OCR_EXTENSIONS = ['pdf', 'png', 'jpg', 'jpeg', 'webp', 'tiff', 'bmp'];
 const SPREADSHEET_EXTENSIONS = ['csv', 'xlsx', 'xls', 'ods'];
+
+const TARGET_LABELS: Record<ImportTarget, string> = {
+    blueBook: 'Blue Book',
+    jobRequests: 'Job Requests',
+    builders: 'Builders',
+    communities: 'Communities',
+    services: 'Services',
+    unknown: 'Unknown',
+};
 
 export default function ImportPage() {
     const { t } = useTranslation();
@@ -28,6 +37,8 @@ export default function ImportPage() {
     const [importResult, setImportResult] = useState<{ success: number; errors: number } | null>(null);
     const [ocrRawText, setOcrRawText] = useState<string | null>(null);
     const [ocrConfidence, setOcrConfidence] = useState(0);
+    const [detectionConfidence, setDetectionConfidence] = useState(0);
+    const [unmappedCols, setUnmappedCols] = useState<string[]>([]);
 
     // Convex data for resolving names → IDs
     const builders = useQuery(api.queries.getBuilders, {}) ?? [];
@@ -36,6 +47,9 @@ export default function ImportPage() {
     // Mutations
     const createBlueBookEntry = useMutation(api.seedHelpers.createBlueBookEntry);
     const createJobRequest = useMutation(api.mutations.createJobRequest);
+    const createBuilder = useMutation(api.mutations.createBuilder);
+    const createCommunity = useMutation(api.mutations.createCommunity);
+    const createService = useMutation(api.mutations.createService);
 
     // Derived
     const fileExt = selectedFile?.name.split('.').pop()?.toLowerCase() ?? '';
@@ -80,14 +94,22 @@ export default function ImportPage() {
 
             setParsedRows(data.rows ?? []);
 
+            // Auto-detect data type from columns
+            if (data.detectedType && data.detectedType !== 'unknown') {
+                setImportTarget(data.detectedType);
+                setDetectionConfidence(data.confidence ?? 0);
+            }
+            setUnmappedCols(data.unmappedColumns ?? []);
+
             if (data.ocrText) {
                 setOcrRawText(data.ocrText);
                 setOcrConfidence(data.ocrConfidence ?? 0);
             }
 
+            const targetLabel = TARGET_LABELS[data.detectedType as ImportTarget] ?? 'data';
             const msg = isOcrFile
-                ? `OCR complete — ${data.rows?.length ?? 0} rows detected (${data.ocrConfidence ?? 0}% confidence)`
-                : `Parsed ${data.rows?.length ?? 0} rows from ${selectedFile.name}`;
+                ? `OCR complete — ${data.rows?.length ?? 0} rows detected as ${targetLabel} (${data.ocrConfidence ?? 0}% OCR confidence)`
+                : `Parsed ${data.rows?.length ?? 0} rows — detected as ${targetLabel} (${data.confidence ?? 0}% match)`;
             toast.success(msg);
         } catch (err: any) {
             toast.error(err.message || 'Failed to parse file');
@@ -103,17 +125,16 @@ export default function ImportPage() {
     };
 
     const handleImport = async () => {
-        if (parsedRows.length === 0) return;
+        if (parsedRows.length === 0 || importTarget === 'unknown') return;
         setImporting(true);
         let success = 0;
         let errors = 0;
 
         for (const row of parsedRows) {
             try {
-                const builderId = resolveId(row.builderName, builders);
-                const communityId = resolveId(row.communityName, communities);
-
                 if (importTarget === 'blueBook') {
+                    const builderId = resolveId(row.builderName, builders);
+                    const communityId = resolveId(row.communityName, communities);
                     await createBlueBookEntry({
                         lot: row.lot || undefined,
                         startDate: row.startDate || undefined,
@@ -130,14 +151,13 @@ export default function ImportPage() {
                         communityId: communityId as Id<'communities'> | undefined,
                         source: 'import',
                     });
-                } else {
+                } else if (importTarget === 'jobRequests') {
+                    const builderId = resolveId(row.builderName, builders);
+                    const communityId = resolveId(row.communityName, communities);
                     const services = row.serviceName
                         ? [{ serviceName: row.serviceName, scheduledDate: row.startDate || undefined }]
                         : [];
-                    if (services.length === 0) {
-                        errors++;
-                        continue;
-                    }
+                    if (services.length === 0) { errors++; continue; }
                     await createJobRequest({
                         lot: row.lot || undefined,
                         dueDate: row.dueDate || row.startDate || undefined,
@@ -148,6 +168,22 @@ export default function ImportPage() {
                         communityId: communityId as Id<'communities'> | undefined,
                         services,
                     });
+                } else if (importTarget === 'builders') {
+                    const name = row.builderName || row.name;
+                    if (!name) { errors++; continue; }
+                    await createBuilder({ name });
+                } else if (importTarget === 'communities') {
+                    const name = row.communityName || row.name;
+                    if (!name) { errors++; continue; }
+                    const builderId = resolveId(row.builderName, builders);
+                    await createCommunity({
+                        name,
+                        builderId: builderId as Id<'builders'> | undefined,
+                    });
+                } else if (importTarget === 'services') {
+                    const name = row.serviceName || row.name;
+                    if (!name) { errors++; continue; }
+                    await createService({ name });
                 }
                 success++;
             } catch (err) {
@@ -159,9 +195,9 @@ export default function ImportPage() {
         setImportResult({ success, errors });
         setImporting(false);
         if (errors === 0) {
-            toast.success(`Imported ${success} records`);
+            toast.success(`Imported ${success} ${TARGET_LABELS[importTarget]} records`);
         } else {
-            toast.warning(`Imported ${success} records, ${errors} failed`);
+            toast.warning(`Imported ${success}, ${errors} failed`);
         }
     };
 
@@ -171,6 +207,8 @@ export default function ImportPage() {
         setImportResult(null);
         setOcrRawText(null);
         setOcrConfidence(0);
+        setDetectionConfidence(0);
+        setUnmappedCols([]);
         if (fileInputRef.current) fileInputRef.current.value = '';
     };
 
@@ -181,28 +219,26 @@ export default function ImportPage() {
                 description={t('import.description')}
             />
             <main className="px-6 py-6 space-y-6">
-                {/* Import target selector */}
-                <div className="flex gap-3">
-                    <button
-                        onClick={() => setImportTarget('blueBook')}
-                        className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                            importTarget === 'blueBook'
-                                ? 'bg-blue-600 text-white'
-                                : 'bg-gray-100 dark:bg-slate-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-slate-600'
-                        }`}
-                    >
-                        Import to Blue Book
-                    </button>
-                    <button
-                        onClick={() => setImportTarget('jobRequests')}
-                        className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                            importTarget === 'jobRequests'
-                                ? 'bg-blue-600 text-white'
-                                : 'bg-gray-100 dark:bg-slate-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-slate-600'
-                        }`}
-                    >
-                        Import as Job Requests
-                    </button>
+                {/* Import target selector — auto-detected but overridable */}
+                <div className="flex flex-wrap items-center gap-2">
+                    {(['blueBook', 'jobRequests', 'builders', 'communities', 'services'] as ImportTarget[]).map((target) => (
+                        <button
+                            key={target}
+                            onClick={() => setImportTarget(target)}
+                            className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                                importTarget === target
+                                    ? 'bg-blue-600 text-white'
+                                    : 'bg-gray-100 dark:bg-slate-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-slate-600'
+                            }`}
+                        >
+                            {TARGET_LABELS[target]}
+                        </button>
+                    ))}
+                    {detectionConfidence > 0 && parsedRows.length > 0 && (
+                        <span className="text-xs text-gray-500 dark:text-gray-400 ml-2">
+                            Auto-detected: {TARGET_LABELS[importTarget]} ({detectionConfidence}% match)
+                        </span>
+                    )}
                 </div>
 
                 {/* File upload area */}
@@ -307,6 +343,11 @@ export default function ImportPage() {
                 {/* Preview table */}
                 {parsedRows.length > 0 && (
                     <div className="bg-white dark:bg-slate-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+                        {unmappedCols.length > 0 && (
+                            <div className="mb-3 px-3 py-2 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg text-xs text-yellow-800 dark:text-yellow-200">
+                                <strong>Unmapped columns:</strong> {unmappedCols.join(', ')} — these won't be imported. If they contain important data, check the column names match expected fields.
+                            </div>
+                        )}
                         <div className="flex items-center justify-between mb-4">
                             <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
                                 Preview ({parsedRows.length} rows)

@@ -26,7 +26,8 @@ export async function POST(req: NextRequest) {
         // If pre-OCR'd text was sent, parse it
         if (ocrText) {
             const rows = parseOcrText(ocrText);
-            return NextResponse.json({ success: true, rows, source: 'ocr' });
+            const detection = detectDataType(rows);
+            return NextResponse.json({ success: true, rows, source: 'ocr', ...detection });
         }
 
         if (!file) {
@@ -39,6 +40,7 @@ export async function POST(req: NextRequest) {
         if (doOcr || OCR_EXTENSIONS.includes(ext)) {
             const { text, confidence } = await runPaddleOcr(file);
             const rows = parseOcrText(text);
+            const detection = detectDataType(rows);
             return NextResponse.json({
                 success: true,
                 rows,
@@ -46,6 +48,7 @@ export async function POST(req: NextRequest) {
                 rowCount: rows.length,
                 ocrText: text,
                 ocrConfidence: confidence,
+                ...detection,
             });
         }
 
@@ -64,7 +67,14 @@ export async function POST(req: NextRequest) {
             );
         }
 
-        return NextResponse.json({ success: true, rows, source: ext, rowCount: rows.length });
+        const detection = detectDataType(rows);
+        return NextResponse.json({
+            success: true,
+            rows,
+            source: ext,
+            rowCount: rows.length,
+            ...detection,
+        });
     } catch (err: any) {
         console.error('Import error:', err);
         return NextResponse.json({ error: err.message || 'Import failed' }, { status: 500 });
@@ -187,6 +197,125 @@ function parseOcrText(text: string): ParsedRow[] {
 
     // Fallback: raw lines
     return lines.map((line, i) => ({ lineNumber: String(i + 1), rawText: line }));
+}
+
+// ── Auto-Detection ───────────────────────────────────────────────────
+
+type ImportTarget = 'blueBook' | 'jobRequests' | 'builders' | 'communities' | 'services' | 'unknown';
+
+/**
+ * Detect what type of data this is based on column headers present.
+ * Uses a weighted scoring system — no LLM needed.
+ *
+ * Blue Book signals:  checkNumber, checkDate, checkTotal, amount, accountCategoryCode,
+ *                     invoiceNumber, isAch, poNumber + lot/community/builder
+ * Job Request signals: serviceName, dueDate, scheduledDate, address, notes,
+ *                      requestedBy, receivedVia + lot/community
+ * Builder signals:    only has name/phone/email columns, no lot/service
+ * Community signals:  only has name/builder columns, no service/amount
+ * Service signals:    only has name/code/description columns
+ */
+function detectDataType(rows: ParsedRow[]): {
+    detectedType: ImportTarget;
+    confidence: number;
+    fieldMapping: Record<string, string>;
+    unmappedColumns: string[];
+} {
+    if (rows.length === 0) {
+        return { detectedType: 'unknown', confidence: 0, fieldMapping: {}, unmappedColumns: [] };
+    }
+
+    // Get all columns across all rows
+    const allCols = new Set<string>();
+    rows.forEach((r) => Object.keys(r).forEach((k) => allCols.add(k)));
+    const cols = Array.from(allCols);
+
+    // Known fields per target
+    const blueBookFields = new Set([
+        'lot', 'communityName', 'builderName', 'amount', 'checkNumber', 'checkDate',
+        'checkTotal', 'invoiceNumber', 'isAch', 'poNumber', 'accountCategoryName',
+        'accountCategoryCode', 'startDate', 'status', 'modelPlanCode', 'modelPlanSqft',
+        'assignedForemanName', 'crewName', 'serviceName',
+    ]);
+
+    const jobRequestFields = new Set([
+        'lot', 'communityName', 'builderName', 'serviceName', 'dueDate', 'startDate',
+        'address', 'notes', 'poNumber', 'assignedForemanName', 'crewName', 'status',
+    ]);
+
+    // Fields that strongly indicate Blue Book (financial/payment data)
+    const blueBookStrong = new Set([
+        'checkNumber', 'checkDate', 'checkTotal', 'invoiceNumber', 'isAch',
+        'accountCategoryCode', 'accountCategoryName', 'amount',
+    ]);
+
+    // Fields that strongly indicate Job Request (scheduling/intake data)
+    const jobRequestStrong = new Set(['dueDate', 'address', 'notes']);
+
+    // Score each target
+    let blueBookScore = 0;
+    let jobRequestScore = 0;
+    const fieldMapping: Record<string, string> = {};
+    const unmappedColumns: string[] = [];
+
+    for (const col of cols) {
+        if (blueBookFields.has(col)) {
+            blueBookScore += blueBookStrong.has(col) ? 3 : 1;
+            fieldMapping[col] = col;
+        }
+        if (jobRequestFields.has(col)) {
+            jobRequestScore += jobRequestStrong.has(col) ? 3 : 1;
+            if (!fieldMapping[col]) fieldMapping[col] = col;
+        }
+
+        if (!blueBookFields.has(col) && !jobRequestFields.has(col)) {
+            // Check for simple entity imports
+            if (!['lineNumber', 'rawText'].includes(col)) {
+                unmappedColumns.push(col);
+            }
+        }
+    }
+
+    // Check for simple entity imports (builders, communities, services)
+    const hasOnlyNameLike = cols.length <= 4 && cols.some((c) =>
+        ['name', 'builderName', 'communityName', 'serviceName'].includes(c)
+    );
+
+    if (hasOnlyNameLike && blueBookScore < 3 && jobRequestScore < 3) {
+        // Determine which entity type
+        if (cols.some((c) => c === 'builderName' || (c === 'name' && !cols.includes('lot')))) {
+            // Check sample data for builder-like vs community-like
+            const hasBuilder = cols.includes('builderName');
+            const hasCommunity = cols.includes('communityName');
+            if (hasBuilder && !hasCommunity) {
+                return { detectedType: 'builders', confidence: 70, fieldMapping, unmappedColumns };
+            }
+            if (hasCommunity && !hasBuilder) {
+                return { detectedType: 'communities', confidence: 70, fieldMapping, unmappedColumns };
+            }
+        }
+        if (cols.includes('serviceName') && cols.length <= 3) {
+            return { detectedType: 'services', confidence: 70, fieldMapping, unmappedColumns };
+        }
+    }
+
+    // Decide between Blue Book and Job Request
+    const totalScore = blueBookScore + jobRequestScore;
+    if (totalScore === 0) {
+        return { detectedType: 'unknown', confidence: 0, fieldMapping, unmappedColumns };
+    }
+
+    if (blueBookScore > jobRequestScore) {
+        const confidence = Math.min(95, Math.round((blueBookScore / Math.max(totalScore, 1)) * 100));
+        return { detectedType: 'blueBook', confidence, fieldMapping, unmappedColumns };
+    }
+    if (jobRequestScore > blueBookScore) {
+        const confidence = Math.min(95, Math.round((jobRequestScore / Math.max(totalScore, 1)) * 100));
+        return { detectedType: 'jobRequests', confidence, fieldMapping, unmappedColumns };
+    }
+
+    // Tie — default to Blue Book (more common import)
+    return { detectedType: 'blueBook', confidence: 50, fieldMapping, unmappedColumns };
 }
 
 // ── Helpers ──────────────────────────────────────────────────────────
