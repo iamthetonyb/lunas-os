@@ -121,22 +121,52 @@ function UserModal({
     setIsSubmitting(true);
     try {
       if (isEdit) {
+        // Update Convex user
         await updateUser({
           userId: user.id as Id<"users">,
           name: formData.name,
           phone: formData.phone || undefined,
-          passwordHash: formData.password || undefined,
         });
+        // Update Clerk password if changed
+        if (formData.password) {
+          const res = await fetch('/api/users', {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email: formData.email, password: formData.password }),
+          });
+          if (!res.ok) {
+            const data = await res.json();
+            throw new Error(data.error || 'Failed to update password in auth system');
+          }
+        }
       } else {
+        // Create Clerk account first (so they can actually log in)
+        const nameParts = formData.name.trim().split(' ');
+        const res = await fetch('/api/users', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            email: formData.email,
+            password: formData.password,
+            firstName: nameParts[0] || formData.name,
+            lastName: nameParts.slice(1).join(' ') || '',
+          }),
+        });
+        if (!res.ok) {
+          const data = await res.json();
+          throw new Error(data.error || 'Failed to create auth account');
+        }
+
+        // Then create Convex user
         await createUser({
           email: formData.email,
           name: formData.name,
           phone: formData.phone || undefined,
-          role: 'contractor',
-          passwordHash: formData.password || undefined,
+          role: 'MEMBER',
         });
       }
 
+      toast.success(isEdit ? 'User updated' : 'User created — they can now log in');
       onSuccess();
       onClose();
     } catch (err: any) {
