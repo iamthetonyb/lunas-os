@@ -21,15 +21,6 @@ type ForemanConfig = {
   keywords?: string[];
 };
 
-// TODO: Replace this hardcoded directory with a Convex query (e.g., api.queries.getForemen).
-// Removing it now would break the page since resolveForemanForJob, foremanTabs, and JobCard all depend on it.
-const FOREMEN_DIRECTORY: ForemanConfig[] = [
-  { id: 'anahi', name: 'Anahi', codes: ['22702'], keywords: ['sweep'] },
-  { id: 'blanca', name: 'Blanca', keywords: ['power wash', 'wash'] },
-  { id: 'chayo', name: 'Chayo', codes: ['22712'], keywords: ['tubs', 'windows', 'q/a'] },
-  { id: 'francisco', name: 'Francisco', keywords: ['extra', 'service'] },
-  { id: 'raudel', name: 'Raudel', keywords: ['final clean', 'touch'] },
-].sort((a, b) => a.name.localeCompare(b.name));
 const UNASSIGNED_FOREMAN = { id: 'unassigned', name: 'Unassigned', nameKey: 'common.unassigned' as const };
 
 // Crew members loaded from Convex (see useQuery below)
@@ -119,11 +110,11 @@ type RescheduleModalState = {
   selectedDate: string;
 };
 
-function resolveForemanForJob(job: UpcomingJob): ForemanConfig | typeof UNASSIGNED_FOREMAN {
+function resolveForemanForJob(job: UpcomingJob, foremenDir: ForemanConfig[]): ForemanConfig | typeof UNASSIGNED_FOREMAN {
   // First priority: Use the requestedBy field if it matches a foreman name
   if (job.requestedBy) {
     const requestedByLower = job.requestedBy.toLowerCase().trim();
-    const byName = FOREMEN_DIRECTORY.find((foreman) =>
+    const byName = foremenDir.find((foreman) =>
       foreman.name.toLowerCase() === requestedByLower ||
       foreman.id.toLowerCase() === requestedByLower
     );
@@ -133,14 +124,14 @@ function resolveForemanForJob(job: UpcomingJob): ForemanConfig | typeof UNASSIGN
   // Second priority: Match by service code
   const code = job.accountCategoryCode?.trim();
   if (code) {
-    const byCode = FOREMEN_DIRECTORY.find((foreman) => foreman.codes?.includes(code));
+    const byCode = foremenDir.find((foreman) => foreman.codes?.includes(code));
     if (byCode) return byCode;
   }
 
   // Third priority: Match by service name keywords
   const serviceName = (job.serviceName ?? job.contractorName ?? '').toLowerCase();
   if (serviceName) {
-    const byKeyword = FOREMEN_DIRECTORY.find((foreman) =>
+    const byKeyword = foremenDir.find((foreman) =>
       foreman.keywords?.some((keyword) => serviceName.includes(keyword))
     );
     if (byKeyword) return byKeyword;
@@ -152,6 +143,19 @@ function resolveForemanForJob(job: UpcomingJob): ForemanConfig | typeof UNASSIGN
 export default function SchedulePage() {
   const { t } = useTranslation();
   const { data: session } = useConvexUser();
+
+  // Build foremen directory dynamically from Convex users
+  const allUsers = useQuery(api.queries.getUsers, {}) as any[] | undefined;
+  const FOREMEN_DIRECTORY = useMemo<ForemanConfig[]>(() => {
+    if (!allUsers) return [];
+    return allUsers
+      .filter((u: any) => u.systemRole === 'FOREMAN' || u.role === 'FOREMAN')
+      .map((u: any) => ({
+        id: (u.name ?? u.email ?? u._id).toLowerCase().replace(/\s+/g, '-'),
+        name: u.name ?? u.email ?? 'Unknown',
+      }))
+      .sort((a: ForemanConfig, b: ForemanConfig) => a.name.localeCompare(b.name));
+  }, [allUsers]);
 
   // Fix for Hydration Mismatch: Initialize with empty string or stable value, then update on mount
   const [date, setDate] = useState('');
@@ -219,7 +223,7 @@ export default function SchedulePage() {
   const decoratedJobs = useMemo<DecoratedJob[]>(
     () =>
       (upcomingJobs ?? []).map((job) => {
-        const foreman = resolveForemanForJob(job as any);
+        const foreman = resolveForemanForJob(job as any, FOREMEN_DIRECTORY);
         const serviceDisplay = job.serviceName
           ? (job as any).accountCategoryCode
             ? `${(job as any).accountCategoryCode} – ${job.serviceName}`
@@ -233,7 +237,7 @@ export default function SchedulePage() {
           serviceDisplay,
         } as DecoratedJob;
       }),
-    [upcomingJobs]
+    [upcomingJobs, FOREMEN_DIRECTORY]
   );
 
   const foremanTabs = useMemo(() => {

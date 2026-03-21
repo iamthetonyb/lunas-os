@@ -20,8 +20,8 @@ import { useConvexUser } from '@/hooks/useConvexUser';
 import { SearchableSelect, SearchableMultiSelect } from './searchable-select';
 import { getFriendlyName } from '@/lib/utils/community-display';
 
-// Fallback list in case foreman query is still loading
-const FALLBACK_REQUESTED_BY = ['Anahi', 'Chayo', 'Blanca', 'Raudel', 'Francisco'];
+// Empty fallback while foreman query loads
+const FALLBACK_REQUESTED_BY: string[] = [];
 
 // Walk time options - top of hour only
 const WALK_TIME_OPTIONS: SelectOption[] = [
