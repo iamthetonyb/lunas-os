@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { useChat } from '@ai-sdk/react';
 import { DefaultChatTransport } from 'ai';
+import { toast } from 'sonner';
 import { useConvexUser } from '@/hooks/useConvexUser';
 import { usePathname } from 'next/navigation';
 import { useTranslation } from 'react-i18next';
@@ -83,7 +84,7 @@ export default function AIChatPanel({ onClose }: { onClose: () => void }) {
             (window as any).SpeechRecognition ||
             (window as any).webkitSpeechRecognition;
         if (!SR) {
-            alert('Voice input not supported. Try Chrome or Edge.');
+            toast.warning('Voice input not supported. Try Chrome or Edge.');
             return;
         }
 

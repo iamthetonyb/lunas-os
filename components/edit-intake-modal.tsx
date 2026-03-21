@@ -4,6 +4,7 @@ import { Controller, useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useTranslation } from 'react-i18next';
+import { toast } from 'sonner';
 import { useQuery, useMutation } from 'convex/react';
 import { api } from '@/convex/_generated/api';
 import { Id } from '@/convex/_generated/dataModel';
@@ -22,9 +23,6 @@ type CommunityDTO = { _id: string; name: string; builderId?: string | null };
 type ModelPlanDTO = { _id: string; name: string; builderId?: string | null; code?: string | null };
 type ServiceDTO = { _id: string; name: string; code?: string | null };
 
-const REQUESTED_BY_LIST = ['Anahi', 'Chayo', 'Blanca', 'Raudel', 'Francisco'] as const;
-type RequestedByName = (typeof REQUESTED_BY_LIST)[number];
-
 const baseSchema = z.object({
   communityId: z.string().min(1, 'Community is required'),
   builderId: z.string().min(1, 'Builder is required'),
@@ -35,12 +33,7 @@ const baseSchema = z.object({
   dueDate: z.string().min(1, 'Due date is required'),
   walkTime: z.string().optional(),
   notes: z.string().optional(),
-  requestedBy: z
-    .string()
-    .min(1, 'Requested by is required')
-    .refine((value) => REQUESTED_BY_LIST.includes(value as RequestedByName), {
-      message: 'Select a valid requester',
-    }),
+  requestedBy: z.string().min(1, 'Requested by is required'),
   contactPhone: z.string().optional(),
   contactEmail: z.string().email('Invalid email format').optional().or(z.literal('')),
   poNumber: z.string().optional(),
@@ -60,6 +53,7 @@ function EditIntakeForm({ intake, onSuccess, onClose }: { intake: RecentIntake; 
   const communities = useQuery(api.queries.getCommunities, {}) as CommunityDTO[] | undefined;
   const modelPlans = useQuery(api.queries.getModelPlans, {}) as ModelPlanDTO[] | undefined;
   const services = useQuery(api.queries.getServices, {}) as ServiceDTO[] | undefined;
+  const allUsers = useQuery(api.queries.getUsers, {}) as any[] | undefined;
 
   const updateJobRequest = useMutation(api.jobRequests.update);
 
@@ -133,7 +127,15 @@ function EditIntakeForm({ intake, onSuccess, onClose }: { intake: RecentIntake; 
     const filtered = builderId ? modelPlans.filter((plan) => plan.builderId === builderId) : modelPlans;
     return filtered.map((plan) => ({ value: plan._id, label: plan.name, description: plan.code ?? undefined }));
   }, [modelPlans, builderId]);
-  const requestedByOptions = useMemo<SelectOption[]>(() => REQUESTED_BY_LIST.map((name) => ({ value: name, label: name })), []);
+  const requestedByOptions = useMemo<SelectOption[]>(() => {
+    if (!allUsers) return [];
+    return allUsers
+      .filter((u: any) => u.systemRole === 'FOREMAN' || u.role === 'FOREMAN')
+      .map((u: any) => u.name)
+      .filter(Boolean)
+      .sort()
+      .map((name: string) => ({ value: name, label: name }));
+  }, [allUsers]);
 
   // All useEffect hooks must be called unconditionally
   useEffect(() => {
@@ -179,7 +181,7 @@ function EditIntakeForm({ intake, onSuccess, onClose }: { intake: RecentIntake; 
       onSuccess();
     } catch (error) {
       console.error('Error updating job request:', error);
-      alert('Error updating job request. Please try again.');
+      toast.error('Error updating job request. Please try again.');
     }
   });
 

@@ -10,6 +10,8 @@ import { useQuery, useMutation } from 'convex/react';
 import { api } from '@/convex/_generated/api';
 import { Id } from '@/convex/_generated/dataModel';
 import { useTranslation } from 'react-i18next';
+import { toast } from 'sonner';
+import { ConfirmationDialog } from './ConfirmationDialog';
 
 const schema = z.object({
   name: z.string().min(1, 'Name is required'),
@@ -38,6 +40,7 @@ export function ServicesCrud() {
   const [isOpen, setIsOpen] = useState(false);
   const [selectedService, setSelectedService] = useState<Service | null>(null);
   const [isDeleting, setIsDeleting] = useState<string | null>(null);
+  const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
 
   const {
     register,
@@ -60,7 +63,7 @@ export function ServicesCrud() {
       setSelectedService(null);
     } catch (error) {
       console.error('Failed to save service', error);
-      alert('Failed to save service.');
+      toast.error('Failed to save service.');
     }
   });
 
@@ -71,16 +74,16 @@ export function ServicesCrud() {
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Are you sure you want to delete this service?')) return;
-
     setIsDeleting(id);
     try {
       await deleteService({ id: id as Id<"services"> });
+      toast.success('Service deleted.');
     } catch (error) {
       console.error('Failed to delete service', error);
-      alert('Failed to delete service.');
+      toast.error('Failed to delete service.');
     } finally {
       setIsDeleting(null);
+      setDeleteConfirm(null);
     }
   };
 
@@ -180,7 +183,7 @@ export function ServicesCrud() {
                           {t('common.edit')}
                         </button>
                         <button
-                          onClick={() => handleDelete(service._id)}
+                          onClick={() => setDeleteConfirm(service._id)}
                           disabled={isDeleting === service._id}
                           className="inline-flex items-center gap-1 px-3 py-1.5 bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300 hover:bg-red-100 dark:hover:bg-red-900/40 rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                         >
@@ -352,6 +355,16 @@ export function ServicesCrud() {
           </div>
         </Dialog>
       </Transition>
+
+      <ConfirmationDialog
+        isOpen={!!deleteConfirm}
+        onClose={() => setDeleteConfirm(null)}
+        onConfirm={() => deleteConfirm && handleDelete(deleteConfirm)}
+        title="Delete Service"
+        message="Are you sure you want to delete this service? This action cannot be undone."
+        confirmLabel="Delete"
+        variant="danger"
+      />
     </div>
   );
 }

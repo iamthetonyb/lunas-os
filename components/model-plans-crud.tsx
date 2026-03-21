@@ -9,6 +9,8 @@ import { useQuery, useMutation } from 'convex/react';
 import { api } from '@/convex/_generated/api';
 import { Id } from '@/convex/_generated/dataModel';
 import { useTranslation } from 'react-i18next';
+import { toast } from 'sonner';
+import { ConfirmationDialog } from './ConfirmationDialog';
 
 const schema = z.object({
   name: z.string().min(1, 'Name is required'),
@@ -79,7 +81,7 @@ export function ModelPlansCrud() {
       setSelectedModelPlan(null);
     } catch (error) {
       console.error('Failed to save model plan', error);
-      alert('Failed to save model plan.');
+      toast.error('Failed to save model plan.');
     }
   });
 
@@ -89,17 +91,19 @@ export function ModelPlansCrud() {
     setIsOpen(true);
   };
 
-  const handleDelete = async (id: string) => {
-    if (!confirm('Are you sure you want to delete this model plan?')) return;
+  const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
 
+  const handleDelete = async (id: string) => {
     setIsDeleting(id);
     try {
       await deleteModelPlan({ id: id as Id<"modelPlans"> });
+      toast.success('Model plan deleted.');
     } catch (error) {
       console.error('Failed to delete model plan', error);
-      alert('Failed to delete model plan.');
+      toast.error('Failed to delete model plan.');
     } finally {
       setIsDeleting(null);
+      setDeleteConfirm(null);
     }
   };
 
@@ -201,7 +205,7 @@ export function ModelPlansCrud() {
                           {t('common.edit')}
                         </button>
                         <button
-                          onClick={() => handleDelete(plan._id)}
+                          onClick={() => setDeleteConfirm(plan._id)}
                           disabled={isDeleting === plan._id}
                           className="inline-flex items-center gap-1 px-3 py-1.5 bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300 hover:bg-red-100 dark:hover:bg-red-900/40 rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                         >
@@ -377,6 +381,16 @@ export function ModelPlansCrud() {
           </div>
         </Dialog>
       </Transition>
+
+      <ConfirmationDialog
+        isOpen={!!deleteConfirm}
+        onClose={() => setDeleteConfirm(null)}
+        onConfirm={() => deleteConfirm && handleDelete(deleteConfirm)}
+        title="Delete Model Plan"
+        message="Are you sure you want to delete this model plan? This action cannot be undone."
+        confirmLabel="Delete"
+        variant="danger"
+      />
     </div>
   );
 }

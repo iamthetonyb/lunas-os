@@ -9,6 +9,8 @@ import { useQuery, useMutation } from 'convex/react';
 import { api } from '@/convex/_generated/api';
 import { Id } from '@/convex/_generated/dataModel';
 import { useTranslation } from 'react-i18next';
+import { toast } from 'sonner';
+import { ConfirmationDialog } from './ConfirmationDialog';
 
 const schema = z.object({
   builderId: z.string().min(1, 'Builder is required'),
@@ -69,6 +71,7 @@ export function RatesCrud() {
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
   const [selectedRateForPreview, setSelectedRateForPreview] = useState<Rate | null>(null);
   const [isDeleting, setIsDeleting] = useState<string | null>(null);
+  const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
 
   const {
     register,
@@ -114,7 +117,7 @@ export function RatesCrud() {
       setSelectedRate(null);
     } catch (error) {
       console.error('Failed to save rate', error);
-      alert('Failed to save rate.');
+      toast.error('Failed to save rate.');
     }
   });
 
@@ -135,16 +138,16 @@ export function RatesCrud() {
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Are you sure you want to delete this rate?')) return;
-
     setIsDeleting(id);
     try {
       await removeRate({ id: id as Id<"contractRates"> });
+      toast.success('Rate deleted.');
     } catch (error) {
       console.error('Failed to delete rate', error);
-      alert('Failed to delete rate.');
+      toast.error('Failed to delete rate.');
     } finally {
       setIsDeleting(null);
+      setDeleteConfirm(null);
     }
   };
 
@@ -275,7 +278,7 @@ export function RatesCrud() {
                           {t('common.edit')}
                         </button>
                         <button
-                          onClick={() => handleDelete(rate._id)}
+                          onClick={() => setDeleteConfirm(rate._id)}
                           disabled={isDeleting === rate._id}
                           className="inline-flex items-center gap-1 px-3 py-1.5 bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300 hover:bg-red-100 dark:hover:bg-red-900/40 rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                         >
@@ -611,6 +614,16 @@ export function RatesCrud() {
           </div>
         </Dialog>
       </Transition>
+
+      <ConfirmationDialog
+        isOpen={!!deleteConfirm}
+        onClose={() => setDeleteConfirm(null)}
+        onConfirm={() => deleteConfirm && handleDelete(deleteConfirm)}
+        title="Delete Rate"
+        message="Are you sure you want to delete this rate? This action cannot be undone."
+        confirmLabel="Delete"
+        variant="danger"
+      />
     </div>
   );
 }

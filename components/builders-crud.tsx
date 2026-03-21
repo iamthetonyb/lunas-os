@@ -6,6 +6,7 @@ import { api } from '@/convex/_generated/api';
 import { Id } from '@/convex/_generated/dataModel';
 import { toast } from 'sonner';
 import { useTranslation } from 'react-i18next';
+import { ConfirmationDialog } from './ConfirmationDialog';
 
 type Builder = { _id: Id<"builders">; name: string };
 type Community = { _id: Id<"communities">; name: string; builderId?: Id<"builders"> | null };
@@ -33,6 +34,7 @@ export function BuildersCrud() {
     const [editingBuilderName, setEditingBuilderName] = useState('');
     const [editingCommunityId, setEditingCommunityId] = useState<string | null>(null);
     const [editingCommunityName, setEditingCommunityName] = useState('');
+    const [deleteConfirm, setDeleteConfirm] = useState<{ id: string; name: string; type: 'builder' | 'community' } | null>(null);
 
     const filteredCommunities = selectedBuilderId
         ? communities.filter(c => c.builderId === selectedBuilderId)
@@ -64,7 +66,6 @@ export function BuildersCrud() {
     };
 
     const handleDeleteBuilder = async (id: string, name: string) => {
-        if (!confirm(`Are you sure you want to delete "${name}"? This cannot be undone.`)) return;
         try {
             await deleteBuilder({ id: id as Id<"builders"> });
             if (selectedBuilderId === id) setSelectedBuilderId(null);
@@ -103,7 +104,6 @@ export function BuildersCrud() {
     };
 
     const handleDeleteCommunity = async (id: string, name: string) => {
-        if (!confirm(`Are you sure you want to delete "${name}"? This cannot be undone.`)) return;
         try {
             await deleteCommunity({ id: id as Id<"communities"> });
             toast.success(`Community "${name}" deleted!`);
@@ -113,6 +113,7 @@ export function BuildersCrud() {
     };
 
     return (
+        <>
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Builders Panel */}
             <div className="bg-gray-50 dark:bg-slate-900 rounded-lg p-4">
@@ -182,7 +183,7 @@ export function BuildersCrud() {
                                                 {t('common.edit')}
                                             </button>
                                             <button
-                                                onClick={() => handleDeleteBuilder(builder._id, builder.name)}
+                                                onClick={() => setDeleteConfirm({ id: builder._id, name: builder.name, type: 'builder' })}
                                                 className="px-2 py-1 text-xs text-red-600 hover:bg-red-50 rounded"
                                             >
                                                 {t('common.delete')}
@@ -272,7 +273,7 @@ export function BuildersCrud() {
                                                 {t('common.edit')}
                                             </button>
                                             <button
-                                                onClick={() => handleDeleteCommunity(community._id, community.name)}
+                                                onClick={() => setDeleteConfirm({ id: community._id, name: community.name, type: 'community' })}
                                                 className="px-2 py-1 text-xs text-red-600 hover:bg-red-50 rounded"
                                             >
                                                 {t('common.delete')}
@@ -286,5 +287,24 @@ export function BuildersCrud() {
                 )}
             </div>
         </div>
+
+        <ConfirmationDialog
+            isOpen={!!deleteConfirm}
+            onClose={() => setDeleteConfirm(null)}
+            onConfirm={() => {
+                if (!deleteConfirm) return;
+                if (deleteConfirm.type === 'builder') {
+                    handleDeleteBuilder(deleteConfirm.id, deleteConfirm.name);
+                } else {
+                    handleDeleteCommunity(deleteConfirm.id, deleteConfirm.name);
+                }
+                setDeleteConfirm(null);
+            }}
+            title={`Delete ${deleteConfirm?.type === 'builder' ? 'Builder' : 'Community'}`}
+            message={`Are you sure you want to delete "${deleteConfirm?.name}"? This cannot be undone.`}
+            confirmLabel="Delete"
+            variant="danger"
+        />
+        </>
     );
 }
