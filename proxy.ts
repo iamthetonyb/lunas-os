@@ -11,6 +11,10 @@ const isPublicRoute = createRouteMatcher([
 ]);
 
 export default clerkMiddleware(async (auth, req) => {
+  // Bypass auth in development for local testing/recording
+  if (process.env.NODE_ENV === 'development' && process.env.BYPASS_AUTH === 'true') {
+    return;
+  }
   if (!isPublicRoute(req)) {
     await auth.protect();
   }

@@ -2,6 +2,14 @@
 
 @config "../tailwind.config.ts";
 
+/* Hide Clerk development mode banner */
+.cl-internal-b3fm6y,
+[data-testid="clerk-development-banner"],
+div[class*="cl-dev-mode"],
+div[class*="development-mode"] {
+  display: none !important;
+}
+
 @theme {
   --variant-dark: .dark &;
 }

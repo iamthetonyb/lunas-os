@@ -345,6 +345,31 @@ export const createUser = mutation({
     },
 });
 
+// Ensure user exists in Convex when signed in via Clerk
+// Called on first load — finds by email or creates with VIEWER role
+export const ensureUser = mutation({
+    args: {
+        email: v.string(),
+        name: v.optional(v.string()),
+    },
+    handler: async (ctx, args) => {
+        const email = args.email.toLowerCase().trim();
+        const existing = await ctx.db
+            .query("users")
+            .withIndex("by_email", (q: any) => q.eq("email", email))
+            .first();
+        if (existing) return existing._id;
+
+        const userId = await ctx.db.insert("users", {
+            email,
+            name: args.name?.trim() ?? email.split("@")[0],
+            role: "VIEWER",
+            createdAt: Date.now(),
+        });
+        return userId;
+    },
+});
+
 // Update user
 export const updateUser = mutation({
     args: {

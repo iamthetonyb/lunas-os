@@ -71,3 +71,6 @@ workers/pulte-harvester/pulte-debug.html
 workers/pulte-harvester/pulte-debug.png
 workers/pulte-harvester/outbox/
 workers/pulte-harvester/jobs-debug.html
+
+# clerk configuration (can include secrets)
+/.clerk/
