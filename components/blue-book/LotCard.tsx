@@ -7,11 +7,12 @@ import { PhaseBoard } from './PhaseBoard';
 type Props = {
     lot: LotSummary;
     onEditEntry: (entryId: string) => void;
+    onDeleteEntry: (entryId: string) => void;
     onPhaseOverride: (lot: string, phaseCode: string, complete: boolean) => void;
     onServiceToggle: (lot: string, phaseCode: string, serviceName: string, complete: boolean) => void;
 };
 
-export function LotCard({ lot, onEditEntry, onPhaseOverride, onServiceToggle }: Props) {
+export function LotCard({ lot, onEditEntry, onDeleteEntry, onPhaseOverride, onServiceToggle }: Props) {
     const { t } = useTranslation();
     const totalAmount = lot.entries.reduce((sum, e) => {
         const amt = parseFloat(e.amount ?? '0');
@@ -84,12 +85,23 @@ export function LotCard({ lot, onEditEntry, onPhaseOverride, onServiceToggle }: 
                                     <td className="pr-2 py-1">{entry.amount ? `$${entry.amount}` : '—'}</td>
                                     <td className="pr-2 py-1">{entry.checkNumber ?? '—'}</td>
                                     <td className="py-1">
-                                        <button
-                                            onClick={() => onEditEntry(entry.id)}
-                                            className="text-blue-600 dark:text-blue-400 hover:underline"
-                                        >
-                                            {t('blueBook.edit')}
-                                        </button>
+                                        <div className="flex items-center gap-2">
+                                            <button
+                                                onClick={() => onEditEntry(entry.id)}
+                                                className="text-blue-600 dark:text-blue-400 hover:underline"
+                                            >
+                                                {t('blueBook.edit')}
+                                            </button>
+                                            <button
+                                                onClick={() => onDeleteEntry(entry.id)}
+                                                className="text-red-500 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300"
+                                                title={t('common.delete')}
+                                            >
+                                                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+                                                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                                                </svg>
+                                            </button>
+                                        </div>
                                     </td>
                                 </tr>
                             ))}

@@ -215,10 +215,17 @@ export const createJobRequest = mutation({
             if (hasExtraService) isExtraWork = true;
         }
         if (!isExtraWork && args.communityId && args.lot) {
+            // Only count non-COMPLETE jobs as duplicates — finished work
+            // for the same lot shouldn't flag new requests as extra work
             const existing = await ctx.db
                 .query("jobRequests")
                 .withIndex("by_community", (q) => q.eq("communityId", args.communityId))
-                .filter((q) => q.eq(q.field("lot"), args.lot))
+                .filter((q) =>
+                    q.and(
+                        q.eq(q.field("lot"), args.lot),
+                        q.neq(q.field("status"), "COMPLETE")
+                    )
+                )
                 .first();
             if (existing) isExtraWork = true;
         }

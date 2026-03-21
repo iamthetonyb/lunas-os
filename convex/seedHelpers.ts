@@ -119,13 +119,15 @@ export const linkCommunitiesToBuilder = mutation({
 export const retroFlagExtraWork = mutation({
     handler: async (ctx) => {
         const requests = await ctx.db.query("jobRequests").collect();
-        // Group by community+lot
+        // Group by community+lot — only non-COMPLETE jobs participate
         const seen = new Map<string, boolean>();
         let flagged = 0;
         // Sort by createdAt ascending so first occurrence is the "original"
         const sorted = [...requests].sort((a, b) => a.createdAt - b.createdAt);
         for (const jr of sorted) {
             if (!jr.communityId || !jr.lot) continue;
+            // Skip completed jobs — they shouldn't affect duplicate detection
+            if (jr.status === "COMPLETE") continue;
             const key = `${jr.communityId}:${jr.lot}`;
             if (seen.has(key)) {
                 // Duplicate — flag as extra work

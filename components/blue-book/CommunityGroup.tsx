@@ -8,11 +8,12 @@ import { LotCard } from './LotCard';
 type Props = {
     group: CommunityGroupType;
     onEditEntry: (entryId: string) => void;
+    onDeleteEntry: (entryId: string) => void;
     onPhaseOverride: (communityId: string, lot: string, phaseCode: string, complete: boolean) => void;
     onServiceToggle: (communityId: string, lot: string, phaseCode: string, serviceName: string, complete: boolean) => void;
 };
 
-export function CommunityGroup({ group, onEditEntry, onPhaseOverride, onServiceToggle }: Props) {
+export function CommunityGroup({ group, onEditEntry, onDeleteEntry, onPhaseOverride, onServiceToggle }: Props) {
     const { t } = useTranslation();
     const [isExpanded, setIsExpanded] = useState(true);
     const completionPct = group.totalEntries > 0
@@ -62,6 +63,7 @@ export function CommunityGroup({ group, onEditEntry, onPhaseOverride, onServiceT
                             key={lot.key}
                             lot={lot}
                             onEditEntry={onEditEntry}
+                            onDeleteEntry={onDeleteEntry}
                             onPhaseOverride={(lotName, phaseCode, complete) =>
                                 onPhaseOverride(group.communityId ?? '', lotName, phaseCode, complete)
                             }

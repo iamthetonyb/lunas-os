@@ -35,4 +35,12 @@ crons.weekly(
     _internal.insights.runWeeklyInsights
 );
 
+// Monthly maintenance — purge soft-deleted records + completed jobs older than 90 days
+// Runs 1st of each month at 3 AM UTC (9 PM CST previous day)
+crons.monthly(
+    "monthly-purge",
+    { day: 1, hourUTC: 3, minuteUTC: 0 },
+    _internal.maintenance.purgeStaleRecords
+);
+
 export default crons;

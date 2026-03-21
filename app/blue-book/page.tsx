@@ -10,6 +10,7 @@ import type { BlueBookEntry, PhaseDefinition } from '@/types/blue-book';
 
 import { PageHeader } from '@/components/page-header';
 import { QueryWrapper } from '@/components/QueryWrapper';
+import { ConfirmationDialog } from '@/components/ConfirmationDialog';
 import { BuilderTabBar } from '@/components/blue-book/BuilderTabBar';
 import { BlueBookToolbar } from '@/components/blue-book/BlueBookToolbar';
 import { CommunityGroup } from '@/components/blue-book/CommunityGroup';
@@ -69,8 +70,10 @@ export default function BlueBookPage() {
 
     const [page, setPage] = useState(1);
     const [editingEntry, setEditingEntry] = useState<BlueBookEntry | null>(null);
+    const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
     const [showCreate, setShowCreate] = useState(false);
     const [showPhaseConfig, setShowPhaseConfig] = useState(false);
+    const removeEntry = useMutation(api.blueBook.remove);
 
     // ── Data queries ─────────────────────────────────────────────────
     const builders = useQuery(api.queries.getBuilders, {}) ?? [];
@@ -155,6 +158,16 @@ export default function BlueBookPage() {
         },
         [entries]
     );
+
+    const handleDeleteEntry = useCallback(async (entryId: string) => {
+        try {
+            await removeEntry({ id: entryId as Id<'blueBookEntries'> });
+            toast.success('Entry deleted');
+            setDeleteConfirm(null);
+        } catch {
+            toast.error('Failed to delete entry');
+        }
+    }, [removeEntry]);
 
     const setOverrideMutation = useMutation(api.blueBookPhases.setOverride);
 
@@ -281,6 +294,7 @@ export default function BlueBookPage() {
                                             key={group.communityName}
                                             group={group}
                                             onEditEntry={handleEditEntry}
+                                            onDeleteEntry={(id) => setDeleteConfirm(id)}
                                             onPhaseOverride={handlePhaseOverride}
                                             onServiceToggle={handleServiceToggle}
                                         />
@@ -304,6 +318,7 @@ export default function BlueBookPage() {
                 entry={editingEntry}
                 isOpen={!!editingEntry}
                 onClose={() => setEditingEntry(null)}
+                onDelete={(id) => setDeleteConfirm(id)}
             />
 
             <CreateEntryModal
@@ -320,6 +335,15 @@ export default function BlueBookPage() {
                     onClose={() => setShowPhaseConfig(false)}
                 />
             )}
+
+            <ConfirmationDialog
+                isOpen={!!deleteConfirm}
+                title="Delete Entry"
+                message="Are you sure you want to delete this entry? This action cannot be undone."
+                confirmLabel="Delete"
+                onConfirm={() => deleteConfirm && handleDeleteEntry(deleteConfirm)}
+                onClose={() => setDeleteConfirm(null)}
+            />
         </div>
     );
 }
