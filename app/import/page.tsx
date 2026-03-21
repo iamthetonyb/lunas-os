@@ -6,7 +6,6 @@ import { useTranslation } from 'react-i18next';
 import { useMutation, useQuery } from 'convex/react';
 import { api } from '@/convex/_generated/api';
 import { toast } from 'sonner';
-import { useOcrWorker } from '@/hooks/useOcrWorker';
 import type { Id } from '@/convex/_generated/dataModel';
 
 type ParsedRow = Record<string, string>;
@@ -27,9 +26,8 @@ export default function ImportPage() {
     const [parsing, setParsing] = useState(false);
     const [importTarget, setImportTarget] = useState<ImportTarget>('blueBook');
     const [importResult, setImportResult] = useState<{ success: number; errors: number } | null>(null);
-
-    // OCR
-    const ocr = useOcrWorker();
+    const [ocrRawText, setOcrRawText] = useState<string | null>(null);
+    const [ocrConfidence, setOcrConfidence] = useState(0);
 
     // Convex data for resolving names → IDs
     const builders = useQuery(api.queries.getBuilders, {}) ?? [];
@@ -58,7 +56,8 @@ export default function ImportPage() {
             setSelectedFile(file);
             setParsedRows([]);
             setImportResult(null);
-            ocr.reset();
+            setOcrRawText(null);
+            setOcrConfidence(0);
         }
     };
 
@@ -68,35 +67,28 @@ export default function ImportPage() {
         setParsedRows([]);
 
         try {
-            if (isOcrFile) {
-                // Client-side OCR via Web Worker
-                const result = await ocr.processImage(selectedFile);
-                if (!result?.text) {
-                    toast.error('OCR produced no readable text');
-                    setParsing(false);
-                    return;
-                }
+            // All processing happens server-side:
+            // - CSV/Excel: parsed with papaparse/xlsx
+            // - PDF/Images: OCR via PaddleOCR v5 + ONNX Runtime
+            const formData = new FormData();
+            formData.append('file', selectedFile);
+            if (isOcrFile) formData.append('ocr', 'true');
 
-                // Send OCR text to server for structured parsing
-                const formData = new FormData();
-                formData.append('ocrText', result.text);
-                const res = await fetch('/api/import', { method: 'POST', body: formData });
-                const data = await res.json();
-                if (!res.ok) throw new Error(data.error);
-                setParsedRows(data.rows ?? []);
-                toast.success(`OCR complete — ${data.rows?.length ?? 0} rows detected (${Math.round(result.confidence)}% confidence)`);
-            } else if (isSpreadsheet) {
-                // Server-side parsing for CSV/Excel
-                const formData = new FormData();
-                formData.append('file', selectedFile);
-                const res = await fetch('/api/import', { method: 'POST', body: formData });
-                const data = await res.json();
-                if (!res.ok) throw new Error(data.error);
-                setParsedRows(data.rows ?? []);
-                toast.success(`Parsed ${data.rows?.length ?? 0} rows from ${selectedFile.name}`);
-            } else {
-                toast.error(`Unsupported file type: .${fileExt}`);
+            const res = await fetch('/api/import', { method: 'POST', body: formData });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.error);
+
+            setParsedRows(data.rows ?? []);
+
+            if (data.ocrText) {
+                setOcrRawText(data.ocrText);
+                setOcrConfidence(data.ocrConfidence ?? 0);
             }
+
+            const msg = isOcrFile
+                ? `OCR complete — ${data.rows?.length ?? 0} rows detected (${data.ocrConfidence ?? 0}% confidence)`
+                : `Parsed ${data.rows?.length ?? 0} rows from ${selectedFile.name}`;
+            toast.success(msg);
         } catch (err: any) {
             toast.error(err.message || 'Failed to parse file');
         } finally {
@@ -177,7 +169,8 @@ export default function ImportPage() {
         setSelectedFile(null);
         setParsedRows([]);
         setImportResult(null);
-        ocr.reset();
+        setOcrRawText(null);
+        setOcrConfidence(0);
         if (fileInputRef.current) fileInputRef.current.value = '';
     };
 
@@ -259,18 +252,18 @@ export default function ImportPage() {
                                 </button>
                             </div>
 
-                            {/* OCR progress bar */}
-                            {ocr.status === 'recognizing' && (
+                            {/* OCR processing indicator */}
+                            {parsing && isOcrFile && (
                                 <div className="mb-4">
-                                    <div className="flex items-center justify-between text-xs text-gray-600 dark:text-gray-400 mb-1">
-                                        <span>Processing OCR...</span>
-                                        <span>{ocr.progress}%</span>
+                                    <div className="flex items-center gap-2 text-xs text-purple-600 dark:text-purple-400 mb-1">
+                                        <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
+                                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                                        </svg>
+                                        <span>Running PaddleOCR v5 — scanning document...</span>
                                     </div>
-                                    <div className="w-full h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
-                                        <div
-                                            className="h-full bg-purple-500 rounded-full transition-all duration-300"
-                                            style={{ width: `${ocr.progress}%` }}
-                                        />
+                                    <div className="w-full h-1.5 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+                                        <div className="h-full bg-purple-500 rounded-full animate-pulse w-2/3" />
                                     </div>
                                 </div>
                             )}
@@ -292,21 +285,21 @@ export default function ImportPage() {
                                         <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                                         <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
                                     </svg>
-                                    Parsing...
+                                    Parsing spreadsheet...
                                 </div>
                             )}
                         </div>
                     )}
                 </div>
 
-                {/* OCR raw text preview (for debugging) */}
-                {ocr.result && parsedRows.length > 0 && (
+                {/* OCR raw text preview */}
+                {ocrRawText && parsedRows.length > 0 && (
                     <details className="bg-white dark:bg-slate-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-4">
                         <summary className="text-sm font-medium text-gray-700 dark:text-gray-300 cursor-pointer">
-                            OCR Raw Text ({Math.round(ocr.result.confidence)}% confidence)
+                            OCR Raw Text ({ocrConfidence}% confidence) — PaddleOCR v5
                         </summary>
                         <pre className="mt-2 text-xs text-gray-600 dark:text-gray-400 whitespace-pre-wrap max-h-48 overflow-y-auto bg-gray-50 dark:bg-slate-900 p-3 rounded">
-                            {ocr.result.text}
+                            {ocrRawText}
                         </pre>
                     </details>
                 )}
@@ -395,7 +388,7 @@ export default function ImportPage() {
                         </div>
                     </div>
                     <p className="text-xs text-blue-700 dark:text-blue-300 mt-2">
-                        PDF and image files are processed locally in your browser using Tesseract.js OCR — no data leaves your device during scanning.
+                        PDF and image files are processed server-side using PaddleOCR v5 (ONNX Runtime) for high-accuracy text recognition with preprocessing.
                     </p>
                 </div>
             </main>

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback } from 'react';
 
 type OcrStatus = 'idle' | 'loading' | 'recognizing' | 'done' | 'error';
 
@@ -10,60 +10,39 @@ type OcrResult = {
 };
 
 /**
- * Client-side OCR via Tesseract.js Web Worker.
- * Processes images and PDFs (as images) without blocking the UI.
- * Language models are loaded on-demand (eng only by default).
+ * Client-side OCR hook that sends files to the server-side PaddleOCR endpoint.
+ * The actual OCR runs server-side via PaddleOCR v5 + ONNX Runtime for
+ * maximum accuracy and performance. No WASM/model downloads in the browser.
  */
 export function useOcrWorker() {
     const [status, setStatus] = useState<OcrStatus>('idle');
     const [progress, setProgress] = useState(0);
     const [result, setResult] = useState<OcrResult | null>(null);
     const [error, setError] = useState<string | null>(null);
-    const workerRef = useRef<any>(null);
 
-    const processImage = useCallback(async (imageSource: File | string) => {
+    const processImage = useCallback(async (file: File) => {
         setStatus('loading');
-        setProgress(0);
+        setProgress(10);
         setError(null);
         setResult(null);
 
         try {
-            // Dynamic import — only loads tesseract.js when needed
-            const Tesseract = await import('tesseract.js');
-
             setStatus('recognizing');
+            setProgress(30);
 
-            // Convert File to object URL if needed
-            let src: string;
-            if (imageSource instanceof File) {
-                src = URL.createObjectURL(imageSource);
-            } else {
-                src = imageSource;
-            }
+            const formData = new FormData();
+            formData.append('file', file);
+            formData.append('ocr', 'true');
 
-            const worker = await Tesseract.createWorker('eng', undefined, {
-                logger: (m: any) => {
-                    if (m.status === 'recognizing text') {
-                        setProgress(Math.round((m.progress ?? 0) * 100));
-                    }
-                },
-            });
+            const res = await fetch('/api/import', { method: 'POST', body: formData });
+            setProgress(80);
 
-            workerRef.current = worker;
-
-            const { data } = await worker.recognize(src);
-
-            // Clean up object URL
-            if (imageSource instanceof File) {
-                URL.revokeObjectURL(src);
-            }
-
-            await worker.terminate();
-            workerRef.current = null;
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.error);
 
             const ocrResult: OcrResult = {
-                text: data.text,
-                confidence: data.confidence,
+                text: data.ocrText ?? '',
+                confidence: data.ocrConfidence ?? 0,
             };
 
             setResult(ocrResult);
@@ -77,15 +56,6 @@ export function useOcrWorker() {
         }
     }, []);
 
-    const cancel = useCallback(async () => {
-        if (workerRef.current) {
-            await workerRef.current.terminate();
-            workerRef.current = null;
-        }
-        setStatus('idle');
-        setProgress(0);
-    }, []);
-
     const reset = useCallback(() => {
         setStatus('idle');
         setProgress(0);
@@ -93,5 +63,5 @@ export function useOcrWorker() {
         setError(null);
     }, []);
 
-    return { status, progress, result, error, processImage, cancel, reset };
+    return { status, progress, result, error, processImage, reset };
 }

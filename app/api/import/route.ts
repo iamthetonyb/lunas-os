@@ -7,17 +7,23 @@ export const maxDuration = 60;
 
 type ParsedRow = Record<string, string>;
 
+const OCR_EXTENSIONS = ['pdf', 'png', 'jpg', 'jpeg', 'webp', 'tiff', 'bmp'];
+
 /**
- * POST /api/import — Parse uploaded file (CSV, Excel, or OCR text) into rows.
- * Returns normalized rows for the client to review before committing to Convex.
+ * POST /api/import — Parse uploaded file into structured rows.
+ *
+ * - CSV/Excel: parsed server-side with papaparse/xlsx
+ * - PDF/Images: OCR via PaddleOCR v5 (ONNX Runtime, server-side)
+ * - ocrText field: raw text already OCR'd, parse into rows
  */
 export async function POST(req: NextRequest) {
     try {
         const formData = await req.formData();
         const file = formData.get('file') as File | null;
         const ocrText = formData.get('ocrText') as string | null;
+        const doOcr = formData.get('ocr') === 'true';
 
-        // If OCR text was sent (PDF/image processed client-side), parse it
+        // If pre-OCR'd text was sent, parse it
         if (ocrText) {
             const rows = parseOcrText(ocrText);
             return NextResponse.json({ success: true, rows, source: 'ocr' });
@@ -27,18 +33,33 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: 'No file provided' }, { status: 400 });
         }
 
-        const ext = file.name.split('.').pop()?.toLowerCase();
-        let rows: ParsedRow[] = [];
+        const ext = file.name.split('.').pop()?.toLowerCase() ?? '';
 
+        // OCR path: PDF/image files
+        if (doOcr || OCR_EXTENSIONS.includes(ext)) {
+            const { text, confidence } = await runPaddleOcr(file);
+            const rows = parseOcrText(text);
+            return NextResponse.json({
+                success: true,
+                rows,
+                source: 'ocr',
+                rowCount: rows.length,
+                ocrText: text,
+                ocrConfidence: confidence,
+            });
+        }
+
+        // Spreadsheet path
+        let rows: ParsedRow[] = [];
         if (ext === 'csv') {
             const text = await file.text();
             rows = parseCsv(text);
-        } else if (ext === 'xlsx' || ext === 'xls' || ext === 'ods') {
+        } else if (['xlsx', 'xls', 'ods'].includes(ext)) {
             const buffer = await file.arrayBuffer();
             rows = parseExcel(buffer);
         } else {
             return NextResponse.json(
-                { error: `Unsupported file type: .${ext}. Use CSV, Excel, or process images/PDFs client-side with OCR.` },
+                { error: `Unsupported file type: .${ext}` },
                 { status: 400 }
             );
         }
@@ -48,6 +69,71 @@ export async function POST(req: NextRequest) {
         console.error('Import error:', err);
         return NextResponse.json({ error: err.message || 'Import failed' }, { status: 500 });
     }
+}
+
+// ── PaddleOCR ────────────────────────────────────────────────────────
+
+async function runPaddleOcr(file: File): Promise<{ text: string; confidence: number }> {
+    const rawBuffer = Buffer.from(await file.arrayBuffer());
+
+    // Dynamic imports to avoid bundling ONNX/sharp at build time
+    const { PaddleOcrService } = await import('paddleocr');
+    const ort = await import('onnxruntime-node');
+    const sharp = (await import('sharp')).default;
+
+    // Preprocess: convert to high-contrast grayscale, boost to 300 DPI equivalent
+    const image = sharp(rawBuffer)
+        .grayscale()
+        .normalize()      // maximize contrast
+        .sharpen()         // sharpen edges for better text detection
+        .resize({ width: 2400, withoutEnlargement: true }); // ~300 DPI for letter-size
+
+    const { data, info } = await image
+        .removeAlpha()
+        .raw()
+        .toBuffer({ resolveWithObject: true });
+
+    // PaddleOCR expects { data: Uint8Array, width, height } with RGB channels
+    // sharp grayscale outputs 1 channel — expand to 3 channels
+    const rgb = new Uint8Array(info.width * info.height * 3);
+    for (let i = 0; i < data.length; i++) {
+        rgb[i * 3] = data[i];
+        rgb[i * 3 + 1] = data[i];
+        rgb[i * 3 + 2] = data[i];
+    }
+
+    const imageInput = {
+        data: rgb,
+        width: info.width,
+        height: info.height,
+    };
+
+    const service = new PaddleOcrService({ ort: ort as any });
+    await service.initialize();
+    const result = await service.recognize(imageInput as any);
+    await service.destroy();
+
+    // Combine all detected text blocks
+    const lines: string[] = [];
+    let totalConfidence = 0;
+    let blockCount = 0;
+
+    if (Array.isArray(result)) {
+        for (const block of result) {
+            const text = (block as any).text ?? (block as any).value ?? '';
+            const score = (block as any).score ?? (block as any).confidence ?? 0;
+            if (text) {
+                lines.push(text);
+                totalConfidence += score;
+                blockCount++;
+            }
+        }
+    }
+
+    return {
+        text: lines.join('\n'),
+        confidence: blockCount > 0 ? Math.round((totalConfidence / blockCount) * 100) : 0,
+    };
 }
 
 // ── Parsers ──────────────────────────────────────────────────────────
@@ -80,36 +166,31 @@ function parseOcrText(text: string): ParsedRow[] {
     const lines = text.split('\n').map((l) => l.trim()).filter(Boolean);
     if (lines.length === 0) return [];
 
-    // Try to detect tabular data — lines with consistent delimiters
+    // Detect tabular delimiters
     const tabCount = lines.filter((l) => l.includes('\t')).length;
     const pipeCount = lines.filter((l) => l.includes('|')).length;
 
     if (tabCount > lines.length * 0.5) {
-        // Tab-delimited OCR output
         return parseCsv(lines.join('\n').replace(/\t/g, ','));
     }
 
     if (pipeCount > lines.length * 0.5) {
-        // Pipe-delimited (common in OCR table detection)
         const cleaned = lines
             .map((l) => l.replace(/^\||\|$/g, '').trim())
-            .filter((l) => !l.match(/^[-|+\s]+$/)); // remove separator lines
+            .filter((l) => !l.match(/^[-|+\s]+$/));
         return parseCsv(cleaned.join('\n').replace(/\|/g, ','));
     }
 
-    // Fallback: try CSV-like parsing
     if (lines[0].includes(',')) {
         return parseCsv(lines.join('\n'));
     }
 
-    // Last resort: each line is a row with space-separated values
-    // Return raw lines with index
+    // Fallback: raw lines
     return lines.map((line, i) => ({ lineNumber: String(i + 1), rawText: line }));
 }
 
 // ── Helpers ──────────────────────────────────────────────────────────
 
-/** Normalize column headers to match Blue Book / Job Request field names */
 function normalizeHeader(raw: string): string {
     const h = raw.toLowerCase().trim().replace(/[^a-z0-9]/g, '');
     const map: Record<string, string> = {
