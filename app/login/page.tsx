@@ -36,7 +36,7 @@ export default function LoginPage() {
               headerSubtitle: 'hidden',
               socialButtonsBlockButton: 'border border-gray-300 hover:bg-gray-50 transition-colors',
               formButtonPrimary: 'bg-blue-600 hover:bg-blue-700 transition-colors',
-              footerAction: 'hidden',
+              footerActionLink: 'text-blue-600 hover:text-blue-700',
             },
           }}
         />

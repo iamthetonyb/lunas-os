@@ -376,12 +376,14 @@ export const updateUser = mutation({
         userId: v.id("users"),
         name: v.optional(v.string()),
         phone: v.optional(v.string()),
+        role: v.optional(v.string()),
         passwordHash: v.optional(v.string()),
     },
     handler: async (ctx, args) => {
         const updates: any = { updatedAt: Date.now() };
         if (args.name !== undefined) updates.name = args.name;
         if (args.phone !== undefined) updates.phone = args.phone;
+        if (args.role !== undefined) updates.role = args.role;
         if (args.passwordHash) updates.passwordHash = args.passwordHash;
 
         await ctx.db.patch(args.userId, updates);
