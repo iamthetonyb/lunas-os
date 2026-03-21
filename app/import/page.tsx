@@ -10,13 +10,14 @@ import type { Id } from '@/convex/_generated/dataModel';
 
 type ParsedRow = Record<string, string>;
 
-type ImportTarget = 'blueBook' | 'jobRequests' | 'builders' | 'communities' | 'services' | 'unknown';
+type ImportTarget = 'auto' | 'blueBook' | 'jobRequests' | 'builders' | 'communities' | 'services' | 'unknown';
 
 // Column → destination field mapping
 type FieldMapping = Record<string, string>; // sourceCol → destField or '__skip__'
 
 const OCR_EXTENSIONS = ['pdf', 'png', 'jpg', 'jpeg', 'webp', 'tiff', 'bmp'];
 const TARGET_LABELS: Record<ImportTarget, string> = {
+    auto: 'Auto-Detect',
     blueBook: 'Blue Book',
     jobRequests: 'Job Requests',
     builders: 'Builders',
@@ -26,7 +27,7 @@ const TARGET_LABELS: Record<ImportTarget, string> = {
 };
 
 // Destination fields per import target
-const TARGET_FIELDS: Record<Exclude<ImportTarget, 'unknown'>, { value: string; label: string }[]> = {
+const TARGET_FIELDS: Record<Exclude<ImportTarget, 'unknown' | 'auto'>, { value: string; label: string }[]> = {
     blueBook: [
         { value: 'lot', label: 'Lot' },
         { value: 'builderName', label: 'Builder Name' },
@@ -83,7 +84,7 @@ export default function ImportPage() {
     const [parsedRows, setParsedRows] = useState<ParsedRow[]>([]);
     const [importing, setImporting] = useState(false);
     const [parsing, setParsing] = useState(false);
-    const [importTarget, setImportTarget] = useState<ImportTarget>('blueBook');
+    const [importTarget, setImportTarget] = useState<ImportTarget>('auto');
     const [importResult, setImportResult] = useState<{ success: number; errors: number } | null>(null);
     const [ocrRawText, setOcrRawText] = useState<string | null>(null);
     const [ocrConfidence, setOcrConfidence] = useState(0);
@@ -91,6 +92,10 @@ export default function ImportPage() {
     const [unmappedCols, setUnmappedCols] = useState<string[]>([]);
     const [fieldMapping, setFieldMapping] = useState<FieldMapping>({});
     const [mappingConfirmed, setMappingConfirmed] = useState(false);
+    const [autoDetectedTarget, setAutoDetectedTarget] = useState<ImportTarget>('unknown');
+
+    // When "Auto-Detect" is selected, use whatever the server detected
+    const resolvedTarget: ImportTarget = importTarget === 'auto' ? autoDetectedTarget : importTarget;
 
     // Convex data for resolving names → IDs
     const builders = useQuery(api.queries.getBuilders, {}) ?? [];
@@ -125,6 +130,7 @@ export default function ImportPage() {
             setOcrConfidence(0);
             setFieldMapping({});
             setMappingConfirmed(false);
+            setAutoDetectedTarget('unknown');
         }
     };
 
@@ -148,9 +154,9 @@ export default function ImportPage() {
             setParsedRows(data.rows ?? []);
             setMappingConfirmed(false);
 
-            // Auto-detect data type from columns
+            // Store auto-detected type (used when importTarget === 'auto')
             if (data.detectedType && data.detectedType !== 'unknown') {
-                setImportTarget(data.detectedType);
+                setAutoDetectedTarget(data.detectedType);
                 setDetectionConfidence(data.confidence ?? 0);
             }
             setUnmappedCols(data.unmappedColumns ?? []);
@@ -205,7 +211,7 @@ export default function ImportPage() {
     };
 
     const handleImport = async () => {
-        if (parsedRows.length === 0 || importTarget === 'unknown' || !mappingConfirmed) return;
+        if (parsedRows.length === 0 || resolvedTarget === 'unknown' || resolvedTarget === 'auto' || !mappingConfirmed) return;
         setImporting(true);
         let success = 0;
         let errors = 0;
@@ -213,7 +219,7 @@ export default function ImportPage() {
         for (const raw of parsedRows) {
             const row = remapRow(raw);
             try {
-                if (importTarget === 'blueBook') {
+                if (resolvedTarget === 'blueBook') {
                     const builderId = resolveId(row.builderName, builders);
                     const communityId = resolveId(row.communityName, communities);
                     await createBlueBookEntry({
@@ -232,7 +238,7 @@ export default function ImportPage() {
                         communityId: communityId as Id<'communities'> | undefined,
                         source: 'import',
                     });
-                } else if (importTarget === 'jobRequests') {
+                } else if (resolvedTarget === 'jobRequests') {
                     const builderId = resolveId(row.builderName, builders);
                     const communityId = resolveId(row.communityName, communities);
                     const services = row.serviceName
@@ -249,11 +255,11 @@ export default function ImportPage() {
                         communityId: communityId as Id<'communities'> | undefined,
                         services,
                     });
-                } else if (importTarget === 'builders') {
+                } else if (resolvedTarget === 'builders') {
                     const name = row.name || row.builderName;
                     if (!name) { errors++; continue; }
                     await createBuilder({ name });
-                } else if (importTarget === 'communities') {
+                } else if (resolvedTarget === 'communities') {
                     const name = row.name || row.communityName;
                     if (!name) { errors++; continue; }
                     const builderId = resolveId(row.builderName, builders);
@@ -261,7 +267,7 @@ export default function ImportPage() {
                         name,
                         builderId: builderId as Id<'builders'> | undefined,
                     });
-                } else if (importTarget === 'services') {
+                } else if (resolvedTarget === 'services') {
                     const name = row.name || row.serviceName;
                     if (!name) { errors++; continue; }
                     await createService({ name });
@@ -276,7 +282,7 @@ export default function ImportPage() {
         setImportResult({ success, errors });
         setImporting(false);
         if (errors === 0) {
-            toast.success(`Imported ${success} ${TARGET_LABELS[importTarget]} records`);
+            toast.success(`Imported ${success} ${TARGET_LABELS[resolvedTarget]} records`);
         } else {
             toast.warning(`Imported ${success}, ${errors} failed`);
         }
@@ -292,15 +298,17 @@ export default function ImportPage() {
         setUnmappedCols([]);
         setFieldMapping({});
         setMappingConfirmed(false);
+        setAutoDetectedTarget('unknown');
         if (fileInputRef.current) fileInputRef.current.value = '';
     };
 
     const handleChangeTarget = (target: ImportTarget) => {
         setImportTarget(target);
         setMappingConfirmed(false);
-        // Re-evaluate mapping: keep matched fields, skip rest
-        if (target !== 'unknown' && columns.length > 0) {
-            const fields = TARGET_FIELDS[target];
+        // Determine the effective target for field lookup
+        const effective = target === 'auto' ? autoDetectedTarget : target;
+        if (effective !== 'unknown' && effective !== 'auto' && columns.length > 0) {
+            const fields = TARGET_FIELDS[effective];
             const fieldValues = new Set(fields.map(f => f.value));
             const newMapping: FieldMapping = {};
             for (const col of columns) {
@@ -324,7 +332,7 @@ export default function ImportPage() {
 
     // Count how many columns are mapped (not skipped)
     const mappedCount = Object.values(fieldMapping).filter(v => v && v !== '__skip__').length;
-    const availableFields = importTarget !== 'unknown' ? TARGET_FIELDS[importTarget] : [];
+    const availableFields = resolvedTarget !== 'unknown' && resolvedTarget !== 'auto' ? TARGET_FIELDS[resolvedTarget] : [];
 
     return (
         <>
@@ -335,7 +343,7 @@ export default function ImportPage() {
             <main className="px-6 py-6 space-y-6">
                 {/* Import target selector — auto-detected but overridable */}
                 <div className="flex flex-wrap items-center gap-2">
-                    {(['blueBook', 'jobRequests', 'builders', 'communities', 'services'] as ImportTarget[]).map((target) => (
+                    {(['auto', 'blueBook', 'jobRequests', 'builders', 'communities', 'services'] as ImportTarget[]).map((target) => (
                         <button
                             key={target}
                             onClick={() => handleChangeTarget(target)}
@@ -348,9 +356,9 @@ export default function ImportPage() {
                             {TARGET_LABELS[target]}
                         </button>
                     ))}
-                    {detectionConfidence > 0 && parsedRows.length > 0 && (
+                    {detectionConfidence > 0 && resolvedTarget !== 'unknown' && parsedRows.length > 0 && (
                         <span className="text-xs text-gray-500 dark:text-gray-400 ml-2">
-                            Auto-detected: {TARGET_LABELS[importTarget]} ({detectionConfidence}% match)
+                            Detected: {TARGET_LABELS[resolvedTarget]} ({detectionConfidence}% match)
                         </span>
                     )}
                 </div>
@@ -377,7 +385,7 @@ export default function ImportPage() {
                                 Click to select a file
                             </p>
                             <p className="text-xs text-gray-500 dark:text-gray-500">
-                                CSV, Excel, PDF, or Image (PNG, JPG) — OCR powered by PaddleOCR v5
+                                CSV, Excel, PDF, or Image (PNG, JPG)
                             </p>
                         </div>
                     ) : (
@@ -410,7 +418,7 @@ export default function ImportPage() {
                                             <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                                             <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
                                         </svg>
-                                        <span>Running PaddleOCR v5 — scanning document...</span>
+                                        <span>Scanning document...</span>
                                     </div>
                                     <div className="w-full h-1.5 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
                                         <div className="h-full bg-purple-500 rounded-full animate-pulse w-2/3" />
@@ -446,7 +454,7 @@ export default function ImportPage() {
                 {ocrRawText && parsedRows.length > 0 && (
                     <details className="bg-white dark:bg-slate-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-4">
                         <summary className="text-sm font-medium text-gray-700 dark:text-gray-300 cursor-pointer">
-                            OCR Raw Text ({ocrConfidence}% confidence) — PaddleOCR v5
+                            OCR Raw Text ({ocrConfidence}% confidence)
                         </summary>
                         <pre className="mt-2 text-xs text-gray-600 dark:text-gray-400 whitespace-pre-wrap max-h-48 overflow-y-auto bg-gray-50 dark:bg-slate-900 p-3 rounded">
                             {ocrRawText}
@@ -455,7 +463,7 @@ export default function ImportPage() {
                 )}
 
                 {/* Step 2: Column Mapping */}
-                {parsedRows.length > 0 && !mappingConfirmed && (
+                {parsedRows.length > 0 && !mappingConfirmed && resolvedTarget !== 'unknown' && resolvedTarget !== 'auto' && (
                     <div className="bg-white dark:bg-slate-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
                         <div className="flex items-center justify-between mb-4">
                             <div>
@@ -463,7 +471,7 @@ export default function ImportPage() {
                                     Map Columns
                                 </h3>
                                 <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                                    Review how each column maps to {TARGET_LABELS[importTarget]} fields. Change any mapping or skip columns you don&apos;t need.
+                                    Review how each column maps to {TARGET_LABELS[resolvedTarget]} fields. Change any mapping or skip columns you don&apos;t need.
                                 </p>
                             </div>
                             <span className="text-xs px-2 py-1 rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300">
@@ -582,7 +590,7 @@ export default function ImportPage() {
                                     Ready to Import ({parsedRows.length} rows)
                                 </h3>
                                 <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                                    Importing as <strong>{TARGET_LABELS[importTarget]}</strong> with {mappedCount} mapped field{mappedCount > 1 ? 's' : ''}
+                                    Importing as <strong>{TARGET_LABELS[resolvedTarget]}</strong> with {mappedCount} mapped field{mappedCount > 1 ? 's' : ''}
                                 </p>
                             </div>
                             <div className="flex items-center gap-3">
@@ -677,9 +685,6 @@ export default function ImportPage() {
                             <span>Photo OCR scan</span>
                         </div>
                     </div>
-                    <p className="text-xs text-blue-700 dark:text-blue-300 mt-2">
-                        PDF and image files are processed server-side using PaddleOCR v5 (ONNX Runtime) for high-accuracy text recognition with preprocessing.
-                    </p>
                 </div>
             </main>
         </>
