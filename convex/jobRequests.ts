@@ -221,29 +221,22 @@ export const checkDuplicateServices = query({
     }
 
     // Find existing job requests for this community + lot
-    // Exclude COMPLETE jobs — finished work shouldn't block new requests
     const existingJobs = await ctx.db
       .query("jobRequests")
       .withIndex("by_community", (q) => q.eq("communityId", args.communityId!))
-      .filter((q) =>
-        q.and(
-          q.eq(q.field("lot"), args.lot),
-          q.neq(q.field("status"), "COMPLETE")
-        )
-      )
+      .filter((q) => q.eq(q.field("lot"), args.lot))
       .collect();
 
     if (existingJobs.length === 0) {
       return { duplicates: [], hasDuplicates: false };
     }
 
-    // Get all services for those jobs — only non-COMPLETE services count
+    // Get all services for those jobs
     const allServices = await Promise.all(
       existingJobs.map((jr) =>
         ctx.db
           .query("jobRequestServices")
           .withIndex("by_jobRequest", (q) => q.eq("jobRequestId", jr._id))
-          .filter((q) => q.neq(q.field("status"), "COMPLETE"))
           .collect()
       )
     );

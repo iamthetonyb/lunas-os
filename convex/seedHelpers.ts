@@ -126,8 +126,6 @@ export const retroFlagExtraWork = mutation({
         const sorted = [...requests].sort((a, b) => a.createdAt - b.createdAt);
         for (const jr of sorted) {
             if (!jr.communityId || !jr.lot) continue;
-            // Skip completed jobs — they shouldn't affect duplicate detection
-            if (jr.status === "COMPLETE") continue;
             const key = `${jr.communityId}:${jr.lot}`;
             if (seen.has(key)) {
                 // Duplicate — flag as extra work
