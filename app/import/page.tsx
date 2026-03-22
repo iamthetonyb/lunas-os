@@ -9,25 +9,30 @@ import { toast } from 'sonner';
 import type { Id } from '@/convex/_generated/dataModel';
 
 type ParsedRow = Record<string, string>;
-
-type ImportTarget = 'auto' | 'blueBook' | 'jobRequests' | 'builders' | 'communities' | 'services' | 'unknown';
-
-// Column → destination field mapping
+type ActiveTarget = 'blueBook' | 'jobRequests' | 'builders' | 'communities' | 'services';
 type FieldMapping = Record<string, string>; // sourceCol → destField or '__skip__'
+type TargetScore = { type: ActiveTarget; confidence: number };
 
 const OCR_EXTENSIONS = ['pdf', 'png', 'jpg', 'jpeg', 'webp', 'tiff', 'bmp'];
-const TARGET_LABELS: Record<ImportTarget, string> = {
-    auto: 'Auto-Detect',
+
+const TARGET_LABELS: Record<ActiveTarget, string> = {
     blueBook: 'Blue Book',
     jobRequests: 'Job Requests',
     builders: 'Builders',
     communities: 'Communities',
     services: 'Services',
-    unknown: 'Unknown',
+};
+
+const TARGET_COLORS: Record<ActiveTarget, string> = {
+    blueBook: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300 border-blue-200 dark:border-blue-800',
+    jobRequests: 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300 border-amber-200 dark:border-amber-800',
+    builders: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300 border-green-200 dark:border-green-800',
+    communities: 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300 border-purple-200 dark:border-purple-800',
+    services: 'bg-teal-100 text-teal-800 dark:bg-teal-900/30 dark:text-teal-300 border-teal-200 dark:border-teal-800',
 };
 
 // Destination fields per import target
-const TARGET_FIELDS: Record<Exclude<ImportTarget, 'unknown' | 'auto'>, { value: string; label: string }[]> = {
+const TARGET_FIELDS: Record<ActiveTarget, { value: string; label: string }[]> = {
     blueBook: [
         { value: 'lot', label: 'Lot' },
         { value: 'builderName', label: 'Builder Name' },
@@ -64,15 +69,24 @@ const TARGET_FIELDS: Record<Exclude<ImportTarget, 'unknown' | 'auto'>, { value: 
         { value: 'status', label: 'Status' },
     ],
     builders: [
-        { value: 'name', label: 'Builder Name' },
+        { value: 'builderName', label: 'Builder Name' },
     ],
     communities: [
-        { value: 'name', label: 'Community Name' },
+        { value: 'communityName', label: 'Community Name' },
         { value: 'builderName', label: 'Builder Name' },
     ],
     services: [
-        { value: 'name', label: 'Service Name' },
+        { value: 'serviceName', label: 'Service Name' },
     ],
+};
+
+// Required mapped fields for each target to fire on a row
+const TARGET_REQUIRED: Record<ActiveTarget, string[]> = {
+    blueBook: ['lot'],
+    jobRequests: ['lot', 'serviceName'],
+    builders: ['builderName'],
+    communities: ['communityName'],
+    services: ['serviceName'],
 };
 
 export default function ImportPage() {
@@ -84,20 +98,15 @@ export default function ImportPage() {
     const [parsedRows, setParsedRows] = useState<ParsedRow[]>([]);
     const [importing, setImporting] = useState(false);
     const [parsing, setParsing] = useState(false);
-    const [importTarget, setImportTarget] = useState<ImportTarget>('auto');
-    const [importResult, setImportResult] = useState<{ success: number; errors: number } | null>(null);
+    const [importResult, setImportResult] = useState<Record<ActiveTarget, { success: number; errors: number }> | null>(null);
     const [ocrRawText, setOcrRawText] = useState<string | null>(null);
     const [ocrConfidence, setOcrConfidence] = useState(0);
-    const [detectionConfidence, setDetectionConfidence] = useState(0);
-    const [unmappedCols, setUnmappedCols] = useState<string[]>([]);
     const [fieldMapping, setFieldMapping] = useState<FieldMapping>({});
     const [mappingConfirmed, setMappingConfirmed] = useState(false);
-    const [autoDetectedTarget, setAutoDetectedTarget] = useState<ImportTarget>('unknown');
+    const [detectedTargets, setDetectedTargets] = useState<TargetScore[]>([]);
+    const [selectedTargets, setSelectedTargets] = useState<Set<ActiveTarget>>(new Set());
 
-    // When "Auto-Detect" is selected, use whatever the server detected
-    const resolvedTarget: ImportTarget = importTarget === 'auto' ? autoDetectedTarget : importTarget;
-
-    // Convex data for resolving names → IDs
+    // Convex data
     const builders = useQuery(api.queries.getBuilders, {}) ?? [];
     const communities = useQuery(api.queries.getCommunities, {}) ?? [];
 
@@ -118,6 +127,23 @@ export default function ImportPage() {
         return Array.from(allKeys);
     }, [parsedRows]);
 
+    // Merge fields from ALL selected targets (deduplicated)
+    const availableFields = useMemo(() => {
+        const seen = new Set<string>();
+        const fields: { value: string; label: string }[] = [];
+        for (const target of selectedTargets) {
+            for (const f of TARGET_FIELDS[target]) {
+                if (!seen.has(f.value)) {
+                    seen.add(f.value);
+                    fields.push(f);
+                }
+            }
+        }
+        return fields;
+    }, [selectedTargets]);
+
+    const mappedCount = Object.values(fieldMapping).filter(v => v && v !== '__skip__').length;
+
     // ── Handlers ──────────────────────────────────────────────────────
 
     const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -130,7 +156,8 @@ export default function ImportPage() {
             setOcrConfidence(0);
             setFieldMapping({});
             setMappingConfirmed(false);
-            setAutoDetectedTarget('unknown');
+            setDetectedTargets([]);
+            setSelectedTargets(new Set());
         }
     };
 
@@ -140,9 +167,6 @@ export default function ImportPage() {
         setParsedRows([]);
 
         try {
-            // All processing happens server-side:
-            // - CSV/Excel: parsed with papaparse/xlsx
-            // - PDF/Images: OCR via PaddleOCR v5 + ONNX Runtime
             const formData = new FormData();
             formData.append('file', selectedFile);
             if (isOcrFile) formData.append('ocr', 'true');
@@ -154,12 +178,14 @@ export default function ImportPage() {
             setParsedRows(data.rows ?? []);
             setMappingConfirmed(false);
 
-            // Store auto-detected type (used when importTarget === 'auto')
-            if (data.detectedType && data.detectedType !== 'unknown') {
-                setAutoDetectedTarget(data.detectedType);
-                setDetectionConfidence(data.confidence ?? 0);
-            }
-            setUnmappedCols(data.unmappedColumns ?? []);
+            // Multi-route detection
+            const targets: TargetScore[] = (data.detectedTargets ?? []).filter(
+                (t: { type: string; confidence: number }) => t.type !== 'unknown'
+            ) as TargetScore[];
+            setDetectedTargets(targets);
+
+            // Auto-select all detected targets
+            setSelectedTargets(new Set(targets.map((t: TargetScore) => t.type)));
 
             // Build initial field mapping from auto-detection
             const autoMapping: FieldMapping = {};
@@ -168,7 +194,6 @@ export default function ImportPage() {
                     autoMapping[src] = dest as string;
                 }
             }
-            // Mark unmapped columns as skip
             for (const col of data.unmappedColumns ?? []) {
                 if (!autoMapping[col]) autoMapping[col] = '__skip__';
             }
@@ -179,10 +204,11 @@ export default function ImportPage() {
                 setOcrConfidence(data.ocrConfidence ?? 0);
             }
 
-            const targetLabel = TARGET_LABELS[data.detectedType as ImportTarget] ?? 'data';
+            const count = targets.length;
+            const names = targets.map((t: TargetScore) => TARGET_LABELS[t.type]).join(', ');
             const msg = isOcrFile
-                ? `OCR complete — ${data.rows?.length ?? 0} rows detected as ${targetLabel} (${data.ocrConfidence ?? 0}% OCR confidence)`
-                : `Parsed ${data.rows?.length ?? 0} rows — detected as ${targetLabel} (${data.confidence ?? 0}% match)`;
+                ? `OCR complete — ${data.rows?.length ?? 0} rows, routing to: ${names}`
+                : `Parsed ${data.rows?.length ?? 0} rows — routing to: ${count > 0 ? names : 'select a target'}`;
             toast.success(msg);
         } catch (err: any) {
             toast.error(err.message || 'Failed to parse file');
@@ -197,7 +223,6 @@ export default function ImportPage() {
         return list.find((item) => item.name.toLowerCase() === lower)?._id;
     };
 
-    // Remap a raw row using the user-confirmed field mapping
     const remapRow = (row: ParsedRow): ParsedRow => {
         const mapped: ParsedRow = {};
         for (const [srcCol, destField] of Object.entries(fieldMapping)) {
@@ -210,16 +235,95 @@ export default function ImportPage() {
         return mapped;
     };
 
+    // Check if a row has the required fields for a target
+    const rowQualifies = (row: ParsedRow, target: ActiveTarget): boolean => {
+        const required = TARGET_REQUIRED[target];
+        return required.every(f => row[f] && row[f].trim() !== '');
+    };
+
+    const toggleTarget = (target: ActiveTarget) => {
+        setSelectedTargets(prev => {
+            const next = new Set(prev);
+            if (next.has(target)) next.delete(target);
+            else next.add(target);
+            return next;
+        });
+        setMappingConfirmed(false);
+    };
+
+    // Multi-target import: fan out each row to all selected targets it qualifies for
     const handleImport = async () => {
-        if (parsedRows.length === 0 || resolvedTarget === 'unknown' || resolvedTarget === 'auto' || !mappingConfirmed) return;
+        if (parsedRows.length === 0 || selectedTargets.size === 0 || !mappingConfirmed) return;
         setImporting(true);
-        let success = 0;
-        let errors = 0;
+        const results: Record<ActiveTarget, { success: number; errors: number }> = {
+            blueBook: { success: 0, errors: 0 },
+            jobRequests: { success: 0, errors: 0 },
+            builders: { success: 0, errors: 0 },
+            communities: { success: 0, errors: 0 },
+            services: { success: 0, errors: 0 },
+        };
+
+        // Dedup entity creation (don't create same builder/community/service twice)
+        const createdBuilders = new Set<string>();
+        const createdCommunities = new Set<string>();
+        const createdServices = new Set<string>();
 
         for (const raw of parsedRows) {
             const row = remapRow(raw);
-            try {
-                if (resolvedTarget === 'blueBook') {
+
+            // Builders
+            if (selectedTargets.has('builders') && row.builderName && !createdBuilders.has(row.builderName.toLowerCase())) {
+                try {
+                    await createBuilder({ name: row.builderName });
+                    createdBuilders.add(row.builderName.toLowerCase());
+                    results.builders.success++;
+                } catch { results.builders.errors++; }
+            }
+
+            // Communities
+            if (selectedTargets.has('communities') && row.communityName && !createdCommunities.has(row.communityName.toLowerCase())) {
+                try {
+                    const builderId = resolveId(row.builderName, builders);
+                    await createCommunity({
+                        name: row.communityName,
+                        builderId: builderId as Id<'builders'> | undefined,
+                    });
+                    createdCommunities.add(row.communityName.toLowerCase());
+                    results.communities.success++;
+                } catch { results.communities.errors++; }
+            }
+
+            // Services
+            if (selectedTargets.has('services') && row.serviceName && !createdServices.has(row.serviceName.toLowerCase())) {
+                try {
+                    await createService({ name: row.serviceName });
+                    createdServices.add(row.serviceName.toLowerCase());
+                    results.services.success++;
+                } catch { results.services.errors++; }
+            }
+
+            // Job Requests
+            if (selectedTargets.has('jobRequests') && rowQualifies(row, 'jobRequests')) {
+                try {
+                    const builderId = resolveId(row.builderName, builders);
+                    const communityId = resolveId(row.communityName, communities);
+                    await createJobRequest({
+                        lot: row.lot || undefined,
+                        dueDate: row.dueDate || row.startDate || undefined,
+                        address: row.address || undefined,
+                        notes: row.notes || undefined,
+                        poNumber: row.poNumber || undefined,
+                        builderId: builderId as Id<'builders'> | undefined,
+                        communityId: communityId as Id<'communities'> | undefined,
+                        services: [{ serviceName: row.serviceName }],
+                    });
+                    results.jobRequests.success++;
+                } catch { results.jobRequests.errors++; }
+            }
+
+            // Blue Book
+            if (selectedTargets.has('blueBook') && rowQualifies(row, 'blueBook')) {
+                try {
                     const builderId = resolveId(row.builderName, builders);
                     const communityId = resolveId(row.communityName, communities);
                     await createBlueBookEntry({
@@ -238,53 +342,25 @@ export default function ImportPage() {
                         communityId: communityId as Id<'communities'> | undefined,
                         source: 'import',
                     });
-                } else if (resolvedTarget === 'jobRequests') {
-                    const builderId = resolveId(row.builderName, builders);
-                    const communityId = resolveId(row.communityName, communities);
-                    const services = row.serviceName
-                        ? [{ serviceName: row.serviceName, scheduledDate: row.startDate || undefined }]
-                        : [];
-                    if (services.length === 0) { errors++; continue; }
-                    await createJobRequest({
-                        lot: row.lot || undefined,
-                        dueDate: row.dueDate || row.startDate || undefined,
-                        address: row.address || undefined,
-                        notes: row.notes || undefined,
-                        poNumber: row.poNumber || undefined,
-                        builderId: builderId as Id<'builders'> | undefined,
-                        communityId: communityId as Id<'communities'> | undefined,
-                        services,
-                    });
-                } else if (resolvedTarget === 'builders') {
-                    const name = row.name || row.builderName;
-                    if (!name) { errors++; continue; }
-                    await createBuilder({ name });
-                } else if (resolvedTarget === 'communities') {
-                    const name = row.name || row.communityName;
-                    if (!name) { errors++; continue; }
-                    const builderId = resolveId(row.builderName, builders);
-                    await createCommunity({
-                        name,
-                        builderId: builderId as Id<'builders'> | undefined,
-                    });
-                } else if (resolvedTarget === 'services') {
-                    const name = row.name || row.serviceName;
-                    if (!name) { errors++; continue; }
-                    await createService({ name });
-                }
-                success++;
-            } catch (err) {
-                console.error('Row import error:', err);
-                errors++;
+                    results.blueBook.success++;
+                } catch { results.blueBook.errors++; }
             }
         }
 
-        setImportResult({ success, errors });
+        setImportResult(results);
         setImporting(false);
-        if (errors === 0) {
-            toast.success(`Imported ${success} ${TARGET_LABELS[resolvedTarget]} records`);
+
+        const totalSuccess = Object.values(results).reduce((s, r) => s + r.success, 0);
+        const totalErrors = Object.values(results).reduce((s, r) => s + r.errors, 0);
+        const summary = Object.entries(results)
+            .filter(([, r]) => r.success > 0 || r.errors > 0)
+            .map(([t, r]) => `${TARGET_LABELS[t as ActiveTarget]}: ${r.success}`)
+            .join(', ');
+
+        if (totalErrors === 0) {
+            toast.success(`Imported ${totalSuccess} records — ${summary}`);
         } else {
-            toast.warning(`Imported ${success}, ${errors} failed`);
+            toast.warning(`Imported ${totalSuccess}, ${totalErrors} failed — ${summary}`);
         }
     };
 
@@ -294,35 +370,11 @@ export default function ImportPage() {
         setImportResult(null);
         setOcrRawText(null);
         setOcrConfidence(0);
-        setDetectionConfidence(0);
-        setUnmappedCols([]);
         setFieldMapping({});
         setMappingConfirmed(false);
-        setAutoDetectedTarget('unknown');
+        setDetectedTargets([]);
+        setSelectedTargets(new Set());
         if (fileInputRef.current) fileInputRef.current.value = '';
-    };
-
-    const handleChangeTarget = (target: ImportTarget) => {
-        setImportTarget(target);
-        setMappingConfirmed(false);
-        // Determine the effective target for field lookup
-        const effective = target === 'auto' ? autoDetectedTarget : target;
-        if (effective !== 'unknown' && effective !== 'auto' && columns.length > 0) {
-            const fields = TARGET_FIELDS[effective];
-            const fieldValues = new Set(fields.map(f => f.value));
-            const newMapping: FieldMapping = {};
-            for (const col of columns) {
-                const current = fieldMapping[col];
-                if (current && current !== '__skip__' && fieldValues.has(current)) {
-                    newMapping[col] = current;
-                } else if (fieldValues.has(col)) {
-                    newMapping[col] = col;
-                } else {
-                    newMapping[col] = '__skip__';
-                }
-            }
-            setFieldMapping(newMapping);
-        }
     };
 
     const handleMappingChange = (sourceCol: string, destField: string) => {
@@ -330,9 +382,8 @@ export default function ImportPage() {
         setMappingConfirmed(false);
     };
 
-    // Count how many columns are mapped (not skipped)
-    const mappedCount = Object.values(fieldMapping).filter(v => v && v !== '__skip__').length;
-    const availableFields = resolvedTarget !== 'unknown' && resolvedTarget !== 'auto' ? TARGET_FIELDS[resolvedTarget] : [];
+    // All 5 targets for manual selection
+    const allTargets: ActiveTarget[] = ['blueBook', 'jobRequests', 'builders', 'communities', 'services'];
 
     return (
         <>
@@ -341,28 +392,6 @@ export default function ImportPage() {
                 description={t('import.description')}
             />
             <main className="px-6 py-6 space-y-6">
-                {/* Import target selector — auto-detected but overridable */}
-                <div className="flex flex-wrap items-center gap-2">
-                    {(['auto', 'blueBook', 'jobRequests', 'builders', 'communities', 'services'] as ImportTarget[]).map((target) => (
-                        <button
-                            key={target}
-                            onClick={() => handleChangeTarget(target)}
-                            className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
-                                importTarget === target
-                                    ? 'bg-blue-600 text-white'
-                                    : 'bg-gray-100 dark:bg-slate-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-slate-600'
-                            }`}
-                        >
-                            {TARGET_LABELS[target]}
-                        </button>
-                    ))}
-                    {detectionConfidence > 0 && resolvedTarget !== 'unknown' && parsedRows.length > 0 && (
-                        <span className="text-xs text-gray-500 dark:text-gray-400 ml-2">
-                            Detected: {TARGET_LABELS[resolvedTarget]} ({detectionConfidence}% match)
-                        </span>
-                    )}
-                </div>
-
                 {/* File upload area */}
                 <div className="bg-white dark:bg-slate-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
                     <input
@@ -410,7 +439,6 @@ export default function ImportPage() {
                                 </button>
                             </div>
 
-                            {/* OCR processing indicator */}
                             {parsing && isOcrFile && (
                                 <div className="mb-4">
                                     <div className="flex items-center gap-2 text-xs text-purple-600 dark:text-purple-400 mb-1">
@@ -426,14 +454,13 @@ export default function ImportPage() {
                                 </div>
                             )}
 
-                            {/* Parse button */}
                             {parsedRows.length === 0 && !parsing && (
                                 <button
                                     onClick={handleParseFile}
                                     disabled={parsing}
                                     className="w-full py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium transition-colors disabled:opacity-50"
                                 >
-                                    {isOcrFile ? 'Run OCR & Parse' : 'Parse File'}
+                                    {isOcrFile ? 'Scan & Parse' : 'Parse File'}
                                 </button>
                             )}
 
@@ -450,7 +477,7 @@ export default function ImportPage() {
                     )}
                 </div>
 
-                {/* OCR raw text preview */}
+                {/* OCR raw text */}
                 {ocrRawText && parsedRows.length > 0 && (
                     <details className="bg-white dark:bg-slate-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-4">
                         <summary className="text-sm font-medium text-gray-700 dark:text-gray-300 cursor-pointer">
@@ -462,8 +489,58 @@ export default function ImportPage() {
                     </details>
                 )}
 
+                {/* Step 1: Route selection — checkboxes for detected targets */}
+                {parsedRows.length > 0 && (
+                    <div className="bg-white dark:bg-slate-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+                        <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-1">
+                            Route Data
+                        </h3>
+                        <p className="text-xs text-gray-500 dark:text-gray-400 mb-4">
+                            Select where this data should go. Multiple targets can be imported at once.
+                        </p>
+
+                        <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
+                            {allTargets.map((target) => {
+                                const detected = detectedTargets.find(d => d.type === target);
+                                const isSelected = selectedTargets.has(target);
+                                return (
+                                    <button
+                                        key={target}
+                                        onClick={() => toggleTarget(target)}
+                                        className={`relative px-3 py-2.5 rounded-lg border text-sm font-medium transition-all text-left ${
+                                            isSelected
+                                                ? TARGET_COLORS[target]
+                                                : 'border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 hover:border-gray-300 dark:hover:border-gray-600'
+                                        }`}
+                                    >
+                                        <div className="flex items-center gap-2">
+                                            <div className={`w-4 h-4 rounded border-2 flex items-center justify-center shrink-0 ${
+                                                isSelected
+                                                    ? 'border-current bg-current/20'
+                                                    : 'border-gray-300 dark:border-gray-600'
+                                            }`}>
+                                                {isSelected && (
+                                                    <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                                                        <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                                                    </svg>
+                                                )}
+                                            </div>
+                                            <span>{TARGET_LABELS[target]}</span>
+                                        </div>
+                                        {detected && (
+                                            <span className="text-[10px] opacity-70 mt-0.5 block ml-6">
+                                                {detected.confidence}% match
+                                            </span>
+                                        )}
+                                    </button>
+                                );
+                            })}
+                        </div>
+                    </div>
+                )}
+
                 {/* Step 2: Column Mapping */}
-                {parsedRows.length > 0 && !mappingConfirmed && resolvedTarget !== 'unknown' && resolvedTarget !== 'auto' && (
+                {parsedRows.length > 0 && selectedTargets.size > 0 && !mappingConfirmed && (
                     <div className="bg-white dark:bg-slate-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
                         <div className="flex items-center justify-between mb-4">
                             <div>
@@ -471,7 +548,7 @@ export default function ImportPage() {
                                     Map Columns
                                 </h3>
                                 <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                                    Review how each column maps to {TARGET_LABELS[resolvedTarget]} fields. Change any mapping or skip columns you don&apos;t need.
+                                    Review how each column maps to your selected fields.
                                 </p>
                             </div>
                             <span className="text-xs px-2 py-1 rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300">
@@ -513,7 +590,7 @@ export default function ImportPage() {
                                             onChange={(e) => handleMappingChange(col, e.target.value)}
                                             className="flex-1 text-sm rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-slate-700 text-gray-900 dark:text-white px-2 py-1.5"
                                         >
-                                            <option value="__skip__">-- Skip (don&apos;t import) --</option>
+                                            <option value="__skip__">-- Skip --</option>
                                             {availableFields.map((f) => (
                                                 <option key={f.value} value={f.value}>{f.label}</option>
                                             ))}
@@ -523,24 +600,21 @@ export default function ImportPage() {
                             })}
                         </div>
 
-                        {/* Sample preview with current mapping */}
+                        {/* Mini preview */}
                         {mappedCount > 0 && (
                             <div className="mb-4">
-                                <h4 className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-2 uppercase tracking-wide">Preview with mapping (first 3 rows)</h4>
+                                <h4 className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-2 uppercase tracking-wide">Preview (first 3 rows)</h4>
                                 <div className="overflow-x-auto">
                                     <table className="min-w-full text-xs">
                                         <thead className="bg-gray-50 dark:bg-slate-700">
                                             <tr>
                                                 {Object.entries(fieldMapping)
                                                     .filter(([, v]) => v && v !== '__skip__')
-                                                    .map(([, dest]) => {
-                                                        const label = availableFields.find(f => f.value === dest)?.label || dest;
-                                                        return (
-                                                            <th key={dest} className="px-3 py-1.5 text-left text-gray-600 dark:text-gray-300 font-medium whitespace-nowrap">
-                                                                {label}
-                                                            </th>
-                                                        );
-                                                    })}
+                                                    .map(([, dest]) => (
+                                                        <th key={dest} className="px-3 py-1.5 text-left text-gray-600 dark:text-gray-300 font-medium whitespace-nowrap">
+                                                            {availableFields.find(f => f.value === dest)?.label || dest}
+                                                        </th>
+                                                    ))}
                                             </tr>
                                         </thead>
                                         <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
@@ -552,7 +626,7 @@ export default function ImportPage() {
                                                             .filter(([, v]) => v && v !== '__skip__')
                                                             .map(([, dest]) => (
                                                                 <td key={dest} className="px-3 py-1.5 whitespace-nowrap max-w-[200px] truncate">
-                                                                    {mapped[dest] || <span className="text-gray-300 dark:text-gray-600">—</span>}
+                                                                    {mapped[dest] || <span className="text-gray-300 dark:text-gray-600">&mdash;</span>}
                                                                 </td>
                                                             ))}
                                                     </tr>
@@ -566,9 +640,7 @@ export default function ImportPage() {
 
                         <div className="flex items-center justify-between pt-4 border-t border-gray-200 dark:border-gray-700">
                             <p className="text-xs text-gray-500 dark:text-gray-400">
-                                {mappedCount === 0
-                                    ? 'Map at least one column to proceed'
-                                    : `${mappedCount} column${mappedCount > 1 ? 's' : ''} will be imported`}
+                                {mappedCount === 0 ? 'Map at least one column to proceed' : `${mappedCount} column${mappedCount > 1 ? 's' : ''} mapped`}
                             </p>
                             <button
                                 onClick={() => setMappingConfirmed(true)}
@@ -581,7 +653,7 @@ export default function ImportPage() {
                     </div>
                 )}
 
-                {/* Step 3: Final preview + import */}
+                {/* Step 3: Final review + import */}
                 {parsedRows.length > 0 && mappingConfirmed && (
                     <div className="bg-white dark:bg-slate-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
                         <div className="flex items-center justify-between mb-4">
@@ -589,9 +661,13 @@ export default function ImportPage() {
                                 <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
                                     Ready to Import ({parsedRows.length} rows)
                                 </h3>
-                                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                                    Importing as <strong>{TARGET_LABELS[resolvedTarget]}</strong> with {mappedCount} mapped field{mappedCount > 1 ? 's' : ''}
-                                </p>
+                                <div className="flex flex-wrap gap-1.5 mt-1">
+                                    {Array.from(selectedTargets).map(t => (
+                                        <span key={t} className={`text-[10px] px-1.5 py-0.5 rounded border ${TARGET_COLORS[t]}`}>
+                                            {TARGET_LABELS[t]}
+                                        </span>
+                                    ))}
+                                </div>
                             </div>
                             <div className="flex items-center gap-3">
                                 <button
@@ -600,14 +676,6 @@ export default function ImportPage() {
                                 >
                                     Edit Mapping
                                 </button>
-                                {importResult && (
-                                    <span className="text-sm">
-                                        <span className="text-green-600 font-medium">{importResult.success} imported</span>
-                                        {importResult.errors > 0 && (
-                                            <span className="text-red-500 font-medium ml-2">{importResult.errors} failed</span>
-                                        )}
-                                    </span>
-                                )}
                                 <button
                                     onClick={handleImport}
                                     disabled={importing || !!importResult}
@@ -618,6 +686,23 @@ export default function ImportPage() {
                             </div>
                         </div>
 
+                        {/* Import results breakdown */}
+                        {importResult && (
+                            <div className="grid grid-cols-2 md:grid-cols-5 gap-2 mb-4">
+                                {Object.entries(importResult)
+                                    .filter(([, r]) => r.success > 0 || r.errors > 0)
+                                    .map(([t, r]) => (
+                                        <div key={t} className={`px-3 py-2 rounded-lg border text-xs ${TARGET_COLORS[t as ActiveTarget]}`}>
+                                            <p className="font-medium">{TARGET_LABELS[t as ActiveTarget]}</p>
+                                            <p className="mt-0.5">
+                                                <span className="text-green-600 dark:text-green-400">{r.success} done</span>
+                                                {r.errors > 0 && <span className="text-red-500 ml-1">{r.errors} failed</span>}
+                                            </p>
+                                        </div>
+                                    ))}
+                            </div>
+                        )}
+
                         <div className="overflow-x-auto max-h-96">
                             <table className="min-w-full text-xs">
                                 <thead className="bg-gray-50 dark:bg-slate-700 sticky top-0">
@@ -625,14 +710,11 @@ export default function ImportPage() {
                                         <th className="px-3 py-2 text-left text-gray-500 dark:text-gray-400 font-medium">#</th>
                                         {Object.entries(fieldMapping)
                                             .filter(([, v]) => v && v !== '__skip__')
-                                            .map(([, dest]) => {
-                                                const label = availableFields.find(f => f.value === dest)?.label || dest;
-                                                return (
-                                                    <th key={dest} className="px-3 py-2 text-left text-gray-500 dark:text-gray-400 font-medium whitespace-nowrap">
-                                                        {label}
-                                                    </th>
-                                                );
-                                            })}
+                                            .map(([, dest]) => (
+                                                <th key={dest} className="px-3 py-2 text-left text-gray-500 dark:text-gray-400 font-medium whitespace-nowrap">
+                                                    {availableFields.find(f => f.value === dest)?.label || dest}
+                                                </th>
+                                            ))}
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-gray-100 dark:divide-gray-700">

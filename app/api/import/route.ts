@@ -203,119 +203,111 @@ function parseOcrText(text: string): ParsedRow[] {
 
 type ImportTarget = 'blueBook' | 'jobRequests' | 'builders' | 'communities' | 'services' | 'unknown';
 
+type TargetScore = { type: ImportTarget; confidence: number };
+
 /**
- * Detect what type of data this is based on column headers present.
- * Uses a weighted scoring system — no LLM needed.
+ * Multi-route detection: score ALL targets independently so a single
+ * contract/spreadsheet can fan out to builders, communities, job requests,
+ * blue book entries, etc. in one import.
  *
- * Blue Book signals:  checkNumber, checkDate, checkTotal, amount, accountCategoryCode,
- *                     invoiceNumber, isAch, poNumber + lot/community/builder
- * Job Request signals: serviceName, dueDate, scheduledDate, address, notes,
- *                      requestedBy, receivedVia + lot/community
- * Builder signals:    only has name/phone/email columns, no lot/service
- * Community signals:  only has name/builder columns, no service/amount
- * Service signals:    only has name/code/description columns
+ * Each target has required + bonus columns. A target qualifies if at least
+ * one of its required columns is present.
  */
 function detectDataType(rows: ParsedRow[]): {
     detectedType: ImportTarget;
     confidence: number;
+    detectedTargets: TargetScore[];
     fieldMapping: Record<string, string>;
     unmappedColumns: string[];
 } {
-    if (rows.length === 0) {
-        return { detectedType: 'unknown', confidence: 0, fieldMapping: {}, unmappedColumns: [] };
-    }
+    const empty = { detectedType: 'unknown' as ImportTarget, confidence: 0, detectedTargets: [], fieldMapping: {}, unmappedColumns: [] };
+    if (rows.length === 0) return empty;
 
-    // Get all columns across all rows
     const allCols = new Set<string>();
     rows.forEach((r) => Object.keys(r).forEach((k) => allCols.add(k)));
     const cols = Array.from(allCols);
 
-    // Known fields per target
-    const blueBookFields = new Set([
-        'lot', 'communityName', 'builderName', 'amount', 'checkNumber', 'checkDate',
-        'checkTotal', 'invoiceNumber', 'isAch', 'poNumber', 'accountCategoryName',
-        'accountCategoryCode', 'startDate', 'status', 'modelPlanCode', 'modelPlanSqft',
-        'assignedForemanName', 'crewName', 'serviceName',
-    ]);
+    // ── Per-target field definitions ──────────────────────────────────
+    // "required" = at least 1 must be present for the target to qualify
+    // "strong"   = heavily weighted (3 pts vs 1 pt)
+    const targets: Record<Exclude<ImportTarget, 'unknown'>, {
+        required: Set<string>; strong: Set<string>; all: Set<string>;
+    }> = {
+        blueBook: {
+            required: new Set(['amount', 'checkNumber', 'invoiceNumber', 'checkTotal', 'isAch']),
+            strong: new Set(['checkNumber', 'checkDate', 'checkTotal', 'invoiceNumber', 'isAch', 'accountCategoryCode', 'accountCategoryName', 'amount']),
+            all: new Set(['lot', 'communityName', 'builderName', 'amount', 'checkNumber', 'checkDate', 'checkTotal', 'invoiceNumber', 'isAch', 'poNumber', 'accountCategoryName', 'accountCategoryCode', 'startDate', 'status', 'modelPlanCode', 'modelPlanSqft', 'assignedForemanName', 'crewName', 'serviceName']),
+        },
+        jobRequests: {
+            required: new Set(['serviceName', 'lot']),
+            strong: new Set(['dueDate', 'address', 'notes', 'serviceName']),
+            all: new Set(['lot', 'communityName', 'builderName', 'serviceName', 'dueDate', 'startDate', 'address', 'notes', 'poNumber', 'assignedForemanName', 'crewName', 'status']),
+        },
+        builders: {
+            required: new Set(['builderName']),
+            strong: new Set(['builderName']),
+            all: new Set(['builderName']),
+        },
+        communities: {
+            required: new Set(['communityName']),
+            strong: new Set(['communityName']),
+            all: new Set(['communityName', 'builderName']),
+        },
+        services: {
+            required: new Set(['serviceName']),
+            strong: new Set(['serviceName']),
+            all: new Set(['serviceName']),
+        },
+    };
 
-    const jobRequestFields = new Set([
-        'lot', 'communityName', 'builderName', 'serviceName', 'dueDate', 'startDate',
-        'address', 'notes', 'poNumber', 'assignedForemanName', 'crewName', 'status',
-    ]);
-
-    // Fields that strongly indicate Blue Book (financial/payment data)
-    const blueBookStrong = new Set([
-        'checkNumber', 'checkDate', 'checkTotal', 'invoiceNumber', 'isAch',
-        'accountCategoryCode', 'accountCategoryName', 'amount',
-    ]);
-
-    // Fields that strongly indicate Job Request (scheduling/intake data)
-    const jobRequestStrong = new Set(['dueDate', 'address', 'notes']);
-
-    // Score each target
-    let blueBookScore = 0;
-    let jobRequestScore = 0;
+    // ── Score every target independently ──────────────────────────────
     const fieldMapping: Record<string, string> = {};
-    const unmappedColumns: string[] = [];
+    const allKnown = new Set<string>();
+    const detectedTargets: TargetScore[] = [];
 
-    for (const col of cols) {
-        if (blueBookFields.has(col)) {
-            blueBookScore += blueBookStrong.has(col) ? 3 : 1;
-            fieldMapping[col] = col;
-        }
-        if (jobRequestFields.has(col)) {
-            jobRequestScore += jobRequestStrong.has(col) ? 3 : 1;
-            if (!fieldMapping[col]) fieldMapping[col] = col;
+    for (const [targetName, def] of Object.entries(targets)) {
+        let score = 0;
+        let hasRequired = false;
+
+        for (const col of cols) {
+            if (def.all.has(col)) {
+                score += def.strong.has(col) ? 3 : 1;
+                allKnown.add(col);
+                if (!fieldMapping[col]) fieldMapping[col] = col;
+            }
+            if (def.required.has(col)) hasRequired = true;
         }
 
-        if (!blueBookFields.has(col) && !jobRequestFields.has(col)) {
-            // Check for simple entity imports
-            if (!['lineNumber', 'rawText'].includes(col)) {
-                unmappedColumns.push(col);
+        if (hasRequired && score > 0) {
+            // Entity targets (builders/communities/services) only qualify
+            // as standalone when column count is low — otherwise they're
+            // just part of a larger dataset and will be auto-created
+            const isEntity = ['builders', 'communities', 'services'].includes(targetName);
+            const isStandaloneEntity = isEntity && cols.length <= 4;
+
+            if (!isEntity || isStandaloneEntity || score >= 3) {
+                const maxPossible = Array.from(def.all).reduce((sum, f) => sum + (def.strong.has(f) ? 3 : 1), 0);
+                const confidence = Math.min(95, Math.round((score / maxPossible) * 100));
+                detectedTargets.push({ type: targetName as ImportTarget, confidence });
             }
         }
     }
 
-    // Check for simple entity imports (builders, communities, services)
-    const hasOnlyNameLike = cols.length <= 4 && cols.some((c) =>
-        ['name', 'builderName', 'communityName', 'serviceName'].includes(c)
-    );
+    // Sort by confidence descending
+    detectedTargets.sort((a, b) => b.confidence - a.confidence);
 
-    if (hasOnlyNameLike && blueBookScore < 3 && jobRequestScore < 3) {
-        // Determine which entity type
-        if (cols.some((c) => c === 'builderName' || (c === 'name' && !cols.includes('lot')))) {
-            // Check sample data for builder-like vs community-like
-            const hasBuilder = cols.includes('builderName');
-            const hasCommunity = cols.includes('communityName');
-            if (hasBuilder && !hasCommunity) {
-                return { detectedType: 'builders', confidence: 70, fieldMapping, unmappedColumns };
-            }
-            if (hasCommunity && !hasBuilder) {
-                return { detectedType: 'communities', confidence: 70, fieldMapping, unmappedColumns };
-            }
-        }
-        if (cols.includes('serviceName') && cols.length <= 3) {
-            return { detectedType: 'services', confidence: 70, fieldMapping, unmappedColumns };
-        }
-    }
+    // Unmapped columns
+    const unmappedColumns = cols.filter(c => !allKnown.has(c) && !['lineNumber', 'rawText'].includes(c));
 
-    // Decide between Blue Book and Job Request
-    const totalScore = blueBookScore + jobRequestScore;
-    if (totalScore === 0) {
-        return { detectedType: 'unknown', confidence: 0, fieldMapping, unmappedColumns };
-    }
-
-    if (blueBookScore > jobRequestScore) {
-        const confidence = Math.min(95, Math.round((blueBookScore / Math.max(totalScore, 1)) * 100));
-        return { detectedType: 'blueBook', confidence, fieldMapping, unmappedColumns };
-    }
-    if (jobRequestScore > blueBookScore) {
-        const confidence = Math.min(95, Math.round((jobRequestScore / Math.max(totalScore, 1)) * 100));
-        return { detectedType: 'jobRequests', confidence, fieldMapping, unmappedColumns };
-    }
-
-    // Tie — default to Blue Book (more common import)
-    return { detectedType: 'blueBook', confidence: 50, fieldMapping, unmappedColumns };
+    // Primary = highest confidence
+    const primary = detectedTargets[0];
+    return {
+        detectedType: primary?.type ?? 'unknown',
+        confidence: primary?.confidence ?? 0,
+        detectedTargets,
+        fieldMapping,
+        unmappedColumns,
+    };
 }
 
 // ── Helpers ──────────────────────────────────────────────────────────
