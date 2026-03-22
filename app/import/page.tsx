@@ -411,10 +411,10 @@ export default function ImportPage() {
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
                             </svg>
                             <p className="text-gray-600 dark:text-gray-400 mb-2 font-medium">
-                                Click to select a file
+                                {t('import.clickToSelect')}
                             </p>
                             <p className="text-xs text-gray-500 dark:text-gray-500">
-                                CSV, Excel, PDF, or Image (PNG, JPG)
+                                {t('import.supportedFormats')}
                             </p>
                         </div>
                     ) : (
@@ -430,12 +430,12 @@ export default function ImportPage() {
                                         <p className="font-medium text-gray-900 dark:text-white">{selectedFile.name}</p>
                                         <p className="text-xs text-gray-500">
                                             {(selectedFile.size / 1024).toFixed(1)} KB
-                                            {isOcrFile && ' — will use OCR'}
+                                            {isOcrFile && ` — ${t('import.willUseOcr')}`}
                                         </p>
                                     </div>
                                 </div>
                                 <button onClick={handleClear} className="text-sm text-gray-500 hover:text-red-500">
-                                    Remove
+                                    {t('import.remove')}
                                 </button>
                             </div>
 
@@ -446,7 +446,7 @@ export default function ImportPage() {
                                             <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                                             <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
                                         </svg>
-                                        <span>Scanning document...</span>
+                                        <span>{t('import.scanning')}</span>
                                     </div>
                                     <div className="w-full h-1.5 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
                                         <div className="h-full bg-purple-500 rounded-full animate-pulse w-2/3" />
@@ -460,7 +460,7 @@ export default function ImportPage() {
                                     disabled={parsing}
                                     className="w-full py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium transition-colors disabled:opacity-50"
                                 >
-                                    {isOcrFile ? 'Scan & Parse' : 'Parse File'}
+                                    {isOcrFile ? t('import.scanAndParse') : t('import.parseFile')}
                                 </button>
                             )}
 
@@ -470,7 +470,7 @@ export default function ImportPage() {
                                         <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                                         <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
                                     </svg>
-                                    Parsing spreadsheet...
+                                    {t('import.parsingSpreadsheet')}
                                 </div>
                             )}
                         </div>
@@ -481,7 +481,7 @@ export default function ImportPage() {
                 {ocrRawText && parsedRows.length > 0 && (
                     <details className="bg-white dark:bg-slate-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-4">
                         <summary className="text-sm font-medium text-gray-700 dark:text-gray-300 cursor-pointer">
-                            OCR Raw Text ({ocrConfidence}% confidence)
+                            {t('import.ocrRawText', { confidence: ocrConfidence })}
                         </summary>
                         <pre className="mt-2 text-xs text-gray-600 dark:text-gray-400 whitespace-pre-wrap max-h-48 overflow-y-auto bg-gray-50 dark:bg-slate-900 p-3 rounded">
                             {ocrRawText}
@@ -493,10 +493,10 @@ export default function ImportPage() {
                 {parsedRows.length > 0 && (
                     <div className="bg-white dark:bg-slate-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
                         <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-1">
-                            Route Data
+                            {t('import.routeData')}
                         </h3>
                         <p className="text-xs text-gray-500 dark:text-gray-400 mb-4">
-                            Select where this data should go. Multiple targets can be imported at once.
+                            {t('import.routeDescription')}
                         </p>
 
                         <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
@@ -529,7 +529,7 @@ export default function ImportPage() {
                                         </div>
                                         {detected && (
                                             <span className="text-[10px] opacity-70 mt-0.5 block ml-6">
-                                                {detected.confidence}% match
+                                                {t('import.match', { confidence: detected.confidence })}
                                             </span>
                                         )}
                                     </button>
@@ -545,14 +545,14 @@ export default function ImportPage() {
                         <div className="flex items-center justify-between mb-4">
                             <div>
                                 <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-                                    Map Columns
+                                    {t('import.mapColumns')}
                                 </h3>
                                 <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                                    Review how each column maps to your selected fields.
+                                    {t('import.mapDescription')}
                                 </p>
                             </div>
                             <span className="text-xs px-2 py-1 rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300">
-                                {mappedCount} of {columns.length} mapped
+                                {t('import.mapped', { mapped: mappedCount, total: columns.length })}
                             </span>
                         </div>
 
@@ -590,7 +590,7 @@ export default function ImportPage() {
                                             onChange={(e) => handleMappingChange(col, e.target.value)}
                                             className="flex-1 text-sm rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-slate-700 text-gray-900 dark:text-white px-2 py-1.5"
                                         >
-                                            <option value="__skip__">-- Skip --</option>
+                                            <option value="__skip__">{t('import.skip')}</option>
                                             {availableFields.map((f) => (
                                                 <option key={f.value} value={f.value}>{f.label}</option>
                                             ))}
@@ -603,7 +603,7 @@ export default function ImportPage() {
                         {/* Mini preview */}
                         {mappedCount > 0 && (
                             <div className="mb-4">
-                                <h4 className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-2 uppercase tracking-wide">Preview (first 3 rows)</h4>
+                                <h4 className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-2 uppercase tracking-wide">{t('import.previewRows')}</h4>
                                 <div className="overflow-x-auto">
                                     <table className="min-w-full text-xs">
                                         <thead className="bg-gray-50 dark:bg-slate-700">
@@ -640,14 +640,14 @@ export default function ImportPage() {
 
                         <div className="flex items-center justify-between pt-4 border-t border-gray-200 dark:border-gray-700">
                             <p className="text-xs text-gray-500 dark:text-gray-400">
-                                {mappedCount === 0 ? 'Map at least one column to proceed' : `${mappedCount} column${mappedCount > 1 ? 's' : ''} mapped`}
+                                {mappedCount === 0 ? t('import.mapAtLeastOne') : t('import.columnsMapped', { count: mappedCount })}
                             </p>
                             <button
                                 onClick={() => setMappingConfirmed(true)}
                                 disabled={mappedCount === 0}
                                 className="px-5 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                             >
-                                Confirm Mapping
+                                {t('import.confirmMapping')}
                             </button>
                         </div>
                     </div>
@@ -659,7 +659,7 @@ export default function ImportPage() {
                         <div className="flex items-center justify-between mb-4">
                             <div>
                                 <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-                                    Ready to Import ({parsedRows.length} rows)
+                                    {t('import.readyToImport', { count: parsedRows.length })}
                                 </h3>
                                 <div className="flex flex-wrap gap-1.5 mt-1">
                                     {Array.from(selectedTargets).map(t => (
@@ -674,14 +674,14 @@ export default function ImportPage() {
                                     onClick={() => setMappingConfirmed(false)}
                                     className="px-3 py-2 text-sm text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 transition-colors"
                                 >
-                                    Edit Mapping
+                                    {t('import.editMapping')}
                                 </button>
                                 <button
                                     onClick={handleImport}
                                     disabled={importing || !!importResult}
                                     className="px-5 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                                 >
-                                    {importing ? 'Importing...' : `Import ${parsedRows.length} rows`}
+                                    {importing ? t('import.importing') : t('import.importRows', { count: parsedRows.length })}
                                 </button>
                             </div>
                         </div>
@@ -691,12 +691,12 @@ export default function ImportPage() {
                             <div className="grid grid-cols-2 md:grid-cols-5 gap-2 mb-4">
                                 {Object.entries(importResult)
                                     .filter(([, r]) => r.success > 0 || r.errors > 0)
-                                    .map(([t, r]) => (
-                                        <div key={t} className={`px-3 py-2 rounded-lg border text-xs ${TARGET_COLORS[t as ActiveTarget]}`}>
-                                            <p className="font-medium">{TARGET_LABELS[t as ActiveTarget]}</p>
+                                    .map(([tgt, r]) => (
+                                        <div key={tgt} className={`px-3 py-2 rounded-lg border text-xs ${TARGET_COLORS[tgt as ActiveTarget]}`}>
+                                            <p className="font-medium">{TARGET_LABELS[tgt as ActiveTarget]}</p>
                                             <p className="mt-0.5">
-                                                <span className="text-green-600 dark:text-green-400">{r.success} done</span>
-                                                {r.errors > 0 && <span className="text-red-500 ml-1">{r.errors} failed</span>}
+                                                <span className="text-green-600 dark:text-green-400">{r.success} {t('import.done')}</span>
+                                                {r.errors > 0 && <span className="text-red-500 ml-1">{r.errors} {t('import.failed')}</span>}
                                             </p>
                                         </div>
                                     ))}
@@ -737,7 +737,7 @@ export default function ImportPage() {
                             </table>
                             {parsedRows.length > 100 && (
                                 <p className="text-xs text-gray-500 dark:text-gray-400 text-center py-2">
-                                    Showing first 100 of {parsedRows.length} rows
+                                    {t('import.showFirst100', { total: parsedRows.length })}
                                 </p>
                             )}
                         </div>
@@ -747,24 +747,24 @@ export default function ImportPage() {
                 {/* Supported formats */}
                 <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
                     <h4 className="font-semibold text-blue-900 dark:text-blue-300 mb-2 text-sm">
-                        Supported Formats
+                        {t('import.supportedFormatsTitle')}
                     </h4>
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs text-blue-800 dark:text-blue-200">
                         <div className="flex items-center gap-2">
                             <span className="w-8 h-8 rounded bg-green-100 dark:bg-green-900/30 flex items-center justify-center text-green-700 dark:text-green-300 font-bold text-[10px]">CSV</span>
-                            <span>Comma-separated</span>
+                            <span>{t('import.csvLabel')}</span>
                         </div>
                         <div className="flex items-center gap-2">
                             <span className="w-8 h-8 rounded bg-green-100 dark:bg-green-900/30 flex items-center justify-center text-green-700 dark:text-green-300 font-bold text-[10px]">XLS</span>
-                            <span>Excel spreadsheets</span>
+                            <span>{t('import.xlsLabel')}</span>
                         </div>
                         <div className="flex items-center gap-2">
                             <span className="w-8 h-8 rounded bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center text-purple-700 dark:text-purple-300 font-bold text-[10px]">PDF</span>
-                            <span>OCR scan</span>
+                            <span>{t('import.pdfLabel')}</span>
                         </div>
                         <div className="flex items-center gap-2">
                             <span className="w-8 h-8 rounded bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center text-purple-700 dark:text-purple-300 font-bold text-[10px]">IMG</span>
-                            <span>Photo OCR scan</span>
+                            <span>{t('import.imgLabel')}</span>
                         </div>
                     </div>
                 </div>

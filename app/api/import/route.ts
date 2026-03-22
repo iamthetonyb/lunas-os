@@ -35,12 +35,13 @@ export async function POST(req: NextRequest) {
         }
 
         const ext = file.name.split('.').pop()?.toLowerCase() ?? '';
+        const fileNameHints = extractFileNameHints(file.name);
 
         // OCR path: PDF/image files
         if (doOcr || OCR_EXTENSIONS.includes(ext)) {
             const { text, confidence } = await runPaddleOcr(file);
             const rows = parseOcrText(text);
-            const detection = detectDataType(rows);
+            const detection = detectDataType(rows, fileNameHints);
             return NextResponse.json({
                 success: true,
                 rows,
@@ -67,7 +68,7 @@ export async function POST(req: NextRequest) {
             );
         }
 
-        const detection = detectDataType(rows);
+        const detection = detectDataType(rows, fileNameHints);
         return NextResponse.json({
             success: true,
             rows,
@@ -204,32 +205,138 @@ function parseOcrText(text: string): ParsedRow[] {
 type ImportTarget = 'blueBook' | 'jobRequests' | 'builders' | 'communities' | 'services' | 'unknown';
 
 type TargetScore = { type: ImportTarget; confidence: number };
+type FileNameHints = { targetBoosts: Partial<Record<ImportTarget, number>>; inferredBuilder?: string };
+
+/**
+ * Extract routing hints from the filename.
+ * e.g. "Pulte_Blue_Book_March_2024.xlsx" → boost blueBook, infer builder "Pulte"
+ */
+function extractFileNameHints(fileName: string): FileNameHints {
+    const name = fileName.replace(/\.[^.]+$/, '').toLowerCase().replace(/[_\-]+/g, ' ');
+    const boosts: Partial<Record<ImportTarget, number>> = {};
+
+    // Blue Book signals
+    if (/blue\s*book|ledger|payment|check\s*register|accounts?\s*payable|ap\s*report/i.test(name)) {
+        boosts.blueBook = 10;
+    }
+    // Job Request / Schedule signals
+    if (/job\s*request|work\s*order|schedule|dispatch|service\s*request|intake/i.test(name)) {
+        boosts.jobRequests = 10;
+    }
+    // Contract signals — boost multiple targets
+    if (/contract|agreement|scope|proposal|bid/i.test(name)) {
+        boosts.blueBook = (boosts.blueBook ?? 0) + 5;
+        boosts.jobRequests = (boosts.jobRequests ?? 0) + 5;
+        boosts.builders = (boosts.builders ?? 0) + 5;
+        boosts.communities = (boosts.communities ?? 0) + 5;
+    }
+    // Builder list
+    if (/builder|vendor|contractor\s*list/i.test(name)) {
+        boosts.builders = (boosts.builders ?? 0) + 8;
+    }
+    // Community list
+    if (/communit|subdivision|neighborhood|development/i.test(name)) {
+        boosts.communities = (boosts.communities ?? 0) + 8;
+    }
+    // Service list
+    if (/service|price\s*list|rate\s*sheet|scope\s*of\s*work/i.test(name)) {
+        boosts.services = (boosts.services ?? 0) + 8;
+    }
+
+    // Try to infer a builder name from the filename
+    // Common pattern: "BuilderName_BlueBook.xlsx" or "Pulte - March 2024.csv"
+    const knownBuilders = ['pulte', 'kb homes', 'kb home', 'lennar', 'dr horton', 'meritage', 'taylor morrison', 'toll brothers', 'shea homes'];
+    let inferredBuilder: string | undefined;
+    for (const b of knownBuilders) {
+        if (name.includes(b)) {
+            inferredBuilder = b.split(' ').map(w => w[0].toUpperCase() + w.slice(1)).join(' ');
+            break;
+        }
+    }
+
+    return { targetBoosts: boosts, inferredBuilder };
+}
+
+/**
+ * Analyze actual cell values for data-type clues when headers are missing or generic.
+ * Looks at a sample of rows to detect patterns like dollar amounts, dates, check numbers, etc.
+ */
+function analyzeDataValues(rows: ParsedRow[]): Partial<Record<ImportTarget, number>> {
+    const boosts: Partial<Record<ImportTarget, number>> = {};
+    const sample = rows.slice(0, 20);
+
+    let dollarCount = 0;
+    let dateCount = 0;
+    let checkNumCount = 0;
+    let lotCount = 0;
+    let addressCount = 0;
+
+    for (const row of sample) {
+        for (const val of Object.values(row)) {
+            if (!val) continue;
+            // Dollar amounts: $1,234.56 or 1234.56
+            if (/^\$?\d{1,3}(,\d{3})*(\.\d{2})?$/.test(val.trim())) dollarCount++;
+            // Dates: MM/DD/YYYY, YYYY-MM-DD, etc.
+            if (/^\d{1,2}\/\d{1,2}\/\d{2,4}$/.test(val.trim()) || /^\d{4}-\d{2}-\d{2}/.test(val.trim())) dateCount++;
+            // Check numbers: 4-8 digit numbers
+            if (/^\d{4,8}$/.test(val.trim())) checkNumCount++;
+            // Lot patterns: "Lot 5", "L-12", "123" (short number)
+            if (/^(lot\s*#?\s*\d+|l[-\s]?\d+|\d{1,4})$/i.test(val.trim())) lotCount++;
+            // Address patterns
+            if (/^\d+\s+\w+\s+(st|ave|blvd|dr|rd|ln|ct|way|pl|cir)/i.test(val.trim())) addressCount++;
+        }
+    }
+
+    // Financial data → Blue Book
+    if (dollarCount >= 3) boosts.blueBook = (boosts.blueBook ?? 0) + 5;
+    if (checkNumCount >= 2) boosts.blueBook = (boosts.blueBook ?? 0) + 4;
+
+    // Scheduling data → Job Requests
+    if (dateCount >= 3) boosts.jobRequests = (boosts.jobRequests ?? 0) + 3;
+    if (addressCount >= 2) boosts.jobRequests = (boosts.jobRequests ?? 0) + 4;
+
+    // Lots → both Blue Book and Job Requests
+    if (lotCount >= 3) {
+        boosts.blueBook = (boosts.blueBook ?? 0) + 2;
+        boosts.jobRequests = (boosts.jobRequests ?? 0) + 2;
+    }
+
+    return boosts;
+}
 
 /**
  * Multi-route detection: score ALL targets independently so a single
  * contract/spreadsheet can fan out to builders, communities, job requests,
  * blue book entries, etc. in one import.
  *
- * Each target has required + bonus columns. A target qualifies if at least
- * one of its required columns is present.
+ * Uses three signal layers:
+ * 1. Column headers (strongest signal)
+ * 2. Filename keywords (moderate signal)
+ * 3. Data value patterns (supporting signal when headers are weak/missing)
  */
-function detectDataType(rows: ParsedRow[]): {
+function detectDataType(rows: ParsedRow[], fileNameHints?: FileNameHints): {
     detectedType: ImportTarget;
     confidence: number;
     detectedTargets: TargetScore[];
     fieldMapping: Record<string, string>;
     unmappedColumns: string[];
+    inferredBuilder?: string;
 } {
-    const empty = { detectedType: 'unknown' as ImportTarget, confidence: 0, detectedTargets: [], fieldMapping: {}, unmappedColumns: [] };
+    const empty = {
+        detectedType: 'unknown' as ImportTarget, confidence: 0,
+        detectedTargets: [] as TargetScore[], fieldMapping: {} as Record<string, string>,
+        unmappedColumns: [] as string[], inferredBuilder: fileNameHints?.inferredBuilder,
+    };
     if (rows.length === 0) return empty;
 
     const allCols = new Set<string>();
     rows.forEach((r) => Object.keys(r).forEach((k) => allCols.add(k)));
     const cols = Array.from(allCols);
 
-    // ── Per-target field definitions ──────────────────────────────────
-    // "required" = at least 1 must be present for the target to qualify
-    // "strong"   = heavily weighted (3 pts vs 1 pt)
+    // Analyze data values for extra clues
+    const dataBoosts = analyzeDataValues(rows);
+
+    // Per-target field definitions
     const targets: Record<Exclude<ImportTarget, 'unknown'>, {
         required: Set<string>; strong: Set<string>; all: Set<string>;
     }> = {
@@ -260,7 +367,7 @@ function detectDataType(rows: ParsedRow[]): {
         },
     };
 
-    // ── Score every target independently ──────────────────────────────
+    // Score every target independently
     const fieldMapping: Record<string, string> = {};
     const allKnown = new Set<string>();
     const detectedTargets: TargetScore[] = [];
@@ -278,10 +385,19 @@ function detectDataType(rows: ParsedRow[]): {
             if (def.required.has(col)) hasRequired = true;
         }
 
+        // Add filename boost
+        const fnBoost = fileNameHints?.targetBoosts[targetName as ImportTarget] ?? 0;
+        score += fnBoost;
+        // If filename strongly hints at this target, relax the required-column check
+        if (fnBoost >= 5) hasRequired = true;
+
+        // Add data value boost
+        const dvBoost = dataBoosts[targetName as ImportTarget] ?? 0;
+        score += dvBoost;
+        // If data values strongly hint at this target, relax the required-column check
+        if (dvBoost >= 5) hasRequired = true;
+
         if (hasRequired && score > 0) {
-            // Entity targets (builders/communities/services) only qualify
-            // as standalone when column count is low — otherwise they're
-            // just part of a larger dataset and will be auto-created
             const isEntity = ['builders', 'communities', 'services'].includes(targetName);
             const isStandaloneEntity = isEntity && cols.length <= 4;
 
@@ -293,13 +409,10 @@ function detectDataType(rows: ParsedRow[]): {
         }
     }
 
-    // Sort by confidence descending
     detectedTargets.sort((a, b) => b.confidence - a.confidence);
 
-    // Unmapped columns
     const unmappedColumns = cols.filter(c => !allKnown.has(c) && !['lineNumber', 'rawText'].includes(c));
 
-    // Primary = highest confidence
     const primary = detectedTargets[0];
     return {
         detectedType: primary?.type ?? 'unknown',
@@ -307,6 +420,7 @@ function detectDataType(rows: ParsedRow[]): {
         detectedTargets,
         fieldMapping,
         unmappedColumns,
+        inferredBuilder: fileNameHints?.inferredBuilder,
     };
 }
 
