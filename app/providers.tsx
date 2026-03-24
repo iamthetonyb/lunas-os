@@ -8,11 +8,8 @@ import { ReactNode, useEffect, useState } from "react";
 import { I18nextProvider } from 'react-i18next';
 import i18n from '@/lib/i18n/client';
 
-const convexUrl = process.env.NEXT_PUBLIC_CONVEX_URL;
-if (!convexUrl) {
-  throw new Error("NEXT_PUBLIC_CONVEX_URL is required. Set it in .env.local");
-}
-const convex = new ConvexReactClient(convexUrl);
+const convexUrl = process.env.NEXT_PUBLIC_CONVEX_URL!;
+const convex = convexUrl ? new ConvexReactClient(convexUrl) : null;
 
 export default function Providers({ children }: { children: ReactNode }) {
   const [mounted, setMounted] = useState(false);
@@ -20,6 +17,11 @@ export default function Providers({ children }: { children: ReactNode }) {
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  if (!convex) {
+    // During static page generation (e.g. /_not-found) the env var is unavailable.
+    return <>{children}</>;
+  }
 
   return (
     <ClerkProvider>
