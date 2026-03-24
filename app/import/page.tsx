@@ -704,9 +704,7 @@ export default function ImportPage() {
                                 <thead className="bg-gray-50 dark:bg-slate-700 sticky top-0">
                                     <tr>
                                         <th className="px-3 py-2 text-left text-gray-500 dark:text-gray-400 font-medium">#</th>
-                                        {Object.entries(fieldMapping)
-                                            .filter(([, v]) => v && v !== '__skip__')
-                                            .map(([, dest]) => (
+                                        {[...new Set(Object.values(fieldMapping).filter(v => v && v !== '__skip__'))].map(dest => (
                                                 <th key={dest} className="px-3 py-2 text-left text-gray-500 dark:text-gray-400 font-medium whitespace-nowrap">
                                                     {availableFields.find(f => f.value === dest)?.label || dest}
                                                 </th>
@@ -719,9 +717,7 @@ export default function ImportPage() {
                                         return (
                                             <tr key={i} className="text-gray-700 dark:text-gray-300">
                                                 <td className="px-3 py-1.5 text-gray-400">{i + 1}</td>
-                                                {Object.entries(fieldMapping)
-                                                    .filter(([, v]) => v && v !== '__skip__')
-                                                    .map(([, dest]) => (
+                                                {[...new Set(Object.values(fieldMapping).filter(v => v && v !== '__skip__'))].map(dest => (
                                                         <td key={dest} className="px-3 py-1.5 whitespace-nowrap max-w-[200px] truncate">
                                                             {mapped[dest] || '—'}
                                                         </td>
