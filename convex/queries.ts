@@ -65,9 +65,8 @@ export const getModelPlans = query({
     handler: async (ctx, args) => {
         const plans = await ctx.db
             .query("modelPlans")
-            .withIndex("by_active", (q) => q.eq("active", true))
             .take(args.limit ?? 500);
-        return plans;
+        return plans.filter((p) => p.active !== false);
     },
 });
 
@@ -330,11 +329,11 @@ export const getOrgs = query({
 export const getBuilders = query({
     args: { limit: v.optional(v.number()) },
     handler: async (ctx, args) => {
+        // Don't use by_active index — legacy records have active=undefined (not false)
         const builders = await ctx.db
             .query("builders")
-            .withIndex("by_active", (q) => q.eq("active", true))
             .take(args.limit ?? 500);
-        return builders;
+        return builders.filter((b) => b.active !== false);
     },
 });
 
@@ -344,11 +343,11 @@ export const getCommunities = query({
     handler: async (ctx, args) => {
         const communities = await ctx.db
             .query("communities")
-            .withIndex("by_active", (q) => q.eq("active", true))
             .take(args.limit ?? 2000);
+        const active = communities.filter((c) => c.active !== false);
         // Deduplicate by normalized name — keep the one with a builderId, or the oldest
-        const seen = new Map<string, typeof communities[0]>();
-        for (const c of communities) {
+        const seen = new Map<string, typeof active[0]>();
+        for (const c of active) {
             const key = (c.normalizedName ?? c.name.toLowerCase());
             const existing = seen.get(key);
             if (!existing) {
@@ -369,9 +368,8 @@ export const getServices = query({
     handler: async (ctx, args) => {
         const services = await ctx.db
             .query("services")
-            .withIndex("by_active", (q) => q.eq("active", true))
             .take(args.limit ?? 500);
-        return services;
+        return services.filter((s) => s.active !== false);
     },
 });
 
