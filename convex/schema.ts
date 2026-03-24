@@ -369,6 +369,35 @@ export default defineSchema({
         .index("by_user", ["userId"])
         .index("by_provider_account", ["provider", "providerAccountId"]),
 
+    // Import History — tracks uploaded documents for dedup + audit
+    importHistory: defineTable({
+        fileName: v.string(),
+        fileHash: v.string(), // SHA-256 of file content for dedup
+        fileSize: v.number(),
+        documentType: v.optional(v.string()), // detected type from OCR
+        detectedTargets: v.array(v.string()), // which targets were selected
+        rowCount: v.number(),
+        results: v.string(), // JSON: { target: { success, errors } }
+        fieldMapping: v.optional(v.string()), // JSON of field mapping used
+        parsedRows: v.optional(v.string()), // JSON: original mapped row data
+        createdAt: v.number(),
+    })
+        .index("by_fileHash", ["fileHash"])
+        .index("by_createdAt", ["createdAt"]),
+
+    // Imported Entities — links import records to created system entities
+    importedEntities: defineTable({
+        importId: v.id("importHistory"),
+        entityType: v.string(), // "builder" | "community" | "service" | "blueBookEntry" | "jobRequest"
+        entityId: v.string(), // ID of the created/resolved entity
+        rowIndex: v.number(), // which row in the import this came from
+        mappedData: v.string(), // JSON of the mapped row data at import time
+        existed: v.optional(v.boolean()), // true if entity existed before import
+        createdAt: v.number(),
+    })
+        .index("by_import", ["importId"])
+        .index("by_entity", ["entityType", "entityId"]),
+
     // Foreman Affinity Cache — pre-computed affinity data (updated by weekly insight pipeline)
     foremanAffinityCache: defineTable({
         communityId: v.id("communities"),

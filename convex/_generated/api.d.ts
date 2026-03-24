@@ -21,6 +21,7 @@ import type * as distillation from "../distillation.js";
 import type * as insights from "../insights.js";
 import type * as invoicing from "../invoicing.js";
 import type * as jobRequests from "../jobRequests.js";
+import type * as maintenance from "../maintenance.js";
 import type * as mutations from "../mutations.js";
 import type * as oauthAccounts from "../oauthAccounts.js";
 import type * as queries from "../queries.js";
@@ -48,6 +49,7 @@ declare const fullApi: ApiFromModules<{
   insights: typeof insights;
   invoicing: typeof invoicing;
   jobRequests: typeof jobRequests;
+  maintenance: typeof maintenance;
   mutations: typeof mutations;
   oauthAccounts: typeof oauthAccounts;
   queries: typeof queries;

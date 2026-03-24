@@ -567,6 +567,140 @@ export const createService = mutation({
     },
 });
 
+// ── Find-or-Create (upsert) for imports ──────────────────────────────
+
+export const findOrCreateBuilder = mutation({
+    args: { name: v.string() },
+    handler: async (ctx, args) => {
+        const trimmed = args.name.trim();
+        if (trimmed.length < 1 || trimmed.length > 100) {
+            throw new Error("Builder name must be 1-100 characters");
+        }
+        const existing = await ctx.db
+            .query("builders")
+            .withIndex("by_name", (q) => q.eq("name", trimmed))
+            .first();
+        if (existing) return { id: existing._id, existed: true };
+        const id = await ctx.db.insert("builders", {
+            name: trimmed,
+            active: true,
+            createdAt: Date.now(),
+        });
+        return { id, existed: false };
+    },
+});
+
+export const findOrCreateCommunity = mutation({
+    args: {
+        name: v.string(),
+        builderId: v.optional(v.id("builders")),
+    },
+    handler: async (ctx, args) => {
+        const trimmed = args.name.trim();
+        if (trimmed.length < 1 || trimmed.length > 100) {
+            throw new Error("Community name must be 1-100 characters");
+        }
+        const existing = await ctx.db
+            .query("communities")
+            .withIndex("by_normalizedName", (q) => q.eq("normalizedName", trimmed.toLowerCase()))
+            .first();
+        if (existing && existing.active !== false) {
+            return { id: existing._id, existed: true };
+        }
+        const id = await ctx.db.insert("communities", {
+            name: trimmed,
+            normalizedName: trimmed.toLowerCase(),
+            builderId: args.builderId,
+            active: true,
+            createdAt: Date.now(),
+        });
+        return { id, existed: false };
+    },
+});
+
+export const findOrCreateService = mutation({
+    args: {
+        name: v.string(),
+        description: v.optional(v.string()),
+        code: v.optional(v.string()),
+        category: v.optional(v.string()),
+        unitKind: v.optional(v.string()),
+    },
+    handler: async (ctx, args) => {
+        const trimmed = args.name.trim();
+        if (trimmed.length < 1 || trimmed.length > 100) {
+            throw new Error("Service name must be 1-100 characters");
+        }
+        const existing = await ctx.db
+            .query("services")
+            .withIndex("by_name", (q) => q.eq("name", trimmed))
+            .first();
+        if (existing) return { id: existing._id, existed: true };
+        const id = await ctx.db.insert("services", {
+            name: trimmed,
+            description: args.description,
+            code: args.code,
+            category: args.category,
+            unitKind: args.unitKind,
+            active: true,
+            createdAt: Date.now(),
+        });
+        return { id, existed: false };
+    },
+});
+
+// ── Import History ───────────────────────────────────────────────────
+
+export const createImportRecord = mutation({
+    args: {
+        fileName: v.string(),
+        fileHash: v.string(),
+        fileSize: v.number(),
+        documentType: v.optional(v.string()),
+        detectedTargets: v.array(v.string()),
+        rowCount: v.number(),
+        results: v.string(),
+        fieldMapping: v.optional(v.string()),
+        parsedRows: v.optional(v.string()),
+    },
+    handler: async (ctx, args) => {
+        const id = await ctx.db.insert("importHistory", {
+            ...args,
+            createdAt: Date.now(),
+        });
+        return { id };
+    },
+});
+
+export const createImportedEntity = mutation({
+    args: {
+        importId: v.id("importHistory"),
+        entityType: v.string(),
+        entityId: v.string(),
+        rowIndex: v.number(),
+        mappedData: v.string(),
+        existed: v.optional(v.boolean()),
+    },
+    handler: async (ctx, args) => {
+        const id = await ctx.db.insert("importedEntities", {
+            ...args,
+            createdAt: Date.now(),
+        });
+        return { id };
+    },
+});
+
+export const updateImportedEntityData = mutation({
+    args: {
+        id: v.id("importedEntities"),
+        mappedData: v.string(),
+    },
+    handler: async (ctx, args) => {
+        await ctx.db.patch(args.id, { mappedData: args.mappedData });
+        return { success: true };
+    },
+});
+
 // ── Services CRUD ─────────────────────────────────────────────────────
 
 export const updateService = mutation({

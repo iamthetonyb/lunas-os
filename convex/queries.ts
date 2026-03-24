@@ -370,3 +370,43 @@ export const getCrews = query({
         }));
     },
 });
+
+// ── Import History ───────────────────────────────────────────────────
+
+export const getImportHistory = query({
+    args: { limit: v.optional(v.number()) },
+    handler: async (ctx, args) => {
+        return await ctx.db
+            .query("importHistory")
+            .withIndex("by_createdAt")
+            .order("desc")
+            .take(args.limit ?? 20);
+    },
+});
+
+export const getImportByHash = query({
+    args: { fileHash: v.string() },
+    handler: async (ctx, args) => {
+        return await ctx.db
+            .query("importHistory")
+            .withIndex("by_fileHash", (q) => q.eq("fileHash", args.fileHash))
+            .first();
+    },
+});
+
+export const getImportById = query({
+    args: { id: v.id("importHistory") },
+    handler: async (ctx, args) => {
+        return await ctx.db.get(args.id);
+    },
+});
+
+export const getImportedEntities = query({
+    args: { importId: v.id("importHistory") },
+    handler: async (ctx, args) => {
+        return await ctx.db
+            .query("importedEntities")
+            .withIndex("by_import", (q) => q.eq("importId", args.importId))
+            .collect();
+    },
+});

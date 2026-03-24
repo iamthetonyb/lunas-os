@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { PageHeader } from '@/components/page-header';
 import { useState, useRef, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -106,16 +107,21 @@ export default function ImportPage() {
     const [detectedTargets, setDetectedTargets] = useState<TargetScore[]>([]);
     const [selectedTargets, setSelectedTargets] = useState<Set<ActiveTarget>>(new Set());
 
+    const [fileHash, setFileHash] = useState<string | null>(null);
+
     // Convex data
     const builders = useQuery(api.queries.getBuilders, {}) ?? [];
     const communities = useQuery(api.queries.getCommunities, {}) ?? [];
+    const existingImport = useQuery(api.queries.getImportByHash, fileHash ? { fileHash } : 'skip');
 
     // Mutations
     const createBlueBookEntry = useMutation(api.seedHelpers.createBlueBookEntry);
     const createJobRequest = useMutation(api.mutations.createJobRequest);
-    const createBuilder = useMutation(api.mutations.createBuilder);
-    const createCommunity = useMutation(api.mutations.createCommunity);
-    const createService = useMutation(api.mutations.createService);
+    const findOrCreateBuilder = useMutation(api.mutations.findOrCreateBuilder);
+    const findOrCreateCommunity = useMutation(api.mutations.findOrCreateCommunity);
+    const findOrCreateService = useMutation(api.mutations.findOrCreateService);
+    const createImportRecord = useMutation(api.mutations.createImportRecord);
+    const createImportedEntity = useMutation(api.mutations.createImportedEntity);
 
     // Derived
     const fileExt = selectedFile?.name.split('.').pop()?.toLowerCase() ?? '';
@@ -146,7 +152,7 @@ export default function ImportPage() {
 
     // ── Handlers ──────────────────────────────────────────────────────
 
-    const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (file) {
             setSelectedFile(file);
@@ -158,6 +164,15 @@ export default function ImportPage() {
             setMappingConfirmed(false);
             setDetectedTargets([]);
             setSelectedTargets(new Set());
+            // Compute SHA-256 hash for dedup
+            try {
+                const buf = await file.arrayBuffer();
+                const hashBuf = await crypto.subtle.digest('SHA-256', buf);
+                const hashArr = Array.from(new Uint8Array(hashBuf));
+                setFileHash(hashArr.map(b => b.toString(16).padStart(2, '0')).join(''));
+            } catch {
+                setFileHash(null);
+            }
         }
     };
 
@@ -254,6 +269,14 @@ export default function ImportPage() {
     // Multi-target import: fan out each row to all selected targets it qualifies for
     const handleImport = async () => {
         if (parsedRows.length === 0 || selectedTargets.size === 0 || !mappingConfirmed) return;
+
+        // Block duplicate uploads — route to existing record
+        if (existingImport) {
+            toast.info(`This file was already imported. Redirecting to the original record.`);
+            window.location.href = `/import/history/${existingImport._id}`;
+            return;
+        }
+
         setImporting(true);
         const results: Record<ActiveTarget, { success: number; errors: number }> = {
             blueBook: { success: 0, errors: 0 },
@@ -263,41 +286,41 @@ export default function ImportPage() {
             services: { success: 0, errors: 0 },
         };
 
-        // Dedup entity creation (don't create same builder/community/service twice)
-        const createdBuilders = new Set<string>();
-        const createdCommunities = new Set<string>();
-        const createdServices = new Set<string>();
+        // Track created entity IDs so Blue Book / Job Request rows can reference them
+        const builderIdCache = new Map<string, Id<'builders'>>();
+        const communityIdCache = new Map<string, Id<'communities'>>();
+        const serviceIdCache = new Map<string, Id<'services'>>();
 
         for (const raw of parsedRows) {
             const row = remapRow(raw);
 
-            // Builders
-            if (selectedTargets.has('builders') && row.builderName && !createdBuilders.has(row.builderName.toLowerCase())) {
+            // Builders — findOrCreate (no throw on dups)
+            if (selectedTargets.has('builders') && row.builderName && !builderIdCache.has(row.builderName.toLowerCase())) {
                 try {
-                    await createBuilder({ name: row.builderName });
-                    createdBuilders.add(row.builderName.toLowerCase());
+                    const res = await findOrCreateBuilder({ name: row.builderName });
+                    builderIdCache.set(row.builderName.toLowerCase(), res.id);
                     results.builders.success++;
                 } catch { results.builders.errors++; }
             }
 
-            // Communities
-            if (selectedTargets.has('communities') && row.communityName && !createdCommunities.has(row.communityName.toLowerCase())) {
+            // Communities — findOrCreate (no throw on dups)
+            if (selectedTargets.has('communities') && row.communityName && !communityIdCache.has(row.communityName.toLowerCase())) {
                 try {
-                    const builderId = resolveId(row.builderName, builders);
-                    await createCommunity({
+                    const builderId = builderIdCache.get(row.builderName?.toLowerCase() ?? '') ?? resolveId(row.builderName, builders) as Id<'builders'> | undefined;
+                    const res = await findOrCreateCommunity({
                         name: row.communityName,
-                        builderId: builderId as Id<'builders'> | undefined,
+                        builderId,
                     });
-                    createdCommunities.add(row.communityName.toLowerCase());
+                    communityIdCache.set(row.communityName.toLowerCase(), res.id);
                     results.communities.success++;
                 } catch { results.communities.errors++; }
             }
 
-            // Services
-            if (selectedTargets.has('services') && row.serviceName && !createdServices.has(row.serviceName.toLowerCase())) {
+            // Services — findOrCreate (no throw on dups)
+            if (selectedTargets.has('services') && row.serviceName && !serviceIdCache.has(row.serviceName.toLowerCase())) {
                 try {
-                    await createService({ name: row.serviceName });
-                    createdServices.add(row.serviceName.toLowerCase());
+                    const res = await findOrCreateService({ name: row.serviceName });
+                    serviceIdCache.set(row.serviceName.toLowerCase(), res.id);
                     results.services.success++;
                 } catch { results.services.errors++; }
             }
@@ -305,16 +328,16 @@ export default function ImportPage() {
             // Job Requests
             if (selectedTargets.has('jobRequests') && rowQualifies(row, 'jobRequests')) {
                 try {
-                    const builderId = resolveId(row.builderName, builders);
-                    const communityId = resolveId(row.communityName, communities);
+                    const builderId = builderIdCache.get(row.builderName?.toLowerCase() ?? '') ?? resolveId(row.builderName, builders) as Id<'builders'> | undefined;
+                    const communityId = communityIdCache.get(row.communityName?.toLowerCase() ?? '') ?? resolveId(row.communityName, communities) as Id<'communities'> | undefined;
                     await createJobRequest({
                         lot: row.lot || undefined,
                         dueDate: row.dueDate || row.startDate || undefined,
                         address: row.address || undefined,
                         notes: row.notes || undefined,
                         poNumber: row.poNumber || undefined,
-                        builderId: builderId as Id<'builders'> | undefined,
-                        communityId: communityId as Id<'communities'> | undefined,
+                        builderId,
+                        communityId,
                         services: [{ serviceName: row.serviceName }],
                     });
                     results.jobRequests.success++;
@@ -324,8 +347,8 @@ export default function ImportPage() {
             // Blue Book
             if (selectedTargets.has('blueBook') && rowQualifies(row, 'blueBook')) {
                 try {
-                    const builderId = resolveId(row.builderName, builders);
-                    const communityId = resolveId(row.communityName, communities);
+                    const builderId = builderIdCache.get(row.builderName?.toLowerCase() ?? '') ?? resolveId(row.builderName, builders) as Id<'builders'> | undefined;
+                    const communityId = communityIdCache.get(row.communityName?.toLowerCase() ?? '') ?? resolveId(row.communityName, communities) as Id<'communities'> | undefined;
                     await createBlueBookEntry({
                         lot: row.lot || undefined,
                         startDate: row.startDate || undefined,
@@ -338,8 +361,8 @@ export default function ImportPage() {
                         checkTotal: row.checkTotal || undefined,
                         poNumber: row.poNumber || undefined,
                         isAch: row.isAch === 'true' || row.isAch === 'yes' || row.isAch === '1' ? true : undefined,
-                        builderId: builderId as Id<'builders'> | undefined,
-                        communityId: communityId as Id<'communities'> | undefined,
+                        builderId,
+                        communityId,
                         source: 'import',
                     });
                     results.blueBook.success++;
@@ -349,6 +372,47 @@ export default function ImportPage() {
 
         setImportResult(results);
         setImporting(false);
+
+        // Save import record for history + dedup, then link entities
+        try {
+            const mappedRows = parsedRows.map(r => remapRow(r));
+            const { id: importId } = await createImportRecord({
+                fileName: selectedFile?.name ?? 'unknown',
+                fileHash: fileHash ?? '',
+                fileSize: selectedFile?.size ?? 0,
+                documentType: ocrRawText ? 'ocr' : fileExt,
+                detectedTargets: Array.from(selectedTargets),
+                rowCount: parsedRows.length,
+                results: JSON.stringify(results),
+                fieldMapping: JSON.stringify(fieldMapping),
+                parsedRows: JSON.stringify(mappedRows),
+            });
+
+            // Link created entities to the import record (fire-and-forget)
+            const entityPromises: Promise<unknown>[] = [];
+            for (const [name, id] of builderIdCache) {
+                entityPromises.push(createImportedEntity({
+                    importId, entityType: 'builder', entityId: id as string,
+                    rowIndex: 0, mappedData: JSON.stringify({ builderName: name }),
+                    existed: false,
+                }));
+            }
+            for (const [name, id] of communityIdCache) {
+                entityPromises.push(createImportedEntity({
+                    importId, entityType: 'community', entityId: id as string,
+                    rowIndex: 0, mappedData: JSON.stringify({ communityName: name }),
+                    existed: false,
+                }));
+            }
+            for (const [name, id] of serviceIdCache) {
+                entityPromises.push(createImportedEntity({
+                    importId, entityType: 'service', entityId: id as string,
+                    rowIndex: 0, mappedData: JSON.stringify({ serviceName: name }),
+                    existed: false,
+                }));
+            }
+            await Promise.allSettled(entityPromises);
+        } catch { /* non-critical */ }
 
         const totalSuccess = Object.values(results).reduce((s, r) => s + r.success, 0);
         const totalErrors = Object.values(results).reduce((s, r) => s + r.errors, 0);
@@ -374,6 +438,7 @@ export default function ImportPage() {
         setMappingConfirmed(false);
         setDetectedTargets([]);
         setSelectedTargets(new Set());
+        setFileHash(null);
         if (fileInputRef.current) fileInputRef.current.value = '';
     };
 
@@ -390,6 +455,14 @@ export default function ImportPage() {
             <PageHeader
                 title={t('import.title')}
                 description={t('import.description')}
+                action={
+                    <Link
+                        href="/import/history"
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-md border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors"
+                    >
+                        Import History
+                    </Link>
+                }
             />
             <main className="px-6 py-6 space-y-6">
                 {/* File upload area */}
@@ -732,6 +805,28 @@ export default function ImportPage() {
                                     {t('import.showFirst100', { total: parsedRows.length })}
                                 </p>
                             )}
+                        </div>
+                    </div>
+                )}
+
+                {/* Duplicate file warning */}
+                {existingImport && selectedFile && (
+                    <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-300 dark:border-amber-700 rounded-lg p-4">
+                        <div className="flex items-center gap-2">
+                            <span className="text-amber-600 dark:text-amber-400 text-lg">!</span>
+                            <div>
+                                <p className="text-sm font-medium text-amber-800 dark:text-amber-200">
+                                    This file was already imported
+                                </p>
+                                <p className="text-xs text-amber-700 dark:text-amber-300 mt-1">
+                                    Originally uploaded as &ldquo;{existingImport.fileName}&rdquo; on{' '}
+                                    {new Date(existingImport.createdAt).toLocaleDateString()} with{' '}
+                                    {existingImport.rowCount} rows.{' '}
+                                    <a href={`/import/history/${existingImport._id}`} className="underline font-medium hover:text-amber-900 dark:hover:text-amber-100">
+                                        View original import
+                                    </a>
+                                </p>
+                            </div>
                         </div>
                     </div>
                 )}
