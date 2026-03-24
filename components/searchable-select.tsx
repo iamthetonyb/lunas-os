@@ -25,6 +25,9 @@ type SearchableSelectProps = {
   placeholder?: string;
   disabled?: boolean;
   emptyStateLabel?: string;
+  allowCreate?: boolean;
+  onCreateOption?: (name: string) => Promise<string | void>;
+  createLabel?: string;
 };
 
 export function SearchableSelect({
@@ -34,10 +37,14 @@ export function SearchableSelect({
   placeholder,
   disabled,
   emptyStateLabel = 'No matches',
+  allowCreate,
+  onCreateOption,
+  createLabel = 'Create',
 }: SearchableSelectProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const [query, setQuery] = useState('');
   const [isOpen, setIsOpen] = useState(false);
+  const [isCreating, setIsCreating] = useState(false);
 
   const selectedOption = useMemo(
     () => options.find((option) => option.value === value) ?? null,
@@ -82,6 +89,27 @@ export function SearchableSelect({
     onChange(option.value);
     setQuery(option.label);
     setIsOpen(false);
+  };
+
+  const canCreate = allowCreate && onCreateOption && query.trim().length > 0 &&
+    !options.some((o) => o.label.toLowerCase() === query.trim().toLowerCase());
+
+  const handleCreate = async () => {
+    if (!onCreateOption || isCreating) return;
+    const name = query.trim();
+    setIsCreating(true);
+    try {
+      const newId = await onCreateOption(name);
+      if (newId) {
+        onChange(newId);
+        setQuery(name);
+      }
+      setIsOpen(false);
+    } catch {
+      // error handled by caller
+    } finally {
+      setIsCreating(false);
+    }
   };
 
   const handleInputChange = (event: ChangeEvent<HTMLInputElement>) => {
@@ -152,8 +180,24 @@ export function SearchableSelect({
                 </button>
               );
             })
-          ) : (
+          ) : canCreate ? null : (
             <div className="px-3 py-2 text-sm text-gray-500">{emptyStateLabel}</div>
+          )}
+          {canCreate && (
+            <button
+              type="button"
+              className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-green-700 hover:bg-green-50 transition border-t border-gray-100"
+              onMouseDown={(event: ReactMouseEvent<HTMLButtonElement>) => {
+                event.preventDefault();
+                handleCreate();
+              }}
+              disabled={isCreating}
+            >
+              <span className="text-green-500 font-bold">+</span>
+              <span className="font-medium">
+                {isCreating ? 'Creating...' : `${createLabel} "${query.trim()}"`}
+              </span>
+            </button>
           )}
         </div>
       )}

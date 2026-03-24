@@ -101,6 +101,7 @@ export function IntakeForm() {
   }, [allUsers]);
 
   const createJobRequest = useMutation(api.mutations.createJobRequest);
+  const createCommunity = useMutation(api.mutations.createCommunity);
   const convex = useConvex();
 
   const [duplicateWarning, setDuplicateWarning] = useState<{
@@ -245,6 +246,19 @@ export function IntakeForm() {
     });
     return map;
   }, [communities]);
+
+  const handleCreateCommunity = useCallback(async (name: string) => {
+    try {
+      const result = await createCommunity({
+        name,
+        builderId: builderId ? builderId as Id<'builders'> : undefined,
+      });
+      toast.success(`Community "${name}" created`);
+      return result.id as string;
+    } catch (err: any) {
+      toast.error(err?.message ?? 'Failed to create community');
+    }
+  }, [createCommunity, builderId]);
 
   const modelPlanOptions = useMemo(() => {
     if (!modelPlans) return [] as SelectOption[];
@@ -427,8 +441,11 @@ export function IntakeForm() {
                   onChange={field.onChange}
                   options={communityOptions}
                   placeholder="Start typing community name..."
-                  disabled={!communityOptions.length}
+                  disabled={false}
                   emptyStateLabel="No communities found"
+                  allowCreate
+                  onCreateOption={handleCreateCommunity}
+                  createLabel="Create community"
                 />
               )}
             />

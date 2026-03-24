@@ -1,12 +1,13 @@
 'use client';
 
-import { useState, Fragment } from 'react';
+import { useState, useCallback, Fragment } from 'react';
 import { Dialog, Transition } from '@headlessui/react';
 import { useMutation, useQuery } from 'convex/react';
 import { api } from '@/convex/_generated/api';
 import { toast } from 'sonner';
 import type { Id } from '@/convex/_generated/dataModel';
 import type { Builder } from '@/types/blue-book';
+import { SearchableSelect } from '../searchable-select';
 
 type Props = {
     isOpen: boolean;
@@ -17,11 +18,8 @@ type Props = {
 
 export function CreateEntryModal({ isOpen, onClose, builders, defaultBuilderId }: Props) {
     const createEntry = useMutation(api.blueBook.create);
+    const createCommunity = useMutation(api.mutations.createCommunity);
     const services = useQuery(api.queries.getServices, {}) ?? [];
-    const communities = useQuery(
-        api.queries.getCommunitiesByBuilder,
-        form.builderId ? { builderId: form.builderId as Id<'builders'> } : 'skip'
-    ) ?? [];
 
     const [form, setForm] = useState({
         builderId: defaultBuilderId ?? '',
@@ -36,6 +34,29 @@ export function CreateEntryModal({ isOpen, onClose, builders, defaultBuilderId }
         checkDate: '',
         invoiceNumber: '',
     });
+
+    const communities = useQuery(
+        api.queries.getCommunitiesByBuilder,
+        form.builderId ? { builderId: form.builderId as Id<'builders'> } : 'skip'
+    ) ?? [];
+
+    const communityOptions = communities.map((c: any) => ({
+        value: c._id,
+        label: c.name,
+    }));
+
+    const handleCreateCommunity = useCallback(async (name: string) => {
+        try {
+            const result = await createCommunity({
+                name,
+                builderId: form.builderId ? form.builderId as Id<'builders'> : undefined,
+            });
+            toast.success(`Community "${name}" created`);
+            return result.id as string;
+        } catch (err: any) {
+            toast.error(err?.message ?? 'Failed to create community');
+        }
+    }, [createCommunity, form.builderId]);
 
     const handleSave = async () => {
         if (!form.builderId) {
@@ -100,12 +121,17 @@ export function CreateEntryModal({ isOpen, onClose, builders, defaultBuilderId }
                                         </select>
                                     </Field>
                                     <Field label="Community">
-                                        <select value={form.communityId} onChange={(e) => setForm(f => ({ ...f, communityId: e.target.value }))} className="input-field">
-                                            <option value="">Select community...</option>
-                                            {communities.map((c: { _id: string; name: string }) => (
-                                                <option key={c._id} value={c._id}>{c.name}</option>
-                                            ))}
-                                        </select>
+                                        <SearchableSelect
+                                            value={form.communityId}
+                                            onChange={(val) => setForm(f => ({ ...f, communityId: val }))}
+                                            options={communityOptions}
+                                            placeholder={form.builderId ? "Search or type new..." : "Select a builder first"}
+                                            disabled={!form.builderId}
+                                            emptyStateLabel="No communities found"
+                                            allowCreate={!!form.builderId}
+                                            onCreateOption={handleCreateCommunity}
+                                            createLabel="Create community"
+                                        />
                                     </Field>
                                     <Field label="Service">
                                         <select value={form.serviceId} onChange={(e) => setForm(f => ({ ...f, serviceId: e.target.value }))} className="input-field">
