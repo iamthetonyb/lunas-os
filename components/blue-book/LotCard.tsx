@@ -61,7 +61,7 @@ export function LotCard({ lot, onEditEntry, onDeleteEntry, onPhaseOverride, onSe
                                 <th className="pr-2 py-1">{t('blueBook.serviceHeader')}</th>
                                 <th className="pr-2 py-1">{t('blueBook.startHeader')}</th>
                                 <th className="pr-2 py-1">{t('blueBook.statusHeader')}</th>
-                                <th className="pr-2 py-1">{t('blueBook.foremanHeader')}</th>
+                                <th className="pr-2 py-1">{t('blueBook.foremanCrewHeader')}</th>
                                 <th className="pr-2 py-1">{t('blueBook.amountHeader')}</th>
                                 <th className="pr-2 py-1">{t('blueBook.checkHeader')}</th>
                                 <th className="py-1"></th>
@@ -81,7 +81,11 @@ export function LotCard({ lot, onEditEntry, onDeleteEntry, onPhaseOverride, onSe
                                             {entry.status}
                                         </span>
                                     </td>
-                                    <td className="pr-2 py-1">{entry.assignedForemanName ?? '—'}</td>
+                                    <td className="pr-2 py-1">
+                                        {entry.assignedForemanName && entry.crewName
+                                            ? `${entry.assignedForemanName} / ${entry.crewName}`
+                                            : entry.assignedForemanName ?? entry.crewName ?? '—'}
+                                    </td>
                                     <td className="pr-2 py-1">{entry.amount ? `$${entry.amount}` : '—'}</td>
                                     <td className="pr-2 py-1">{entry.checkNumber ?? '—'}</td>
                                     <td className="py-1">
