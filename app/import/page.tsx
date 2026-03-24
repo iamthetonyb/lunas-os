@@ -106,6 +106,7 @@ export default function ImportPage() {
     const [mappingConfirmed, setMappingConfirmed] = useState(false);
     const [detectedTargets, setDetectedTargets] = useState<TargetScore[]>([]);
     const [selectedTargets, setSelectedTargets] = useState<Set<ActiveTarget>>(new Set());
+    const [duplicateOverride, setDuplicateOverride] = useState(false);
 
     const [fileHash, setFileHash] = useState<string | null>(null);
 
@@ -164,6 +165,7 @@ export default function ImportPage() {
             setMappingConfirmed(false);
             setDetectedTargets([]);
             setSelectedTargets(new Set());
+            setDuplicateOverride(false);
             // Compute SHA-256 hash for dedup
             try {
                 const buf = await file.arrayBuffer();
@@ -176,7 +178,7 @@ export default function ImportPage() {
         }
     };
 
-    const isDuplicate = !!(existingImport && selectedFile);
+    const isDuplicate = !!(existingImport && selectedFile && !duplicateOverride);
 
     const handleParseFile = async () => {
         if (!selectedFile || isDuplicate) return;
@@ -441,6 +443,7 @@ export default function ImportPage() {
         setMappingConfirmed(false);
         setDetectedTargets([]);
         setSelectedTargets(new Set());
+        setDuplicateOverride(false);
         setFileHash(null);
         if (fileInputRef.current) fileInputRef.current.value = '';
     };
@@ -541,6 +544,12 @@ export default function ImportPage() {
                                             View original import
                                         </a>
                                     </p>
+                                    <button
+                                        onClick={() => setDuplicateOverride(true)}
+                                        className="mt-2 text-xs font-medium text-amber-700 dark:text-amber-300 underline hover:text-amber-900 dark:hover:text-amber-100"
+                                    >
+                                        Re-import anyway
+                                    </button>
                                 </div>
                             )}
 
