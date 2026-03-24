@@ -439,9 +439,10 @@ export function RatesCrud() {
                           className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-slate-900 text-gray-900 dark:text-gray-100"
                         >
                           <option value="">-- Select --</option>
-                          <option value="PER_JOB">Per Job</option>
-                          <option value="PER_SQFT">Per Sqft</option>
-                          <option value="PER_UNIT">Per Unit</option>
+                          <option value="per_lot">Per Lot</option>
+                          <option value="per_sqft">Per Sqft</option>
+                          <option value="per_unit">Per Unit</option>
+                          <option value="flat">Flat</option>
                         </select>
                         {errors.basis && (
                           <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.basis.message}</p>
