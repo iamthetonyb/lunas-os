@@ -148,6 +148,15 @@ export default function ImportDetailPage() {
         });
     }, []);
 
+    // Preview what mapped data will look like with current draft mapping
+    const mappingPreviewCount = useMemo(() => {
+        if (!editMapping) return 0;
+        const sourceRows = rawRows.length > 0 ? rawRows : parsedRows;
+        const remapped = applyMapping(sourceRows, editMapping);
+        const nonEmpty = remapped.filter(r => Object.keys(r).length > 0);
+        return nonEmpty.length;
+    }, [editMapping, rawRows, parsedRows, applyMapping]);
+
     // ── Re-extract: upload same file to update rawRows ───────────────────
     const handleReExtract = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
@@ -256,15 +265,6 @@ export default function ImportDetailPage() {
     };
 
     const handleMappingCancel = () => setEditMapping(null);
-
-    // Preview what mapped data will look like with current draft mapping
-    const mappingPreviewCount = useMemo(() => {
-        if (!editMapping) return 0;
-        const sourceRows = rawRows.length > 0 ? rawRows : parsedRows;
-        const remapped = applyMapping(sourceRows, editMapping);
-        const nonEmpty = remapped.filter(r => Object.keys(r).length > 0);
-        return nonEmpty.length;
-    }, [editMapping, rawRows, parsedRows, applyMapping]);
 
     // ── Entity editing ──────────────────────────────────────────────────
     const handleEditStart = (entityId: string, currentData: string) => {
