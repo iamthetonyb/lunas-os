@@ -9,10 +9,7 @@ import { I18nextProvider } from 'react-i18next';
 import i18n from '@/lib/i18n/client';
 
 const convexUrl = process.env.NEXT_PUBLIC_CONVEX_URL;
-if (!convexUrl) {
-  throw new Error("NEXT_PUBLIC_CONVEX_URL is required. Set it in .env.local");
-}
-const convex = new ConvexReactClient(convexUrl);
+const convex = convexUrl ? new ConvexReactClient(convexUrl) : null;
 
 export default function Providers({ children }: { children: ReactNode }) {
   const [mounted, setMounted] = useState(false);
@@ -20,6 +17,19 @@ export default function Providers({ children }: { children: ReactNode }) {
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  if (!convex) {
+    return (
+      <div style={{ padding: '2rem', fontFamily: 'monospace', color: '#b91c1c' }}>
+        <h1>Configuration Error</h1>
+        <p>Missing required environment variables. Check Vercel settings:</p>
+        <ul>
+          <li>NEXT_PUBLIC_CONVEX_URL {convexUrl ? '✓' : '✗ missing'}</li>
+        </ul>
+        <p>Ensure these are enabled for <strong>Preview</strong> environments, not just Production.</p>
+      </div>
+    );
+  }
 
   return (
     <ClerkProvider>
