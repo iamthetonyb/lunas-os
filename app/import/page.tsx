@@ -176,8 +176,10 @@ export default function ImportPage() {
         }
     };
 
+    const isDuplicate = !!(existingImport && selectedFile);
+
     const handleParseFile = async () => {
-        if (!selectedFile) return;
+        if (!selectedFile || isDuplicate) return;
         setParsing(true);
         setParsedRows([]);
 
@@ -386,6 +388,7 @@ export default function ImportPage() {
                 results: JSON.stringify(results),
                 fieldMapping: JSON.stringify(fieldMapping),
                 parsedRows: JSON.stringify(mappedRows),
+                rawRows: JSON.stringify(parsedRows),
             });
 
             // Link created entities to the import record (fire-and-forget)
@@ -527,7 +530,21 @@ export default function ImportPage() {
                                 </div>
                             )}
 
-                            {parsedRows.length === 0 && !parsing && (
+                            {parsedRows.length === 0 && !parsing && isDuplicate && (
+                                <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-300 dark:border-amber-700 rounded-lg p-3">
+                                    <p className="text-sm font-medium text-amber-800 dark:text-amber-200">
+                                        This file was already imported
+                                    </p>
+                                    <p className="text-xs text-amber-700 dark:text-amber-300 mt-1">
+                                        &ldquo;{existingImport!.fileName}&rdquo; &mdash; {new Date(existingImport!.createdAt).toLocaleDateString()}, {existingImport!.rowCount} rows.{' '}
+                                        <a href={`/import/history/${existingImport!._id}`} className="underline font-medium hover:text-amber-900 dark:hover:text-amber-100">
+                                            View original import
+                                        </a>
+                                    </p>
+                                </div>
+                            )}
+
+                            {parsedRows.length === 0 && !parsing && !isDuplicate && (
                                 <button
                                     onClick={handleParseFile}
                                     disabled={parsing}
@@ -809,27 +826,6 @@ export default function ImportPage() {
                     </div>
                 )}
 
-                {/* Duplicate file warning */}
-                {existingImport && selectedFile && (
-                    <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-300 dark:border-amber-700 rounded-lg p-4">
-                        <div className="flex items-center gap-2">
-                            <span className="text-amber-600 dark:text-amber-400 text-lg">!</span>
-                            <div>
-                                <p className="text-sm font-medium text-amber-800 dark:text-amber-200">
-                                    This file was already imported
-                                </p>
-                                <p className="text-xs text-amber-700 dark:text-amber-300 mt-1">
-                                    Originally uploaded as &ldquo;{existingImport.fileName}&rdquo; on{' '}
-                                    {new Date(existingImport.createdAt).toLocaleDateString()} with{' '}
-                                    {existingImport.rowCount} rows.{' '}
-                                    <a href={`/import/history/${existingImport._id}`} className="underline font-medium hover:text-amber-900 dark:hover:text-amber-100">
-                                        View original import
-                                    </a>
-                                </p>
-                            </div>
-                        </div>
-                    </div>
-                )}
 
                 {/* Supported formats */}
                 <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">

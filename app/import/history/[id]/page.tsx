@@ -41,6 +41,8 @@ function formatFileSize(bytes: number): string {
     return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
+type TabId = 'mapped' | 'raw' | 'entities' | 'mapping';
+
 export default function ImportDetailPage() {
     const params = useParams();
     const importId = params.id as string;
@@ -48,10 +50,14 @@ export default function ImportDetailPage() {
     const record = useQuery(api.queries.getImportById, { id: importId as Id<'importHistory'> });
     const entities = useQuery(api.queries.getImportedEntities, { importId: importId as Id<'importHistory'> });
     const updateEntityData = useMutation(api.mutations.updateImportedEntityData);
+    const updateImportRecord = useMutation(api.mutations.updateImportRecord);
 
     const [editingEntity, setEditingEntity] = useState<string | null>(null);
     const [editValues, setEditValues] = useState<Record<string, string>>({});
-    const [viewTab, setViewTab] = useState<'data' | 'entities' | 'mapping'>('data');
+    const [editingRow, setEditingRow] = useState<number | null>(null);
+    const [editRowValues, setEditRowValues] = useState<Record<string, string>>({});
+    const [viewTab, setViewTab] = useState<TabId>('mapped');
+    const [saving, setSaving] = useState(false);
 
     const results = useMemo(() => {
         if (!record?.results) return null;
@@ -65,18 +71,31 @@ export default function ImportDetailPage() {
         catch { return []; }
     }, [record?.parsedRows]);
 
+    const rawRows = useMemo(() => {
+        if (!record?.rawRows) return [];
+        try { return JSON.parse(record.rawRows) as Record<string, string>[]; }
+        catch { return []; }
+    }, [record?.rawRows]);
+
     const fieldMapping = useMemo(() => {
         if (!record?.fieldMapping) return {};
         try { return JSON.parse(record.fieldMapping) as Record<string, string>; }
         catch { return {}; }
     }, [record?.fieldMapping]);
 
-    const dataColumns = useMemo(() => {
+    const mappedColumns = useMemo(() => {
         if (parsedRows.length === 0) return [];
         const allKeys = new Set<string>();
         parsedRows.forEach(row => Object.keys(row).forEach(k => allKeys.add(k)));
         return Array.from(allKeys);
     }, [parsedRows]);
+
+    const rawColumns = useMemo(() => {
+        if (rawRows.length === 0) return [];
+        const allKeys = new Set<string>();
+        rawRows.forEach(row => Object.keys(row).forEach(k => allKeys.add(k)));
+        return Array.from(allKeys);
+    }, [rawRows]);
 
     const totalSuccess = results ? Object.values(results).reduce((s, r) => s + r.success, 0) : 0;
     const totalErrors = results ? Object.values(results).reduce((s, r) => s + r.errors, 0) : 0;
@@ -111,6 +130,7 @@ export default function ImportDetailPage() {
         );
     }
 
+    // ── Entity editing ──────────────────────────────────────────────────
     const handleEditStart = (entityId: string, currentData: string) => {
         try {
             setEditValues(JSON.parse(currentData));
@@ -133,6 +153,47 @@ export default function ImportDetailPage() {
             toast.error(err instanceof Error ? err.message : 'Failed to save');
         }
     };
+
+    // ── Row editing (mapped data) ───────────────────────────────────────
+    const handleRowEditStart = (index: number) => {
+        setEditingRow(index);
+        setEditRowValues({ ...parsedRows[index] });
+    };
+
+    const handleRowEditSave = async () => {
+        if (editingRow === null) return;
+        setSaving(true);
+        try {
+            const updated = [...parsedRows];
+            updated[editingRow] = { ...editRowValues };
+            await updateImportRecord({
+                id: importId as Id<'importHistory'>,
+                parsedRows: JSON.stringify(updated),
+            });
+            setEditingRow(null);
+            setEditRowValues({});
+            toast.success('Row updated');
+        } catch (err: unknown) {
+            toast.error(err instanceof Error ? err.message : 'Failed to save');
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    const handleAddField = () => {
+        const key = prompt('Field name:');
+        if (key && key.trim()) {
+            setEditRowValues(prev => ({ ...prev, [key.trim()]: '' }));
+        }
+    };
+
+    // ── Tab config ──────────────────────────────────────────────────────
+    const tabs: { id: TabId; label: string }[] = [
+        { id: 'mapped', label: `Mapped Data (${parsedRows.length})` },
+        { id: 'raw', label: `Raw Extraction (${rawRows.length})` },
+        { id: 'entities', label: `Linked Entities (${entities?.length ?? 0})` },
+        { id: 'mapping', label: 'Field Mapping' },
+    ];
 
     return (
         <>
@@ -171,7 +232,7 @@ export default function ImportDetailPage() {
                     </div>
                 </div>
 
-                {/* Result breakdown per target */}
+                {/* Result breakdown */}
                 {results && (
                     <div className="bg-white dark:bg-slate-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4">
                         <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-3">Results by Target</h3>
@@ -184,9 +245,7 @@ export default function ImportDetailPage() {
                                             {TARGET_LABELS[target as ActiveTarget] ?? target}
                                         </span>
                                         <span className="text-xs text-green-600 dark:text-green-400 font-medium">{r.success} ok</span>
-                                        {r.errors > 0 && (
-                                            <span className="text-xs text-red-500 dark:text-red-400">{r.errors} err</span>
-                                        )}
+                                        {r.errors > 0 && <span className="text-xs text-red-500 dark:text-red-400">{r.errors} err</span>}
                                     </div>
                                 ))}
                         </div>
@@ -194,61 +253,147 @@ export default function ImportDetailPage() {
                 )}
 
                 {/* Tabs */}
-                <div className="flex gap-1 border-b border-gray-200 dark:border-gray-700">
-                    {(['data', 'entities', 'mapping'] as const).map(tab => (
+                <div className="flex gap-1 border-b border-gray-200 dark:border-gray-700 overflow-x-auto">
+                    {tabs.map(tab => (
                         <button
-                            key={tab}
-                            onClick={() => setViewTab(tab)}
-                            className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
-                                viewTab === tab
+                            key={tab.id}
+                            onClick={() => setViewTab(tab.id)}
+                            className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
+                                viewTab === tab.id
                                     ? 'border-blue-600 text-blue-600 dark:text-blue-400 dark:border-blue-400'
                                     : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
                             }`}
                         >
-                            {tab === 'data' ? `Imported Data (${parsedRows.length})` :
-                             tab === 'entities' ? `Linked Entities (${entities?.length ?? 0})` :
-                             'Field Mapping'}
+                            {tab.label}
                         </button>
                     ))}
                 </div>
 
-                {/* Data tab — shows parsed rows */}
-                {viewTab === 'data' && (
+                {/* ── Mapped Data tab (editable) ──────────────────────────── */}
+                {viewTab === 'mapped' && (
                     <div className="bg-white dark:bg-slate-800 rounded-lg border border-gray-200 dark:border-gray-700 overflow-x-auto">
                         {parsedRows.length === 0 ? (
                             <p className="p-6 text-sm text-gray-500 dark:text-gray-400 text-center">
-                                Row data was not saved for this import. Future imports will include full row data.
+                                No mapped data saved. Future imports will include full row data.
                             </p>
                         ) : (
                             <table className="w-full text-xs">
                                 <thead>
                                     <tr className="border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-slate-700/50">
                                         <th className="px-3 py-2 text-left font-medium text-gray-500 dark:text-gray-400 w-10">#</th>
-                                        {dataColumns.map(col => (
-                                            <th key={col} className="px-3 py-2 text-left font-medium text-gray-600 dark:text-gray-300 whitespace-nowrap">
-                                                {col}
-                                            </th>
+                                        {mappedColumns.map(col => (
+                                            <th key={col} className="px-3 py-2 text-left font-medium text-gray-600 dark:text-gray-300 whitespace-nowrap">{col}</th>
                                         ))}
+                                        <th className="px-3 py-2 text-right font-medium text-gray-500 dark:text-gray-400 w-20 sticky right-0 bg-gray-50 dark:bg-slate-700/50" />
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
-                                    {parsedRows.map((row, i) => (
-                                        <tr key={i} className="hover:bg-gray-50 dark:hover:bg-slate-700/30">
-                                            <td className="px-3 py-2 text-gray-400 dark:text-gray-500 tabular-nums">{i + 1}</td>
-                                            {dataColumns.map(col => (
-                                                <td key={col} className="px-3 py-2 text-gray-700 dark:text-gray-200 max-w-[200px] truncate" title={row[col] ?? ''}>
-                                                    {row[col] ?? ''}
-                                                </td>
-                                            ))}
-                                        </tr>
-                                    ))}
+                                    {parsedRows.map((row, i) => {
+                                        const isEditing = editingRow === i;
+                                        return (
+                                            <tr key={i} className="hover:bg-gray-50 dark:hover:bg-slate-700/30">
+                                                <td className="px-3 py-2 text-gray-400 dark:text-gray-500 tabular-nums">{i + 1}</td>
+                                                {isEditing ? (
+                                                    <>
+                                                        {Object.keys(editRowValues).map(col => (
+                                                            <td key={col} className="px-1 py-1">
+                                                                <input
+                                                                    type="text"
+                                                                    value={editRowValues[col] ?? ''}
+                                                                    onChange={e => setEditRowValues(prev => ({ ...prev, [col]: e.target.value }))}
+                                                                    className="w-full text-xs border border-blue-300 dark:border-blue-600 rounded px-2 py-1 bg-white dark:bg-slate-700 text-gray-900 dark:text-gray-100"
+                                                                />
+                                                            </td>
+                                                        ))}
+                                                        <td className="px-2 py-1 text-right sticky right-0 bg-white dark:bg-slate-800">
+                                                            <div className="flex gap-1 justify-end">
+                                                                <button onClick={handleAddField} className="px-1.5 py-0.5 text-[10px] text-blue-600 dark:text-blue-400 border border-blue-300 dark:border-blue-600 rounded hover:bg-blue-50 dark:hover:bg-blue-900/30" title="Add field">+</button>
+                                                                <button onClick={handleRowEditSave} disabled={saving} className="px-1.5 py-0.5 text-[10px] bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50">Save</button>
+                                                                <button onClick={() => { setEditingRow(null); setEditRowValues({}); }} className="px-1.5 py-0.5 text-[10px] border border-gray-300 dark:border-gray-600 rounded text-gray-600 dark:text-gray-300">Cancel</button>
+                                                            </div>
+                                                        </td>
+                                                    </>
+                                                ) : (
+                                                    <>
+                                                        {mappedColumns.map(col => (
+                                                            <td key={col} className="px-3 py-2 text-gray-700 dark:text-gray-200 max-w-[200px] truncate" title={row[col] ?? ''}>
+                                                                {row[col] ?? ''}
+                                                            </td>
+                                                        ))}
+                                                        <td className="px-2 py-2 text-right sticky right-0 bg-white dark:bg-slate-800">
+                                                            <button
+                                                                onClick={() => handleRowEditStart(i)}
+                                                                className="px-1.5 py-0.5 text-[10px] border border-gray-300 dark:border-gray-600 rounded text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-slate-600"
+                                                            >
+                                                                Edit
+                                                            </button>
+                                                        </td>
+                                                    </>
+                                                )}
+                                            </tr>
+                                        );
+                                    })}
                                 </tbody>
                             </table>
                         )}
                     </div>
                 )}
 
-                {/* Entities tab — shows linked entities with edit */}
+                {/* ── Raw Extraction tab (read-only, all fields) ──────────── */}
+                {viewTab === 'raw' && (
+                    <div className="bg-white dark:bg-slate-800 rounded-lg border border-gray-200 dark:border-gray-700 overflow-x-auto">
+                        {rawRows.length === 0 ? (
+                            <div className="p-6 text-center">
+                                <p className="text-sm text-gray-500 dark:text-gray-400">
+                                    Full extraction data was not captured for this import.
+                                </p>
+                                <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
+                                    Future imports will save all extracted fields, including those not mapped to a destination.
+                                </p>
+                            </div>
+                        ) : (
+                            <>
+                                <div className="px-4 py-2 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-slate-700/50">
+                                    <p className="text-xs text-gray-500 dark:text-gray-400">
+                                        All {rawColumns.length} fields extracted from the original document. Includes unmapped fields not routed to any target.
+                                    </p>
+                                </div>
+                                <table className="w-full text-xs">
+                                    <thead>
+                                        <tr className="border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-slate-700/50">
+                                            <th className="px-3 py-2 text-left font-medium text-gray-500 dark:text-gray-400 w-10">#</th>
+                                            {rawColumns.map(col => {
+                                                const isMapped = Object.values(fieldMapping).includes(col) || Object.keys(fieldMapping).includes(col);
+                                                return (
+                                                    <th key={col} className="px-3 py-2 text-left font-medium whitespace-nowrap">
+                                                        <span className={isMapped ? 'text-blue-600 dark:text-blue-400' : 'text-gray-400 dark:text-gray-500'}>
+                                                            {col}
+                                                        </span>
+                                                        {!isMapped && <span className="text-[8px] ml-1 text-gray-300 dark:text-gray-600">unmapped</span>}
+                                                    </th>
+                                                );
+                                            })}
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
+                                        {rawRows.map((row, i) => (
+                                            <tr key={i} className="hover:bg-gray-50 dark:hover:bg-slate-700/30">
+                                                <td className="px-3 py-2 text-gray-400 dark:text-gray-500 tabular-nums">{i + 1}</td>
+                                                {rawColumns.map(col => (
+                                                    <td key={col} className="px-3 py-2 text-gray-700 dark:text-gray-200 max-w-[200px] truncate" title={row[col] ?? ''}>
+                                                        {row[col] ?? <span className="text-gray-300 dark:text-gray-600">&mdash;</span>}
+                                                    </td>
+                                                ))}
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </>
+                        )}
+                    </div>
+                )}
+
+                {/* ── Linked Entities tab (editable) ──────────────────────── */}
                 {viewTab === 'entities' && (
                     <div className="bg-white dark:bg-slate-800 rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
                         {!entities || entities.length === 0 ? (
@@ -317,34 +462,14 @@ export default function ImportDetailPage() {
                                                 <td className="px-4 py-3 text-right">
                                                     {isEditing ? (
                                                         <div className="flex gap-1 justify-end">
-                                                            <button
-                                                                onClick={() => handleEditSave(entity._id)}
-                                                                className="px-2 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
-                                                            >
-                                                                Save
-                                                            </button>
-                                                            <button
-                                                                onClick={() => { setEditingEntity(null); setEditValues({}); }}
-                                                                className="px-2 py-1 text-xs border border-gray-300 dark:border-gray-600 rounded text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-slate-600 transition-colors"
-                                                            >
-                                                                Cancel
-                                                            </button>
+                                                            <button onClick={() => handleEditSave(entity._id)} className="px-2 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700">Save</button>
+                                                            <button onClick={() => { setEditingEntity(null); setEditValues({}); }} className="px-2 py-1 text-xs border border-gray-300 dark:border-gray-600 rounded text-gray-600 dark:text-gray-300">Cancel</button>
                                                         </div>
                                                     ) : (
                                                         <div className="flex gap-1 justify-end">
-                                                            <button
-                                                                onClick={() => handleEditStart(entity._id, entity.mappedData)}
-                                                                className="px-2 py-1 text-xs border border-gray-300 dark:border-gray-600 rounded text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-slate-600 transition-colors"
-                                                            >
-                                                                Edit
-                                                            </button>
+                                                            <button onClick={() => handleEditStart(entity._id, entity.mappedData)} className="px-2 py-1 text-xs border border-gray-300 dark:border-gray-600 rounded text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-slate-600">Edit</button>
                                                             {ENTITY_PAGES[entity.entityType] && (
-                                                                <Link
-                                                                    href={ENTITY_PAGES[entity.entityType]}
-                                                                    className="px-2 py-1 text-xs border border-gray-300 dark:border-gray-600 rounded text-blue-600 dark:text-blue-400 hover:bg-gray-100 dark:hover:bg-slate-600 transition-colors"
-                                                                >
-                                                                    View
-                                                                </Link>
+                                                                <Link href={ENTITY_PAGES[entity.entityType]} className="px-2 py-1 text-xs border border-gray-300 dark:border-gray-600 rounded text-blue-600 dark:text-blue-400 hover:bg-gray-100 dark:hover:bg-slate-600">View</Link>
                                                             )}
                                                         </div>
                                                     )}
@@ -358,7 +483,7 @@ export default function ImportDetailPage() {
                     </div>
                 )}
 
-                {/* Mapping tab — shows field mapping used */}
+                {/* ── Field Mapping tab ────────────────────────────────────── */}
                 {viewTab === 'mapping' && (
                     <div className="bg-white dark:bg-slate-800 rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
                         {Object.keys(fieldMapping).length === 0 ? (

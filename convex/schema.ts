@@ -379,7 +379,8 @@ export default defineSchema({
         rowCount: v.number(),
         results: v.string(), // JSON: { target: { success, errors } }
         fieldMapping: v.optional(v.string()), // JSON of field mapping used
-        parsedRows: v.optional(v.string()), // JSON: original mapped row data
+        parsedRows: v.optional(v.string()), // JSON: mapped row data (fields user chose)
+        rawRows: v.optional(v.string()), // JSON: full extraction (all fields from OCR/parse)
         createdAt: v.number(),
     })
         .index("by_fileHash", ["fileHash"])

@@ -662,6 +662,7 @@ export const createImportRecord = mutation({
         results: v.string(),
         fieldMapping: v.optional(v.string()),
         parsedRows: v.optional(v.string()),
+        rawRows: v.optional(v.string()),
     },
     handler: async (ctx, args) => {
         const id = await ctx.db.insert("importHistory", {
@@ -669,6 +670,25 @@ export const createImportRecord = mutation({
             createdAt: Date.now(),
         });
         return { id };
+    },
+});
+
+export const updateImportRecord = mutation({
+    args: {
+        id: v.id("importHistory"),
+        parsedRows: v.optional(v.string()),
+        rawRows: v.optional(v.string()),
+        fieldMapping: v.optional(v.string()),
+        results: v.optional(v.string()),
+    },
+    handler: async (ctx, args) => {
+        const { id, ...updates } = args;
+        const filtered: Record<string, string> = {};
+        for (const [k, val] of Object.entries(updates)) {
+            if (val !== undefined) filtered[k] = val;
+        }
+        await ctx.db.patch(id, filtered);
+        return { success: true };
     },
 });
 
