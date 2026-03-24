@@ -266,6 +266,7 @@
         "startHeader": "Inicio",
         "statusHeader": "Estado",
         "foremanHeader": "Capataz",
+        "foremanCrewHeader": "Capataz / Cuadrilla",
         "amountHeader": "Monto",
         "checkHeader": "Cheque",
         "lots": "lotes",

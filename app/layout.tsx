@@ -10,6 +10,11 @@ export const metadata: Metadata = {
   description: 'Construction Cleanup Management'
 };
 
+// All pages require authentication (Clerk + Convex) — skip static generation
+// at build time so env vars like NEXT_PUBLIC_CONVEX_URL don't need to exist
+// during the build step.
+export const dynamic = 'force-dynamic';
+
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" suppressHydrationWarning>
