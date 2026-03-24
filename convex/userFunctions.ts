@@ -225,14 +225,14 @@ export const updatePassword = mutation({
     },
 });
 
-// FIX: was doing N+1 ctx.db.get(m.orgId) per membership per user.
-// Now loads all orgs once into a Map for O(1) lookups.
+// Batch-loads all orgs into a Map for O(1) lookups (no N+1).
 export const listWithOrgs = query({
-    handler: async (ctx) => {
+    args: { limit: v.optional(v.number()) },
+    handler: async (ctx, args) => {
         const [users, orgs, allMemberships] = await Promise.all([
-            ctx.db.query("users").collect(),
-            ctx.db.query("orgs").collect(),
-            ctx.db.query("orgMembers").collect(),
+            ctx.db.query("users").take(args.limit ?? 1000),
+            ctx.db.query("orgs").take(500),
+            ctx.db.query("orgMembers").take(5000),
         ]);
 
         // Build org lookup map — single pass, O(1) per lookup.

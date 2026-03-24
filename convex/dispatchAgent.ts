@@ -27,14 +27,21 @@ export const getReadyToDispatch = internalQuery({
             .toISOString()
             .split("T")[0];
 
-        const allJrs = await ctx.db.query("jobRequestServices").collect();
+        // Index-first: query by scheduledDate for today + tomorrow
+        const [todayJrs, tomorrowJrs] = await Promise.all([
+            ctx.db.query("jobRequestServices")
+                .withIndex("by_scheduledDate", (q) => q.eq("scheduledDate", today))
+                .take(2000),
+            ctx.db.query("jobRequestServices")
+                .withIndex("by_scheduledDate", (q) => q.eq("scheduledDate", tomorrow))
+                .take(2000),
+        ]);
+
+        const allJrs = [...todayJrs, ...tomorrowJrs];
 
         const ready = allJrs.filter((jrs) => {
-            // Must have foreman and crew assigned
             if (!jrs.assignedForemanName || !jrs.assignedCrewName) return false;
-            // Must not already be dispatched or completed
             if (jrs.status === "DISPATCHED" || jrs.status === "COMPLETE") return false;
-            // Scheduled for today or tomorrow
             const date = jrs.rescheduledDate ?? jrs.scheduledDate ?? "";
             return date === today || date === tomorrow;
         });
@@ -96,13 +103,13 @@ export const detectAnomalies = internalQuery({
         const now = new Date();
         const today = now.toISOString().split("T")[0];
 
-        const allJrs = await ctx.db.query("jobRequestServices").collect();
+        // Index-first: query today's scheduled jobs only
+        const todayScheduled = await ctx.db
+            .query("jobRequestServices")
+            .withIndex("by_scheduledDate", (q) => q.eq("scheduledDate", today))
+            .take(5000);
 
-        // Find today's active jobs
-        const todayJobs = allJrs.filter((jrs) => {
-            const date = jrs.rescheduledDate ?? jrs.scheduledDate ?? "";
-            return date === today && jrs.status !== "COMPLETE";
-        });
+        const todayJobs = todayScheduled.filter((jrs) => jrs.status !== "COMPLETE");
 
         // Batch-load: collect unique jobRequestIds, fetch all at once, build map
         const jobRequestIds = [...new Set(todayJobs.map((jrs) => jrs.jobRequestId))];

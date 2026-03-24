@@ -65,9 +65,9 @@ export const getModelPlans = query({
     handler: async (ctx, args) => {
         const plans = await ctx.db
             .query("modelPlans")
-            .collect();
-        const active = plans.filter((p) => p.active !== false);
-        return args.limit ? active.slice(0, args.limit) : active;
+            .withIndex("by_active", (q) => q.eq("active", true))
+            .take(args.limit ?? 500);
+        return plans;
     },
 });
 
@@ -82,9 +82,8 @@ export const getCommunitiesByBuilder = query({
         const communities = await ctx.db
             .query("communities")
             .withIndex("by_builder", (q) => q.eq("builderId", args.builderId))
-            .collect();
-        const active = communities.filter((c) => c.active !== false);
-        return args.limit ? active.slice(0, args.limit) : active;
+            .take(args.limit ?? 500);
+        return communities.filter((c) => c.active !== false);
     },
 });
 
@@ -95,13 +94,35 @@ export const getScheduleJobs = query({
         endDate: v.string(),
     },
     handler: async (ctx, args) => {
-        // Single-pass: fetch all jobRequestServices and filter by effective date.
-        // effectiveDate = rescheduledDate (if set) ?? scheduledDate
-        // This prevents showing a job on its original date after rescheduling.
-        const allJrs = await ctx.db.query("jobRequestServices").collect();
+        // Index-first: query by scheduledDate range, then filter in memory for rescheduled
+        const indexedJrs = await ctx.db
+            .query("jobRequestServices")
+            .withIndex("by_scheduledDate", (q) =>
+                q.gte("scheduledDate", args.startDate).lte("scheduledDate", args.endDate)
+            )
+            .take(5000);
+
+        // Also catch rescheduled jobs whose original date is outside range
+        // but rescheduled date is inside range (smaller set, only non-complete)
+        const rescheduledJrs = await ctx.db
+            .query("jobRequestServices")
+            .withIndex("by_status", (q) => q.eq("status", "SCHEDULED"))
+            .take(2000);
+        const rescheduledInRange = rescheduledJrs.filter((jrs) => {
+            if (!jrs.rescheduledDate) return false;
+            return jrs.rescheduledDate >= args.startDate && jrs.rescheduledDate <= args.endDate;
+        });
+
+        // Merge and deduplicate
+        const seen = new Set<string>();
+        const allJrs = [...indexedJrs, ...rescheduledInRange].filter((jrs) => {
+            if (seen.has(jrs._id)) return false;
+            seen.add(jrs._id);
+            return true;
+        });
 
         const jobServices = allJrs.filter((jrs) => {
-            if (jrs.status === "COMPLETE") return false; // skip completed unless needed
+            if (jrs.status === "COMPLETE") return false;
             const effectiveDate = jrs.rescheduledDate ?? jrs.scheduledDate ?? "";
             return effectiveDate >= args.startDate && effectiveDate <= args.endDate;
         });
@@ -301,7 +322,7 @@ export const getUsers = query({
 // Get all organizations
 export const getOrgs = query({
     handler: async (ctx) => {
-        return await ctx.db.query("orgs").collect();
+        return await ctx.db.query("orgs").take(500);
     },
 });
 
@@ -309,9 +330,11 @@ export const getOrgs = query({
 export const getBuilders = query({
     args: { limit: v.optional(v.number()) },
     handler: async (ctx, args) => {
-        const builders = await ctx.db.query("builders").collect();
-        const active = builders.filter((b) => b.active !== false);
-        return args.limit ? active.slice(0, args.limit) : active;
+        const builders = await ctx.db
+            .query("builders")
+            .withIndex("by_active", (q) => q.eq("active", true))
+            .take(args.limit ?? 500);
+        return builders;
     },
 });
 
@@ -319,24 +342,24 @@ export const getBuilders = query({
 export const getCommunities = query({
     args: { limit: v.optional(v.number()) },
     handler: async (ctx, args) => {
-        const communities = await ctx.db.query("communities").collect();
-        const active = communities.filter((c) => c.active !== false);
+        const communities = await ctx.db
+            .query("communities")
+            .withIndex("by_active", (q) => q.eq("active", true))
+            .take(args.limit ?? 2000);
         // Deduplicate by normalized name — keep the one with a builderId, or the oldest
-        const seen = new Map<string, typeof active[0]>();
-        for (const c of active) {
+        const seen = new Map<string, typeof communities[0]>();
+        for (const c of communities) {
             const key = (c.normalizedName ?? c.name.toLowerCase());
             const existing = seen.get(key);
             if (!existing) {
                 seen.set(key, c);
             } else if (c.builderId && !existing.builderId) {
-                // Prefer the one linked to a builder
                 seen.set(key, c);
             }
         }
-        const deduped = Array.from(seen.values()).sort((a, b) =>
+        return Array.from(seen.values()).sort((a, b) =>
             a.name.localeCompare(b.name)
         );
-        return args.limit ? deduped.slice(0, args.limit) : deduped;
     },
 });
 
@@ -344,9 +367,11 @@ export const getCommunities = query({
 export const getServices = query({
     args: { limit: v.optional(v.number()) },
     handler: async (ctx, args) => {
-        const services = await ctx.db.query("services").collect();
-        const active = services.filter((s) => s.active !== false);
-        return args.limit ? active.slice(0, args.limit) : active;
+        const services = await ctx.db
+            .query("services")
+            .withIndex("by_active", (q) => q.eq("active", true))
+            .take(args.limit ?? 500);
+        return services;
     },
 });
 

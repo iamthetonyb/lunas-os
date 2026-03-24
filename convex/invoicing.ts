@@ -4,6 +4,7 @@ import { v } from "convex/values";
 export const list = query({
     args: {
         builderId: v.optional(v.id("builders")),
+        limit: v.optional(v.number()),
     },
     handler: async (ctx, args) => {
         let invoices;
@@ -12,31 +13,24 @@ export const list = query({
                 .query("invoices")
                 .withIndex("by_builder", (q) => q.eq("builderId", args.builderId))
                 .order("desc")
-                .collect();
+                .take(args.limit ?? 500);
         } else {
             invoices = await ctx.db
                 .query("invoices")
                 .order("desc")
-                .collect();
+                .take(args.limit ?? 500);
         }
 
-        // Enrich with builder names
-        const enriched = await Promise.all(
-            invoices.map(async (invoice) => {
-                let builderName: string | null = null;
-                if (invoice.builderId) {
-                    const builder = await ctx.db.get(invoice.builderId);
-                    builderName = builder?.name ?? null;
-                }
-                return {
-                    ...invoice,
-                    id: invoice._id,
-                    builderName,
-                };
-            })
-        );
+        // BATCH-LOAD: collect unique builderIds, fetch once, build map
+        const builderIds = [...new Set(invoices.map(i => i.builderId).filter(Boolean))];
+        const builders = await Promise.all(builderIds.map(id => ctx.db.get(id!)));
+        const builderMap = new Map(builders.filter(Boolean).map(b => [b!._id, b!]));
 
-        return enriched;
+        return invoices.map((invoice) => ({
+            ...invoice,
+            id: invoice._id,
+            builderName: invoice.builderId ? builderMap.get(invoice.builderId)?.name ?? null : null,
+        }));
     },
 });
 

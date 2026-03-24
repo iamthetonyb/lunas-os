@@ -2,8 +2,9 @@ import { query, mutation } from "./_generated/server";
 import { v } from "convex/values";
 
 export const list = query({
-    handler: async (ctx) => {
-        const rates = await ctx.db.query("contractRates").collect();
+    args: { limit: v.optional(v.number()) },
+    handler: async (ctx, args) => {
+        const rates = await ctx.db.query("contractRates").take(args.limit ?? 1000);
         return rates.filter((r) => r.active !== false).map((r) => ({
             ...r,
             id: r._id,

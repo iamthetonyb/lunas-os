@@ -329,7 +329,7 @@ function UserModal({
 
 export default function UsersPage() {
   const { t } = useTranslation();
-  const data = useQuery(api.userFunctions.listWithOrgs);
+  const data = useQuery(api.userFunctions.listWithOrgs, {});
   const isLoading = data === undefined;
 
   const assignOrgMembership = useMutation(api.mutations.assignOrgMembership);
