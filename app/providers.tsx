@@ -20,7 +20,8 @@ export default function Providers({ children }: { children: ReactNode }) {
 
   if (!convex) {
     // During static page generation (e.g. /_not-found) the env var is unavailable.
-    return <>{children}</>;
+    // Return null to avoid rendering children that depend on Clerk/Convex providers.
+    return null;
   }
 
   return (
