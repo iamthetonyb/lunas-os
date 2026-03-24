@@ -10,9 +10,9 @@ type OcrResult = {
 };
 
 /**
- * Client-side OCR hook that sends files to the server-side PaddleOCR endpoint.
- * The actual OCR runs server-side via PaddleOCR v5 + ONNX Runtime for
- * maximum accuracy and performance. No WASM/model downloads in the browser.
+ * Client-side OCR hook that sends files to the server-side vision endpoint.
+ * Images are preprocessed with Sharp and extracted via Vision LLM (GPT-5 Nano)
+ * for structured data output. No WASM/model downloads in the browser.
  */
 export function useOcrWorker() {
     const [status, setStatus] = useState<OcrStatus>('idle');

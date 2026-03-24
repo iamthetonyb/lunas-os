@@ -608,9 +608,7 @@ export default function ImportPage() {
                                     <table className="min-w-full text-xs">
                                         <thead className="bg-gray-50 dark:bg-slate-700">
                                             <tr>
-                                                {Object.entries(fieldMapping)
-                                                    .filter(([, v]) => v && v !== '__skip__')
-                                                    .map(([, dest]) => (
+                                                {[...new Set(Object.values(fieldMapping).filter(v => v && v !== '__skip__'))].map(dest => (
                                                         <th key={dest} className="px-3 py-1.5 text-left text-gray-600 dark:text-gray-300 font-medium whitespace-nowrap">
                                                             {availableFields.find(f => f.value === dest)?.label || dest}
                                                         </th>
@@ -622,9 +620,7 @@ export default function ImportPage() {
                                                 const mapped = remapRow(raw);
                                                 return (
                                                     <tr key={i} className="text-gray-700 dark:text-gray-300">
-                                                        {Object.entries(fieldMapping)
-                                                            .filter(([, v]) => v && v !== '__skip__')
-                                                            .map(([, dest]) => (
+                                                        {[...new Set(Object.values(fieldMapping).filter(v => v && v !== '__skip__'))].map(dest => (
                                                                 <td key={dest} className="px-3 py-1.5 whitespace-nowrap max-w-[200px] truncate">
                                                                     {mapped[dest] || <span className="text-gray-300 dark:text-gray-600">&mdash;</span>}
                                                                 </td>

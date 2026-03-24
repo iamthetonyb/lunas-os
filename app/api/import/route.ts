@@ -1,6 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import Papa from 'papaparse';
 import * as XLSX from 'xlsx';
+import { generateObject } from 'ai';
+import { createOpenRouter } from '@openrouter/ai-sdk-provider';
+import { createOpenAI } from '@ai-sdk/openai';
+import { createGoogleGenerativeAI } from '@ai-sdk/google';
+import { z } from 'zod';
 
 export const runtime = 'nodejs';
 export const maxDuration = 60;
@@ -13,7 +18,7 @@ const OCR_EXTENSIONS = ['pdf', 'png', 'jpg', 'jpeg', 'webp', 'tiff', 'bmp'];
  * POST /api/import — Parse uploaded file into structured rows.
  *
  * - CSV/Excel: parsed server-side with papaparse/xlsx
- * - PDF/Images: OCR via PaddleOCR v5 (ONNX Runtime, server-side)
+ * - PDF/Images: Vision LLM extracts structured data (Sharp preprocessing → GPT-4o-mini)
  * - ocrText field: raw text already OCR'd, parse into rows
  */
 export async function POST(req: NextRequest) {
@@ -37,17 +42,16 @@ export async function POST(req: NextRequest) {
         const ext = file.name.split('.').pop()?.toLowerCase() ?? '';
         const fileNameHints = extractFileNameHints(file.name);
 
-        // OCR path: PDF/image files
+        // Vision OCR path: PDF/image files → Sharp preprocessing → Vision LLM
         if (doOcr || OCR_EXTENSIONS.includes(ext)) {
-            const { text, confidence } = await runPaddleOcr(file);
-            const rows = parseOcrText(text);
+            const { rows, rawText, confidence } = await runVisionOcr(file);
             const detection = detectDataType(rows, fileNameHints);
             return NextResponse.json({
                 success: true,
                 rows,
                 source: 'ocr',
                 rowCount: rows.length,
-                ocrText: text,
+                ocrText: rawText,
                 ocrConfidence: confidence,
                 ...detection,
             });
@@ -82,69 +86,129 @@ export async function POST(req: NextRequest) {
     }
 }
 
-// ── PaddleOCR ────────────────────────────────────────────────────────
+// ── Vision OCR (Sharp + Vision LLM) ─────────────────────────────────
 
-async function runPaddleOcr(file: File): Promise<{ text: string; confidence: number }> {
+// Model priority: Gemini 2.5 Flash Lite (1K free/mo) → GPT-5 Nano (OpenRouter) → GPT-4o-mini (OpenAI)
+function getExtractionModel() {
+    // 1. Google AI — Gemini 2.5 Flash Lite (FREE tier: 1K pages/mo)
+    if (process.env.GOOGLE_GENERATIVE_AI_API_KEY) {
+        const google = createGoogleGenerativeAI({ apiKey: process.env.GOOGLE_GENERATIVE_AI_API_KEY });
+        return google('gemini-2.5-flash-lite');
+    }
+    // 2. OpenRouter — GPT-5 Nano ($0.05/M input)
+    if (process.env.OPENROUTER_API_KEY) {
+        const openrouter = createOpenRouter({ apiKey: process.env.OPENROUTER_API_KEY });
+        return openrouter('openai/gpt-5-nano');
+    }
+    // 3. Direct OpenAI — GPT-4o-mini ($0.15/M)
+    const openai = createOpenAI({ apiKey: process.env.OPENAI_API_KEY });
+    return openai('gpt-4o-mini');
+}
+
+const IMAGE_EXTENSIONS = ['png', 'jpg', 'jpeg', 'webp', 'tiff', 'bmp'];
+
+const extractedRowSchema = z.object({
+    field: z.string().describe('Field name (e.g. builderName, serviceName, amount, modelPlanCode, unitRate)'),
+    value: z.string().describe('The value for this field'),
+});
+
+const visionRowSchema = z.object({
+    rows: z.array(z.array(extractedRowSchema)).describe(
+        'Each distinct data row from the document as an array of field-value pairs. Use normalized field names: ' +
+        'lot, communityName, builderName, serviceName, amount, checkNumber, checkDate, checkTotal, ' +
+        'invoiceNumber, poNumber, dueDate, startDate, address, status, notes, modelPlanCode, ' +
+        'modelPlanSqft, contactName, contactEmail, pricePerSqft, unitRate, unitType, scopeOfWork, ' +
+        'equipmentType, rentalRate, rentalPeriod, proposalDate, effectiveDate, category'
+    ),
+    rawText: z.string().describe('The full raw text content of the document, preserving layout'),
+    documentType: z.string().describe('Type of document: proposal, contract, invoice, spreadsheet, ledger, schedule, form, other'),
+    confidence: z.number().min(0).max(100).describe('How confident you are in the extraction accuracy (0-100)'),
+});
+
+const EXTRACTION_PROMPT = `Extract ALL structured data from this construction document.
+
+Rules:
+- Return every distinct data item as its own object in the rows array
+- For MODEL PLAN tables: each plan row gets its own object with modelPlanCode, modelPlanSqft, pricePerSqft, amount
+- For ADDITIONAL WORK / EQUIPMENT items (trucks, dumpsters, laborers, pressure washers, bobcats, etc.): each gets its own row with serviceName, unitRate, unitType (e.g. "per hour", "per unit", "7 day rental"), category="additionalWork"
+- For CONTRACTOR INFO: one row with builderName, communityName, contactName, contactEmail, proposalDate, effectiveDate, scopeOfWork, category="contractInfo"
+- For invoice line items: each line gets its own row with serviceName, amount, checkNumber, invoiceNumber, etc.
+- Use these field names when the data matches: lot, communityName, builderName, serviceName, amount, checkNumber, checkDate, checkTotal, invoiceNumber, poNumber, dueDate, startDate, address, status, notes, modelPlanCode, modelPlanSqft, pricePerSqft, unitRate, unitType, contactName, contactEmail, proposalDate, effectiveDate, scopeOfWork, equipmentType, rentalRate, rentalPeriod, category
+- All values must be strings
+- Capture EVERYTHING — even data we don't route yet (equipment rates, contact info, scope descriptions) is valuable
+- Include the full raw text preserving layout
+- Rate your confidence 0-100`;
+
+async function runVisionOcr(file: File): Promise<{ rows: ParsedRow[]; rawText: string; confidence: number }> {
     const rawBuffer = Buffer.from(await file.arrayBuffer());
+    const ext = file.name.split('.').pop()?.toLowerCase() ?? '';
+    const isPdf = ext === 'pdf';
+    const isImage = IMAGE_EXTENSIONS.includes(ext);
 
-    // Dynamic imports to avoid bundling ONNX/sharp at build time
-    const { PaddleOcrService } = await import('paddleocr');
-    const ort = await import('onnxruntime-node');
-    const sharp = (await import('sharp')).default;
+    if (isPdf) {
+        // Extract text from PDF using pdfjs-dist (pure JS, no native deps)
+        const pdfText = await extractPdfText(rawBuffer);
 
-    // Preprocess: convert to high-contrast grayscale, boost to 300 DPI equivalent
-    const image = sharp(rawBuffer)
-        .grayscale()
-        .normalize()      // maximize contrast
-        .sharpen()         // sharpen edges for better text detection
-        .resize({ width: 2400, withoutEnlargement: true }); // ~300 DPI for letter-size
-
-    const { data, info } = await image
-        .removeAlpha()
-        .raw()
-        .toBuffer({ resolveWithObject: true });
-
-    // PaddleOCR expects { data: Uint8Array, width, height } with RGB channels
-    // sharp grayscale outputs 1 channel — expand to 3 channels
-    const rgb = new Uint8Array(info.width * info.height * 3);
-    for (let i = 0; i < data.length; i++) {
-        rgb[i * 3] = data[i];
-        rgb[i * 3 + 1] = data[i];
-        rgb[i * 3 + 2] = data[i];
-    }
-
-    const imageInput = {
-        data: rgb,
-        width: info.width,
-        height: info.height,
-    };
-
-    const service = new PaddleOcrService({ ort: ort as any });
-    await service.initialize();
-    const result = await service.recognize(imageInput as any);
-    await service.destroy();
-
-    // Combine all detected text blocks
-    const lines: string[] = [];
-    let totalConfidence = 0;
-    let blockCount = 0;
-
-    if (Array.isArray(result)) {
-        for (const block of result) {
-            const text = (block as any).text ?? (block as any).value ?? '';
-            const score = (block as any).score ?? (block as any).confidence ?? 0;
-            if (text) {
-                lines.push(text);
-                totalConfidence += score;
-                blockCount++;
-            }
+        if (pdfText.trim().length > 50) {
+            // Text-based PDF — send extracted text to LLM for structured parsing (no vision needed)
+            const result = await generateObject({
+                model: getExtractionModel(),
+                schema: visionRowSchema,
+                messages: [{
+                    role: 'user',
+                    content: EXTRACTION_PROMPT + '\n\nDocument text:\n' + pdfText,
+                }],
+            });
+            return buildOcrResult(result.object);
         }
+        // Scanned/image-only PDF — fall through to error for now
+        throw new Error('Scanned PDF detected — image-only PDFs require a canvas renderer. Please convert to PNG/JPG first.');
     }
 
-    return {
-        text: lines.join('\n'),
-        confidence: blockCount > 0 ? Math.round((totalConfidence / blockCount) * 100) : 0,
-    };
+    if (!isImage) throw new Error(`Unsupported file type for vision OCR: .${ext}`);
+
+    // Image files: Sharp preprocessing → vision model
+    const sharp = (await import('sharp')).default;
+    const processed = await sharp(rawBuffer)
+        .grayscale()
+        .normalize()
+        .sharpen()
+        .resize({ width: 2400, withoutEnlargement: true })
+        .removeAlpha()
+        .jpeg({ quality: 85 })
+        .toBuffer();
+
+    const result = await generateObject({
+        model: getExtractionModel(),
+        schema: visionRowSchema,
+        messages: [{
+            role: 'user',
+            content: [
+                { type: 'image' as const, image: `data:image/jpeg;base64,${processed.toString('base64')}` },
+                { type: 'text' as const, text: EXTRACTION_PROMPT },
+            ],
+        }],
+    });
+
+    return buildOcrResult(result.object);
+}
+
+function buildOcrResult(extracted: z.infer<typeof visionRowSchema>): { rows: ParsedRow[]; rawText: string; confidence: number } {
+    const normalizedRows: ParsedRow[] = extracted.rows.map(fieldPairs => {
+        const normalized: ParsedRow = {};
+        for (const { field, value } of fieldPairs) {
+            normalized[normalizeHeader(field)] = String(value ?? '').trim();
+        }
+        return normalized;
+    });
+    return { rows: normalizedRows, rawText: extracted.rawText, confidence: extracted.confidence };
+}
+
+async function extractPdfText(buffer: Buffer): Promise<string> {
+    const { extractText } = await import('unpdf');
+    const { text } = await extractText(new Uint8Array(buffer));
+    // text is an array of strings (one per page)
+    return Array.isArray(text) ? text.join('\n\n--- Page Break ---\n\n') : String(text);
 }
 
 // ── Parsers ──────────────────────────────────────────────────────────
@@ -475,6 +539,25 @@ function normalizeHeader(raw: string): string {
         squarefeet: 'modelPlanSqft',
         notes: 'notes',
         ach: 'isAch',
+        contactname: 'contactName',
+        contactperson: 'contactName',
+        contactemail: 'contactEmail',
+        email: 'contactEmail',
+        contactphone: 'contactPhone',
+        phone: 'contactPhone',
+        pricepersqft: 'pricePerSqft',
+        pricesqft: 'pricePerSqft',
+        unitrate: 'unitRate',
+        unittype: 'unitType',
+        scopeofwork: 'scopeOfWork',
+        scope: 'scopeOfWork',
+        equipmenttype: 'equipmentType',
+        equipment: 'equipmentType',
+        rentalrate: 'rentalRate',
+        rentalperiod: 'rentalPeriod',
+        proposaldate: 'proposalDate',
+        effectivedate: 'effectiveDate',
+        category: 'category',
     };
     return map[h] || raw.trim();
 }
