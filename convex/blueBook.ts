@@ -34,7 +34,8 @@ export const list = query({
             baseQuery = ctx.db.query("blueBookEntries");
         }
 
-        let entries = await baseQuery.collect();
+        // Limit to prevent unbounded table scans — paginate server-side
+        let entries = await baseQuery.take(10000);
 
         // ── In-memory filters (not indexable) ──────────────────────────
         if (args.invoiced === false) {

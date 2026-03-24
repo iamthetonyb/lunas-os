@@ -85,22 +85,27 @@ export const build = mutation({
             amount: number;
         }> = [];
 
+        // Batch-load services and communities to avoid N+1 inside loop
+        const serviceIds = [...new Set(validEntries.map(e => e!.serviceId).filter(Boolean))];
+        const communityIds = [...new Set(validEntries.map(e => e!.communityId).filter(Boolean))];
+        const [serviceDocs, communityDocs] = await Promise.all([
+            Promise.all(serviceIds.map(id => ctx.db.get(id!))),
+            Promise.all(communityIds.map(id => ctx.db.get(id!))),
+        ]);
+        const serviceMap = new Map(serviceDocs.filter(Boolean).map(s => [s!._id, s!]));
+        const communityMap = new Map(communityDocs.filter(Boolean).map(c => [c!._id, c!]));
+
         for (const entry of validEntries) {
             if (!entry) continue;
             const amount = parseFloat(entry.amount ?? '0');
             subtotal += amount;
 
-            let serviceName = entry.accountCategoryName ?? 'Service';
-            if (entry.serviceId) {
-                const svc = await ctx.db.get(entry.serviceId);
-                if (svc) serviceName = svc.name;
-            }
-
-            let communityName = '';
-            if (entry.communityId) {
-                const comm = await ctx.db.get(entry.communityId);
-                communityName = comm?.name ?? '';
-            }
+            const serviceName = entry.serviceId
+                ? serviceMap.get(entry.serviceId)?.name ?? entry.accountCategoryName ?? 'Service'
+                : entry.accountCategoryName ?? 'Service';
+            const communityName = entry.communityId
+                ? communityMap.get(entry.communityId)?.name ?? ''
+                : '';
 
             lineData.push({
                 blueBookId: entry._id,

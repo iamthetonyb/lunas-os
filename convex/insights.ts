@@ -21,14 +21,12 @@ export const getCompletedJobsInternal = internalQuery({
     handler: async (ctx, { lastDays }) => {
         const cutoff = Date.now() - lastDays * 24 * 60 * 60 * 1000;
 
-        // Get job request services that are COMPLETE
-        const completed = await ctx.db
+        // Get recent COMPLETE job request services (bounded, not full table)
+        const recent = (await ctx.db
             .query("jobRequestServices")
             .withIndex("by_status", (q) => q.eq("status", "COMPLETE"))
-            .collect();
-
-        // Filter to recent
-        const recent = completed.filter((j) => j.createdAt >= cutoff);
+            .take(10000))
+            .filter((j) => j.createdAt >= cutoff);
 
         // Batch-load: collect unique jobRequestIds, fetch all at once, build map
         const jobRequestIds = [...new Set(recent.map((jrs) => jrs.jobRequestId))];
@@ -99,9 +97,12 @@ export const getCompletedJobsInternal = internalQuery({
 export const getForemanAffinities = internalQuery({
     args: {},
     handler: async (ctx) => {
-        const allJrs = await ctx.db
+        // Limit to last 12 months to avoid full table scans at scale
+        const cutoff12mo = Date.now() - 365 * 24 * 60 * 60 * 1000;
+        const allJrs = (await ctx.db
             .query("jobRequestServices")
-            .collect();
+            .take(20000))
+            .filter((jrs) => jrs.createdAt >= cutoff12mo);
 
         // Batch-load: collect unique jobRequestIds, fetch all at once, build map
         const jobRequestIds = [
@@ -172,9 +173,12 @@ export const getForemanAffinities = internalQuery({
 export const getServicePatterns = internalQuery({
     args: {},
     handler: async (ctx) => {
-        const allJrs = await ctx.db
+        // Limit to last 12 months to avoid full table scans at scale
+        const cutoff12mo = Date.now() - 365 * 24 * 60 * 60 * 1000;
+        const allJrs = (await ctx.db
             .query("jobRequestServices")
-            .collect();
+            .take(20000))
+            .filter((jrs) => jrs.createdAt >= cutoff12mo);
 
         // Batch-load: collect unique jobRequestIds, fetch all at once, build map
         const jobRequestIds = [

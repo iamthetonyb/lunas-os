@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { PageHeader } from '@/components/page-header';
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useCallback, useRef } from 'react';
 import { useQuery, useMutation } from 'convex/react';
 import { api } from '@/convex/_generated/api';
 import { toast } from 'sonner';
@@ -35,6 +35,33 @@ const ENTITY_PAGES: Record<string, string> = {
     jobRequest: '/schedule',
 };
 
+// All possible destination fields across targets (deduplicated)
+const ALL_DEST_FIELDS: { value: string; label: string }[] = [
+    { value: '__skip__', label: '-- Skip --' },
+    { value: 'lot', label: 'Lot' },
+    { value: 'builderName', label: 'Builder Name' },
+    { value: 'communityName', label: 'Community Name' },
+    { value: 'serviceName', label: 'Service Name' },
+    { value: 'amount', label: 'Amount' },
+    { value: 'checkNumber', label: 'Check Number' },
+    { value: 'checkDate', label: 'Check Date' },
+    { value: 'checkTotal', label: 'Check Total' },
+    { value: 'invoiceNumber', label: 'Invoice Number' },
+    { value: 'isAch', label: 'Is ACH' },
+    { value: 'poNumber', label: 'PO Number' },
+    { value: 'accountCategoryName', label: 'Account Category' },
+    { value: 'accountCategoryCode', label: 'Account Category Code' },
+    { value: 'startDate', label: 'Start Date' },
+    { value: 'dueDate', label: 'Due Date' },
+    { value: 'status', label: 'Status' },
+    { value: 'modelPlanCode', label: 'Model/Plan Code' },
+    { value: 'modelPlanSqft', label: 'Sq Ft' },
+    { value: 'assignedForemanName', label: 'Foreman' },
+    { value: 'crewName', label: 'Crew' },
+    { value: 'address', label: 'Address' },
+    { value: 'notes', label: 'Notes' },
+];
+
 function formatFileSize(bytes: number): string {
     if (bytes < 1024) return `${bytes} B`;
     if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
@@ -58,6 +85,9 @@ export default function ImportDetailPage() {
     const [editRowValues, setEditRowValues] = useState<Record<string, string>>({});
     const [viewTab, setViewTab] = useState<TabId>('mapped');
     const [saving, setSaving] = useState(false);
+    const [editMapping, setEditMapping] = useState<Record<string, string> | null>(null);
+    const [reExtracting, setReExtracting] = useState(false);
+    const reExtractRef = useRef<HTMLInputElement>(null);
 
     const results = useMemo(() => {
         if (!record?.results) return null;
@@ -83,6 +113,9 @@ export default function ImportDetailPage() {
         catch { return {}; }
     }, [record?.fieldMapping]);
 
+    // Active mapping = editing draft or saved mapping
+    const activeMapping = editMapping ?? fieldMapping;
+
     const mappedColumns = useMemo(() => {
         if (parsedRows.length === 0) return [];
         const allKeys = new Set<string>();
@@ -99,6 +132,67 @@ export default function ImportDetailPage() {
 
     const totalSuccess = results ? Object.values(results).reduce((s, r) => s + r.success, 0) : 0;
     const totalErrors = results ? Object.values(results).reduce((s, r) => s + r.errors, 0) : 0;
+
+    // ── Re-map raw rows using a mapping ──────────────────────────────────
+    const applyMapping = useCallback((rows: Record<string, string>[], mapping: Record<string, string>) => {
+        return rows.map(row => {
+            const mapped: Record<string, string> = {};
+            for (const [srcCol, destField] of Object.entries(mapping)) {
+                if (destField === '__skip__' || !destField) continue;
+                const val = row[srcCol];
+                if (val !== undefined && val !== '') {
+                    mapped[destField] = val;
+                }
+            }
+            return mapped;
+        });
+    }, []);
+
+    // ── Re-extract: upload same file to update rawRows ───────────────────
+    const handleReExtract = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+        setReExtracting(true);
+        try {
+            const formData = new FormData();
+            formData.append('file', file);
+            const ext = file.name.split('.').pop()?.toLowerCase() ?? '';
+            if (['pdf', 'png', 'jpg', 'jpeg', 'webp', 'tiff', 'bmp'].includes(ext)) {
+                formData.append('ocr', 'true');
+            }
+            const res = await fetch('/api/import', { method: 'POST', body: formData });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.error);
+
+            const ocrRows: Record<string, string>[] = data.rows ?? [];
+            // Save rawRows + update mapping if auto-detected
+            const newMapping: Record<string, string> = {};
+            if (data.fieldMapping) {
+                for (const [src, dest] of Object.entries(data.fieldMapping)) {
+                    newMapping[src] = dest as string;
+                }
+            }
+            for (const col of data.unmappedColumns ?? []) {
+                if (!newMapping[col]) newMapping[col] = '__skip__';
+            }
+
+            const remapped = applyMapping(ocrRows, Object.keys(newMapping).length > 0 ? newMapping : fieldMapping);
+
+            await updateImportRecord({
+                id: importId as Id<'importHistory'>,
+                rawRows: JSON.stringify(ocrRows),
+                parsedRows: JSON.stringify(remapped),
+                ...(Object.keys(newMapping).length > 0 ? { fieldMapping: JSON.stringify(newMapping) } : {}),
+            });
+            setEditMapping(null);
+            toast.success(`Re-extracted ${ocrRows.length} rows with ${Object.keys(ocrRows[0] ?? {}).length} fields`);
+        } catch (err: unknown) {
+            toast.error(err instanceof Error ? err.message : 'Re-extraction failed');
+        } finally {
+            setReExtracting(false);
+            if (reExtractRef.current) reExtractRef.current.value = '';
+        }
+    };
 
     if (record === undefined) {
         return (
@@ -129,6 +223,48 @@ export default function ImportDetailPage() {
             </>
         );
     }
+
+    // ── Field Mapping editing ────────────────────────────────────────────
+    const handleMappingEditStart = () => {
+        setEditMapping({ ...fieldMapping });
+    };
+
+    const handleMappingChange = (srcCol: string, destField: string) => {
+        setEditMapping(prev => prev ? { ...prev, [srcCol]: destField } : { [srcCol]: destField });
+    };
+
+    const handleMappingSave = async () => {
+        if (!editMapping) return;
+        setSaving(true);
+        try {
+            // Re-derive parsedRows from rawRows using the new mapping
+            const sourceRows = rawRows.length > 0 ? rawRows : parsedRows;
+            const remapped = applyMapping(sourceRows, editMapping);
+
+            await updateImportRecord({
+                id: importId as Id<'importHistory'>,
+                fieldMapping: JSON.stringify(editMapping),
+                parsedRows: JSON.stringify(remapped),
+            });
+            setEditMapping(null);
+            toast.success('Field mapping updated — mapped data re-derived');
+        } catch (err: unknown) {
+            toast.error(err instanceof Error ? err.message : 'Failed to save mapping');
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    const handleMappingCancel = () => setEditMapping(null);
+
+    // Preview what mapped data will look like with current draft mapping
+    const mappingPreviewCount = useMemo(() => {
+        if (!editMapping) return 0;
+        const sourceRows = rawRows.length > 0 ? rawRows : parsedRows;
+        const remapped = applyMapping(sourceRows, editMapping);
+        const nonEmpty = remapped.filter(r => Object.keys(r).length > 0);
+        return nonEmpty.length;
+    }, [editMapping, rawRows, parsedRows, applyMapping]);
 
     // ── Entity editing ──────────────────────────────────────────────────
     const handleEditStart = (entityId: string, currentData: string) => {
@@ -342,21 +478,37 @@ export default function ImportDetailPage() {
                 {/* ── Raw Extraction tab (read-only, all fields) ──────────── */}
                 {viewTab === 'raw' && (
                     <div className="bg-white dark:bg-slate-800 rounded-lg border border-gray-200 dark:border-gray-700 overflow-x-auto">
+                        {/* Hidden file input for re-extraction */}
+                        <input ref={reExtractRef} type="file" className="hidden" onChange={handleReExtract} accept=".csv,.xlsx,.xls,.pdf,.png,.jpg,.jpeg,.webp,.tiff,.bmp" />
                         {rawRows.length === 0 ? (
                             <div className="p-6 text-center">
                                 <p className="text-sm text-gray-500 dark:text-gray-400">
                                     Full extraction data was not captured for this import.
                                 </p>
-                                <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
-                                    Future imports will save all extracted fields, including those not mapped to a destination.
+                                <p className="text-xs text-gray-400 dark:text-gray-500 mt-1 mb-3">
+                                    Re-upload the original file to capture all extracted fields.
                                 </p>
+                                <button
+                                    onClick={() => reExtractRef.current?.click()}
+                                    disabled={reExtracting}
+                                    className="px-4 py-2 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 font-medium"
+                                >
+                                    {reExtracting ? 'Extracting...' : 'Re-extract from File'}
+                                </button>
                             </div>
                         ) : (
                             <>
-                                <div className="px-4 py-2 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-slate-700/50">
+                                <div className="px-4 py-2 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-slate-700/50 flex items-center justify-between">
                                     <p className="text-xs text-gray-500 dark:text-gray-400">
                                         All {rawColumns.length} fields extracted from the original document. Includes unmapped fields not routed to any target.
                                     </p>
+                                    <button
+                                        onClick={() => reExtractRef.current?.click()}
+                                        disabled={reExtracting}
+                                        className="px-3 py-1 text-xs border border-gray-300 dark:border-gray-600 rounded text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-slate-600 shrink-0"
+                                    >
+                                        {reExtracting ? 'Extracting...' : 'Re-extract'}
+                                    </button>
                                 </div>
                                 <table className="w-full text-xs">
                                     <thead>
@@ -483,38 +635,100 @@ export default function ImportDetailPage() {
                     </div>
                 )}
 
-                {/* ── Field Mapping tab ────────────────────────────────────── */}
+                {/* ── Field Mapping tab (editable with dropdowns) ────────── */}
                 {viewTab === 'mapping' && (
                     <div className="bg-white dark:bg-slate-800 rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
-                        {Object.keys(fieldMapping).length === 0 ? (
+                        {Object.keys(activeMapping).length === 0 ? (
                             <p className="p-6 text-sm text-gray-500 dark:text-gray-400 text-center">
                                 Field mapping was not saved for this import.
                             </p>
                         ) : (
-                            <table className="w-full text-sm">
-                                <thead>
-                                    <tr className="border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-slate-700/50">
-                                        <th className="px-4 py-2 text-left font-medium text-gray-600 dark:text-gray-300">Source Column</th>
-                                        <th className="px-4 py-2 text-center font-medium text-gray-400 dark:text-gray-500 w-12">&rarr;</th>
-                                        <th className="px-4 py-2 text-left font-medium text-gray-600 dark:text-gray-300">Mapped Field</th>
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
-                                    {Object.entries(fieldMapping).map(([src, dest]) => (
-                                        <tr key={src} className="hover:bg-gray-50 dark:hover:bg-slate-700/30">
-                                            <td className="px-4 py-2 text-gray-700 dark:text-gray-200 font-mono text-xs">{src}</td>
-                                            <td className="px-4 py-2 text-center text-gray-400">&rarr;</td>
-                                            <td className="px-4 py-2">
-                                                {dest === '__skip__' ? (
-                                                    <span className="text-xs text-gray-400 dark:text-gray-500 italic">skipped</span>
-                                                ) : (
-                                                    <span className="text-xs font-medium text-blue-700 dark:text-blue-300">{dest}</span>
-                                                )}
-                                            </td>
+                            <>
+                                {/* Toolbar */}
+                                <div className="px-4 py-2 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-slate-700/50 flex items-center justify-between gap-3">
+                                    <p className="text-xs text-gray-500 dark:text-gray-400">
+                                        {editMapping
+                                            ? `Editing — ${mappingPreviewCount} rows will have mapped data`
+                                            : `${Object.values(activeMapping).filter(v => v && v !== '__skip__').length} of ${Object.keys(activeMapping).length} columns mapped`}
+                                    </p>
+                                    <div className="flex gap-2">
+                                        {editMapping ? (
+                                            <>
+                                                <button
+                                                    onClick={handleMappingSave}
+                                                    disabled={saving}
+                                                    className="px-3 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50 font-medium"
+                                                >
+                                                    {saving ? 'Saving...' : 'Save & Re-map'}
+                                                </button>
+                                                <button
+                                                    onClick={handleMappingCancel}
+                                                    className="px-3 py-1 text-xs border border-gray-300 dark:border-gray-600 rounded text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-slate-600"
+                                                >
+                                                    Cancel
+                                                </button>
+                                            </>
+                                        ) : (
+                                            <button
+                                                onClick={handleMappingEditStart}
+                                                className="px-3 py-1 text-xs border border-blue-300 dark:border-blue-600 rounded text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/30 font-medium"
+                                            >
+                                                Edit Mapping
+                                            </button>
+                                        )}
+                                    </div>
+                                </div>
+
+                                <table className="w-full text-sm">
+                                    <thead>
+                                        <tr className="border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-slate-700/50">
+                                            <th className="px-4 py-2 text-left font-medium text-gray-600 dark:text-gray-300">Source Column</th>
+                                            <th className="px-4 py-2 text-center font-medium text-gray-400 dark:text-gray-500 w-12">&rarr;</th>
+                                            <th className="px-4 py-2 text-left font-medium text-gray-600 dark:text-gray-300">Destination Field</th>
+                                            {editMapping && <th className="px-4 py-2 text-left font-medium text-gray-400 dark:text-gray-500 w-28">Sample</th>}
                                         </tr>
-                                    ))}
-                                </tbody>
-                            </table>
+                                    </thead>
+                                    <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
+                                        {Object.entries(activeMapping).map(([src, dest]) => {
+                                            // Grab a sample value from the first row that has this column
+                                            const sourceRows = rawRows.length > 0 ? rawRows : parsedRows;
+                                            const sampleVal = sourceRows.find(r => r[src])
+                                                ?.[src] ?? '';
+
+                                            return (
+                                                <tr key={src} className="hover:bg-gray-50 dark:hover:bg-slate-700/30">
+                                                    <td className="px-4 py-2 text-gray-700 dark:text-gray-200 font-mono text-xs">{src}</td>
+                                                    <td className="px-4 py-2 text-center text-gray-400">&rarr;</td>
+                                                    <td className="px-4 py-2">
+                                                        {editMapping ? (
+                                                            <select
+                                                                value={dest || '__skip__'}
+                                                                onChange={e => handleMappingChange(src, e.target.value)}
+                                                                className="text-xs border border-gray-300 dark:border-gray-600 rounded px-2 py-1.5 bg-white dark:bg-slate-700 text-gray-900 dark:text-gray-100 w-full max-w-[220px]"
+                                                            >
+                                                                {ALL_DEST_FIELDS.map(f => (
+                                                                    <option key={f.value} value={f.value}>{f.label}</option>
+                                                                ))}
+                                                            </select>
+                                                        ) : dest === '__skip__' ? (
+                                                            <span className="text-xs text-gray-400 dark:text-gray-500 italic">skipped</span>
+                                                        ) : (
+                                                            <span className="text-xs font-medium text-blue-700 dark:text-blue-300">
+                                                                {ALL_DEST_FIELDS.find(f => f.value === dest)?.label ?? dest}
+                                                            </span>
+                                                        )}
+                                                    </td>
+                                                    {editMapping && (
+                                                        <td className="px-4 py-2 text-xs text-gray-400 dark:text-gray-500 max-w-[120px] truncate" title={sampleVal}>
+                                                            {sampleVal || <span className="text-gray-300 dark:text-gray-600">&mdash;</span>}
+                                                        </td>
+                                                    )}
+                                                </tr>
+                                            );
+                                        })}
+                                    </tbody>
+                                </table>
+                            </>
                         )}
                     </div>
                 )}
