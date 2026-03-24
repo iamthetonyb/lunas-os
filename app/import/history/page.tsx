@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { PageHeader } from '@/components/page-header';
 import { useState } from 'react';
 import { useQuery } from 'convex/react';
+import { useTranslation } from 'react-i18next';
 import { api } from '@/convex/_generated/api';
 
 type ActiveTarget = 'blueBook' | 'jobRequests' | 'builders' | 'communities' | 'services';
@@ -33,6 +34,7 @@ function formatFileSize(bytes: number): string {
 const PAGE_SIZE = 20;
 
 export default function ImportHistoryPage() {
+    const { t } = useTranslation();
     const [page, setPage] = useState(0);
     const imports = useQuery(api.queries.getImportHistory, { limit: PAGE_SIZE * (page + 1) }) ?? [];
 
@@ -42,36 +44,33 @@ export default function ImportHistoryPage() {
     return (
         <>
             <PageHeader
-                title="Import History"
-                description="Previously uploaded documents and their import results"
+                title={t('import.history')}
+                description={t('import.historyDescription')}
                 action={
                     <Link
                         href="/import"
                         className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-md bg-blue-600 text-white hover:bg-blue-700 transition-colors"
                     >
-                        New Import
+                        {t('import.title')}
                     </Link>
                 }
             />
             <main className="px-6 py-6">
                 {imports.length === 0 ? (
                     <div className="bg-white dark:bg-slate-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-12 text-center">
-                        <p className="text-gray-500 dark:text-gray-400 text-sm">No imports yet.</p>
-                        <Link href="/import" className="text-blue-600 dark:text-blue-400 text-sm hover:underline mt-2 inline-block">
-                            Upload your first document
-                        </Link>
+                        <p className="text-gray-500 dark:text-gray-400 text-sm">{t('import.noImports')}</p>
                     </div>
                 ) : (
                     <div className="bg-white dark:bg-slate-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
                         <table className="w-full text-sm">
                             <thead>
                                 <tr className="border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-slate-700/50">
-                                    <th className="text-left px-4 py-3 font-medium text-gray-600 dark:text-gray-300">File</th>
-                                    <th className="text-left px-4 py-3 font-medium text-gray-600 dark:text-gray-300">Date</th>
-                                    <th className="text-left px-4 py-3 font-medium text-gray-600 dark:text-gray-300">Targets</th>
-                                    <th className="text-right px-4 py-3 font-medium text-gray-600 dark:text-gray-300">Rows</th>
-                                    <th className="text-right px-4 py-3 font-medium text-gray-600 dark:text-gray-300">Result</th>
-                                    <th className="text-right px-4 py-3 font-medium text-gray-600 dark:text-gray-300">Size</th>
+                                    <th className="text-left px-4 py-3 font-medium text-gray-600 dark:text-gray-300">{t('import.file')}</th>
+                                    <th className="text-left px-4 py-3 font-medium text-gray-600 dark:text-gray-300">{t('common.date')}</th>
+                                    <th className="text-left px-4 py-3 font-medium text-gray-600 dark:text-gray-300">{t('import.targets')}</th>
+                                    <th className="text-right px-4 py-3 font-medium text-gray-600 dark:text-gray-300">{t('import.rows')}</th>
+                                    <th className="text-right px-4 py-3 font-medium text-gray-600 dark:text-gray-300">{t('import.result')}</th>
+                                    <th className="text-right px-4 py-3 font-medium text-gray-600 dark:text-gray-300">{t('import.size')}</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
@@ -107,12 +106,12 @@ export default function ImportHistoryPage() {
                                             </td>
                                             <td className="px-4 py-3">
                                                 <div className="flex flex-wrap gap-1">
-                                                    {record.detectedTargets.map((t) => (
+                                                    {record.detectedTargets.map((target) => (
                                                         <span
-                                                            key={t}
-                                                            className={`text-[10px] px-1.5 py-0.5 rounded border ${TARGET_COLORS[t as ActiveTarget] ?? 'bg-gray-100 text-gray-600 border-gray-200'}`}
+                                                            key={target}
+                                                            className={`text-[10px] px-1.5 py-0.5 rounded border ${TARGET_COLORS[target as ActiveTarget] ?? 'bg-gray-100 text-gray-600 border-gray-200'}`}
                                                         >
-                                                            {TARGET_LABELS[t as ActiveTarget] ?? t}
+                                                            {TARGET_LABELS[target as ActiveTarget] ?? target}
                                                         </span>
                                                     ))}
                                                 </div>
@@ -122,11 +121,11 @@ export default function ImportHistoryPage() {
                                             </td>
                                             <td className="px-4 py-3 text-right">
                                                 <span className={`text-xs font-medium ${totalErrors > 0 ? 'text-amber-600 dark:text-amber-400' : 'text-green-600 dark:text-green-400'}`}>
-                                                    {totalSuccess} ok
+                                                    {totalSuccess} {t('import.ok')}
                                                 </span>
                                                 {totalErrors > 0 && (
                                                     <span className="text-xs text-red-500 dark:text-red-400 ml-1">
-                                                        {totalErrors} err
+                                                        {totalErrors} {t('import.err')}
                                                     </span>
                                                 )}
                                             </td>
@@ -146,17 +145,17 @@ export default function ImportHistoryPage() {
                                 disabled={page === 0}
                                 className="px-3 py-1.5 text-xs font-medium rounded border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 hover:bg-white dark:hover:bg-slate-600 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
                             >
-                                Previous
+                                {t('common.previous')}
                             </button>
                             <span className="text-xs text-gray-500 dark:text-gray-400">
-                                Page {page + 1}
+                                {t('pagination.showing', { start: page * PAGE_SIZE + 1, end: Math.min((page + 1) * PAGE_SIZE, imports.length), total: imports.length })}
                             </span>
                             <button
                                 onClick={() => setPage(p => p + 1)}
                                 disabled={!hasMore}
                                 className="px-3 py-1.5 text-xs font-medium rounded border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 hover:bg-white dark:hover:bg-slate-600 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
                             >
-                                Next
+                                {t('common.next')}
                             </button>
                         </div>
                     </div>

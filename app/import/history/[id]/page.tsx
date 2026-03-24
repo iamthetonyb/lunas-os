@@ -5,6 +5,7 @@ import { useParams } from 'next/navigation';
 import { PageHeader } from '@/components/page-header';
 import { useState, useMemo, useCallback, useRef } from 'react';
 import { useQuery, useMutation } from 'convex/react';
+import { useTranslation } from 'react-i18next';
 import { api } from '@/convex/_generated/api';
 import { toast } from 'sonner';
 import type { Id } from '@/convex/_generated/dataModel';
@@ -71,6 +72,7 @@ function formatFileSize(bytes: number): string {
 type TabId = 'mapped' | 'raw' | 'entities' | 'mapping';
 
 export default function ImportDetailPage() {
+    const { t } = useTranslation();
     const params = useParams();
     const importId = params.id as string;
 
@@ -194,9 +196,9 @@ export default function ImportDetailPage() {
                 ...(Object.keys(newMapping).length > 0 ? { fieldMapping: JSON.stringify(newMapping) } : {}),
             });
             setEditMapping(null);
-            toast.success(`Re-extracted ${ocrRows.length} rows with ${Object.keys(ocrRows[0] ?? {}).length} fields`);
+            toast.success(t('import.reExtracted', { rows: ocrRows.length, fields: Object.keys(ocrRows[0] ?? {}).length }));
         } catch (err: unknown) {
-            toast.error(err instanceof Error ? err.message : 'Re-extraction failed');
+            toast.error(err instanceof Error ? err.message : t('import.failed'));
         } finally {
             setReExtracting(false);
             if (reExtractRef.current) reExtractRef.current.value = '';
@@ -206,7 +208,7 @@ export default function ImportDetailPage() {
     if (record === undefined) {
         return (
             <>
-                <PageHeader title="Loading..." />
+                <PageHeader title={t('common.loading')} />
                 <main className="px-6 py-6">
                     <div className="animate-pulse space-y-4">
                         <div className="h-24 bg-gray-200 dark:bg-slate-700 rounded-lg" />
@@ -220,12 +222,12 @@ export default function ImportDetailPage() {
     if (record === null) {
         return (
             <>
-                <PageHeader title="Import Not Found" />
+                <PageHeader title={t('import.importNotFound')} />
                 <main className="px-6 py-6">
                     <div className="bg-white dark:bg-slate-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-12 text-center">
-                        <p className="text-gray-500 dark:text-gray-400 mb-4">This import record does not exist.</p>
+                        <p className="text-gray-500 dark:text-gray-400 mb-4">{t('import.importNotFoundMessage')}</p>
                         <Link href="/import/history" className="text-blue-600 dark:text-blue-400 hover:underline text-sm">
-                            Back to Import History
+                            {t('import.backToHistory')}
                         </Link>
                     </div>
                 </main>
@@ -256,9 +258,9 @@ export default function ImportDetailPage() {
                 parsedRows: JSON.stringify(remapped),
             });
             setEditMapping(null);
-            toast.success('Field mapping updated — mapped data re-derived');
+            toast.success(t('import.mappingUpdated'));
         } catch (err: unknown) {
-            toast.error(err instanceof Error ? err.message : 'Failed to save mapping');
+            toast.error(err instanceof Error ? err.message : t('import.failed'));
         } finally {
             setSaving(false);
         }
@@ -272,7 +274,7 @@ export default function ImportDetailPage() {
             setEditValues(JSON.parse(currentData));
             setEditingEntity(entityId);
         } catch {
-            toast.error('Could not parse entity data');
+            toast.error(t('import.failed'));
         }
     };
 
@@ -284,9 +286,9 @@ export default function ImportDetailPage() {
             });
             setEditingEntity(null);
             setEditValues({});
-            toast.success('Entity data updated');
+            toast.success(t('import.entityUpdated'));
         } catch (err: unknown) {
-            toast.error(err instanceof Error ? err.message : 'Failed to save');
+            toast.error(err instanceof Error ? err.message : t('import.failed'));
         }
     };
 
@@ -308,16 +310,16 @@ export default function ImportDetailPage() {
             });
             setEditingRow(null);
             setEditRowValues({});
-            toast.success('Row updated');
+            toast.success(t('import.rowUpdated'));
         } catch (err: unknown) {
-            toast.error(err instanceof Error ? err.message : 'Failed to save');
+            toast.error(err instanceof Error ? err.message : t('import.failed'));
         } finally {
             setSaving(false);
         }
     };
 
     const handleAddField = () => {
-        const key = prompt('Field name:');
+        const key = prompt(t('import.fieldName'));
         if (key && key.trim()) {
             setEditRowValues(prev => ({ ...prev, [key.trim()]: '' }));
         }
@@ -325,10 +327,10 @@ export default function ImportDetailPage() {
 
     // ── Tab config ──────────────────────────────────────────────────────
     const tabs: { id: TabId; label: string }[] = [
-        { id: 'mapped', label: `Mapped Data (${parsedRows.length})` },
-        { id: 'raw', label: `Raw Extraction (${rawRows.length})` },
-        { id: 'entities', label: `Linked Entities (${entities?.length ?? 0})` },
-        { id: 'mapping', label: 'Field Mapping' },
+        { id: 'mapped', label: `${t('import.mappedData')} (${parsedRows.length})` },
+        { id: 'raw', label: `${t('import.rawExtraction')} (${rawRows.length})` },
+        { id: 'entities', label: `${t('import.linkedEntities')} (${entities?.length ?? 0})` },
+        { id: 'mapping', label: t('import.fieldMapping') },
     ];
 
     return (
@@ -341,7 +343,7 @@ export default function ImportDetailPage() {
                         href="/import/history"
                         className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-md border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors"
                     >
-                        Back to History
+                        {t('import.backToHistory')}
                     </Link>
                 }
             />
@@ -349,21 +351,21 @@ export default function ImportDetailPage() {
                 {/* Summary cards */}
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                     <div className="bg-white dark:bg-slate-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4">
-                        <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Rows Processed</p>
+                        <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">{t('import.rowsProcessed')}</p>
                         <p className="text-2xl font-bold text-gray-900 dark:text-gray-100 tabular-nums">{record.rowCount}</p>
                     </div>
                     <div className="bg-white dark:bg-slate-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4">
-                        <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Imported</p>
+                        <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">{t('import.imported2')}</p>
                         <p className="text-2xl font-bold text-green-600 dark:text-green-400 tabular-nums">{totalSuccess}</p>
                     </div>
                     <div className="bg-white dark:bg-slate-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4">
-                        <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Errors</p>
+                        <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">{t('import.errors')}</p>
                         <p className={`text-2xl font-bold tabular-nums ${totalErrors > 0 ? 'text-red-600 dark:text-red-400' : 'text-gray-300 dark:text-gray-600'}`}>
                             {totalErrors}
                         </p>
                     </div>
                     <div className="bg-white dark:bg-slate-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4">
-                        <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">File Size</p>
+                        <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">{t('import.fileSize')}</p>
                         <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">{formatFileSize(record.fileSize)}</p>
                     </div>
                 </div>
@@ -371,7 +373,7 @@ export default function ImportDetailPage() {
                 {/* Result breakdown */}
                 {results && (
                     <div className="bg-white dark:bg-slate-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4">
-                        <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-3">Results by Target</h3>
+                        <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-3">{t('import.resultsByTarget')}</h3>
                         <div className="flex flex-wrap gap-4">
                             {Object.entries(results)
                                 .filter(([, r]) => r.success > 0 || r.errors > 0)
@@ -380,8 +382,8 @@ export default function ImportDetailPage() {
                                         <span className={`text-[10px] px-1.5 py-0.5 rounded border ${TARGET_COLORS[target as ActiveTarget] ?? 'bg-gray-100 text-gray-600 border-gray-200'}`}>
                                             {TARGET_LABELS[target as ActiveTarget] ?? target}
                                         </span>
-                                        <span className="text-xs text-green-600 dark:text-green-400 font-medium">{r.success} ok</span>
-                                        {r.errors > 0 && <span className="text-xs text-red-500 dark:text-red-400">{r.errors} err</span>}
+                                        <span className="text-xs text-green-600 dark:text-green-400 font-medium">{r.success} {t('import.ok')}</span>
+                                        {r.errors > 0 && <span className="text-xs text-red-500 dark:text-red-400">{r.errors} {t('import.err')}</span>}
                                     </div>
                                 ))}
                         </div>
@@ -410,7 +412,7 @@ export default function ImportDetailPage() {
                     <div className="bg-white dark:bg-slate-800 rounded-lg border border-gray-200 dark:border-gray-700 overflow-x-auto">
                         {parsedRows.length === 0 ? (
                             <p className="p-6 text-sm text-gray-500 dark:text-gray-400 text-center">
-                                No mapped data saved. Future imports will include full row data.
+                                {t('import.noMappedData')}
                             </p>
                         ) : (
                             <table className="w-full text-xs">
@@ -443,9 +445,9 @@ export default function ImportDetailPage() {
                                                         ))}
                                                         <td className="px-2 py-1 text-right sticky right-0 bg-white dark:bg-slate-800">
                                                             <div className="flex gap-1 justify-end">
-                                                                <button onClick={handleAddField} className="px-1.5 py-0.5 text-[10px] text-blue-600 dark:text-blue-400 border border-blue-300 dark:border-blue-600 rounded hover:bg-blue-50 dark:hover:bg-blue-900/30" title="Add field">+</button>
-                                                                <button onClick={handleRowEditSave} disabled={saving} className="px-1.5 py-0.5 text-[10px] bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50">Save</button>
-                                                                <button onClick={() => { setEditingRow(null); setEditRowValues({}); }} className="px-1.5 py-0.5 text-[10px] border border-gray-300 dark:border-gray-600 rounded text-gray-600 dark:text-gray-300">Cancel</button>
+                                                                <button onClick={handleAddField} className="px-1.5 py-0.5 text-[10px] text-blue-600 dark:text-blue-400 border border-blue-300 dark:border-blue-600 rounded hover:bg-blue-50 dark:hover:bg-blue-900/30" title={t('import.addField')}>+</button>
+                                                                <button onClick={handleRowEditSave} disabled={saving} className="px-1.5 py-0.5 text-[10px] bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50">{t('common.save')}</button>
+                                                                <button onClick={() => { setEditingRow(null); setEditRowValues({}); }} className="px-1.5 py-0.5 text-[10px] border border-gray-300 dark:border-gray-600 rounded text-gray-600 dark:text-gray-300">{t('common.cancel')}</button>
                                                             </div>
                                                         </td>
                                                     </>
@@ -461,7 +463,7 @@ export default function ImportDetailPage() {
                                                                 onClick={() => handleRowEditStart(i)}
                                                                 className="px-1.5 py-0.5 text-[10px] border border-gray-300 dark:border-gray-600 rounded text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-slate-600"
                                                             >
-                                                                Edit
+                                                                {t('common.edit')}
                                                             </button>
                                                         </td>
                                                     </>
@@ -483,31 +485,31 @@ export default function ImportDetailPage() {
                         {rawRows.length === 0 ? (
                             <div className="p-6 text-center">
                                 <p className="text-sm text-gray-500 dark:text-gray-400">
-                                    Full extraction data was not captured for this import.
+                                    {t('import.noRawData')}
                                 </p>
                                 <p className="text-xs text-gray-400 dark:text-gray-500 mt-1 mb-3">
-                                    Re-upload the original file to capture all extracted fields.
+                                    {t('import.reUploadPrompt')}
                                 </p>
                                 <button
                                     onClick={() => reExtractRef.current?.click()}
                                     disabled={reExtracting}
                                     className="px-4 py-2 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 font-medium"
                                 >
-                                    {reExtracting ? 'Extracting...' : 'Re-extract from File'}
+                                    {reExtracting ? t('import.extracting') : t('import.reExtractFromFile')}
                                 </button>
                             </div>
                         ) : (
                             <>
                                 <div className="px-4 py-2 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-slate-700/50 flex items-center justify-between">
                                     <p className="text-xs text-gray-500 dark:text-gray-400">
-                                        All {rawColumns.length} fields extracted from the original document. Includes unmapped fields not routed to any target.
+                                        {t('import.rawFieldsInfo', { count: rawColumns.length })}
                                     </p>
                                     <button
                                         onClick={() => reExtractRef.current?.click()}
                                         disabled={reExtracting}
                                         className="px-3 py-1 text-xs border border-gray-300 dark:border-gray-600 rounded text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-slate-600 shrink-0"
                                     >
-                                        {reExtracting ? 'Extracting...' : 'Re-extract'}
+                                        {reExtracting ? t('import.extracting') : t('import.reExtract')}
                                     </button>
                                 </div>
                                 <table className="w-full text-xs">
@@ -521,7 +523,7 @@ export default function ImportDetailPage() {
                                                         <span className={isMapped ? 'text-blue-600 dark:text-blue-400' : 'text-gray-400 dark:text-gray-500'}>
                                                             {col}
                                                         </span>
-                                                        {!isMapped && <span className="text-[8px] ml-1 text-gray-300 dark:text-gray-600">unmapped</span>}
+                                                        {!isMapped && <span className="text-[8px] ml-1 text-gray-300 dark:text-gray-600">{t('import.unmapped')}</span>}
                                                     </th>
                                                 );
                                             })}
@@ -550,16 +552,16 @@ export default function ImportDetailPage() {
                     <div className="bg-white dark:bg-slate-800 rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
                         {!entities || entities.length === 0 ? (
                             <p className="p-6 text-sm text-gray-500 dark:text-gray-400 text-center">
-                                No linked entities recorded for this import.
+                                {t('import.noLinkedEntities')}
                             </p>
                         ) : (
                             <table className="w-full text-sm">
                                 <thead>
                                     <tr className="border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-slate-700/50">
-                                        <th className="px-4 py-2 text-left font-medium text-gray-600 dark:text-gray-300">Type</th>
-                                        <th className="px-4 py-2 text-left font-medium text-gray-600 dark:text-gray-300">Data</th>
-                                        <th className="px-4 py-2 text-left font-medium text-gray-600 dark:text-gray-300">Status</th>
-                                        <th className="px-4 py-2 text-right font-medium text-gray-600 dark:text-gray-300">Actions</th>
+                                        <th className="px-4 py-2 text-left font-medium text-gray-600 dark:text-gray-300">{t('import.entityType')}</th>
+                                        <th className="px-4 py-2 text-left font-medium text-gray-600 dark:text-gray-300">{t('import.entityData')}</th>
+                                        <th className="px-4 py-2 text-left font-medium text-gray-600 dark:text-gray-300">{t('common.status')}</th>
+                                        <th className="px-4 py-2 text-right font-medium text-gray-600 dark:text-gray-300">{t('common.actions')}</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
@@ -608,20 +610,20 @@ export default function ImportDetailPage() {
                                                 </td>
                                                 <td className="px-4 py-3">
                                                     <span className={`text-[10px] px-1.5 py-0.5 rounded ${entity.existed ? 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300' : 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300'}`}>
-                                                        {entity.existed ? 'existed' : 'created'}
+                                                        {entity.existed ? t('import.existed') : t('import.entityCreated')}
                                                     </span>
                                                 </td>
                                                 <td className="px-4 py-3 text-right">
                                                     {isEditing ? (
                                                         <div className="flex gap-1 justify-end">
-                                                            <button onClick={() => handleEditSave(entity._id)} className="px-2 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700">Save</button>
-                                                            <button onClick={() => { setEditingEntity(null); setEditValues({}); }} className="px-2 py-1 text-xs border border-gray-300 dark:border-gray-600 rounded text-gray-600 dark:text-gray-300">Cancel</button>
+                                                            <button onClick={() => handleEditSave(entity._id)} className="px-2 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700">{t('common.save')}</button>
+                                                            <button onClick={() => { setEditingEntity(null); setEditValues({}); }} className="px-2 py-1 text-xs border border-gray-300 dark:border-gray-600 rounded text-gray-600 dark:text-gray-300">{t('common.cancel')}</button>
                                                         </div>
                                                     ) : (
                                                         <div className="flex gap-1 justify-end">
-                                                            <button onClick={() => handleEditStart(entity._id, entity.mappedData)} className="px-2 py-1 text-xs border border-gray-300 dark:border-gray-600 rounded text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-slate-600">Edit</button>
+                                                            <button onClick={() => handleEditStart(entity._id, entity.mappedData)} className="px-2 py-1 text-xs border border-gray-300 dark:border-gray-600 rounded text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-slate-600">{t('common.edit')}</button>
                                                             {ENTITY_PAGES[entity.entityType] && (
-                                                                <Link href={ENTITY_PAGES[entity.entityType]} className="px-2 py-1 text-xs border border-gray-300 dark:border-gray-600 rounded text-blue-600 dark:text-blue-400 hover:bg-gray-100 dark:hover:bg-slate-600">View</Link>
+                                                                <Link href={ENTITY_PAGES[entity.entityType]} className="px-2 py-1 text-xs border border-gray-300 dark:border-gray-600 rounded text-blue-600 dark:text-blue-400 hover:bg-gray-100 dark:hover:bg-slate-600">{t('common.viewAll')}</Link>
                                                             )}
                                                         </div>
                                                     )}
@@ -640,7 +642,7 @@ export default function ImportDetailPage() {
                     <div className="bg-white dark:bg-slate-800 rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
                         {Object.keys(activeMapping).length === 0 ? (
                             <p className="p-6 text-sm text-gray-500 dark:text-gray-400 text-center">
-                                Field mapping was not saved for this import.
+                                {t('import.noFieldMapping')}
                             </p>
                         ) : (
                             <>
@@ -648,8 +650,8 @@ export default function ImportDetailPage() {
                                 <div className="px-4 py-2 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-slate-700/50 flex items-center justify-between gap-3">
                                     <p className="text-xs text-gray-500 dark:text-gray-400">
                                         {editMapping
-                                            ? `Editing — ${mappingPreviewCount} rows will have mapped data`
-                                            : `${Object.values(activeMapping).filter(v => v && v !== '__skip__').length} of ${Object.keys(activeMapping).length} columns mapped`}
+                                            ? t('import.editingMappingInfo', { count: mappingPreviewCount })
+                                            : t('import.mappedOfTotal', { mapped: Object.values(activeMapping).filter(v => v && v !== '__skip__').length, total: Object.keys(activeMapping).length })}
                                     </p>
                                     <div className="flex gap-2">
                                         {editMapping ? (
@@ -659,13 +661,13 @@ export default function ImportDetailPage() {
                                                     disabled={saving}
                                                     className="px-3 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50 font-medium"
                                                 >
-                                                    {saving ? 'Saving...' : 'Save & Re-map'}
+                                                    {saving ? t('import.saving') : t('import.saveAndRemap')}
                                                 </button>
                                                 <button
                                                     onClick={handleMappingCancel}
                                                     className="px-3 py-1 text-xs border border-gray-300 dark:border-gray-600 rounded text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-slate-600"
                                                 >
-                                                    Cancel
+                                                    {t('common.cancel')}
                                                 </button>
                                             </>
                                         ) : (
@@ -673,7 +675,7 @@ export default function ImportDetailPage() {
                                                 onClick={handleMappingEditStart}
                                                 className="px-3 py-1 text-xs border border-blue-300 dark:border-blue-600 rounded text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/30 font-medium"
                                             >
-                                                Edit Mapping
+                                                {t('import.editMappingBtn')}
                                             </button>
                                         )}
                                     </div>
@@ -682,10 +684,10 @@ export default function ImportDetailPage() {
                                 <table className="w-full text-sm">
                                     <thead>
                                         <tr className="border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-slate-700/50">
-                                            <th className="px-4 py-2 text-left font-medium text-gray-600 dark:text-gray-300">Source Column</th>
+                                            <th className="px-4 py-2 text-left font-medium text-gray-600 dark:text-gray-300">{t('import.sourceColumn')}</th>
                                             <th className="px-4 py-2 text-center font-medium text-gray-400 dark:text-gray-500 w-12">&rarr;</th>
-                                            <th className="px-4 py-2 text-left font-medium text-gray-600 dark:text-gray-300">Destination Field</th>
-                                            {editMapping && <th className="px-4 py-2 text-left font-medium text-gray-400 dark:text-gray-500 w-28">Sample</th>}
+                                            <th className="px-4 py-2 text-left font-medium text-gray-600 dark:text-gray-300">{t('import.destinationField')}</th>
+                                            {editMapping && <th className="px-4 py-2 text-left font-medium text-gray-400 dark:text-gray-500 w-28">{t('import.sample')}</th>}
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
@@ -711,7 +713,7 @@ export default function ImportDetailPage() {
                                                                 ))}
                                                             </select>
                                                         ) : dest === '__skip__' ? (
-                                                            <span className="text-xs text-gray-400 dark:text-gray-500 italic">skipped</span>
+                                                            <span className="text-xs text-gray-400 dark:text-gray-500 italic">{t('import.skip')}</span>
                                                         ) : (
                                                             <span className="text-xs font-medium text-blue-700 dark:text-blue-300">
                                                                 {ALL_DEST_FIELDS.find(f => f.value === dest)?.label ?? dest}

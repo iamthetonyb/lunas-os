@@ -140,6 +140,8 @@ When editing code, follow these rules:
 - Every new Convex query must use index-first filtering, never .collect() without index
 - Every query returning lists must support pagination
 - When creating mutations that change data, propagate to linked Blue Book entries
+- **Bilingual (EN/ES) is mandatory:** Every UI string must use t() from useTranslation(). Add keys to both public/locales/en/translation.json and public/locales/es/translation.json. Never hardcode English strings in JSX. Use the import.* namespace convention for import pages, common.* for shared labels, etc.
+- **Import dedup:** Always use findOrCreate* mutations (not create*) when importing builders, communities, and services to prevent duplicates
 
 ## Smart Questioning — What To Ask
 When the user gives an incomplete request, gather the missing required info BEFORE acting:
