@@ -17,8 +17,11 @@ type Props = {
 
 export function CreateEntryModal({ isOpen, onClose, builders, defaultBuilderId }: Props) {
     const createEntry = useMutation(api.blueBook.create);
-    const communities = useQuery(api.queries.getCommunities, {}) ?? [];
     const services = useQuery(api.queries.getServices, {}) ?? [];
+    const communities = useQuery(
+        api.queries.getCommunitiesByBuilder,
+        form.builderId ? { builderId: form.builderId as Id<'builders'> } : 'skip'
+    ) ?? [];
 
     const [form, setForm] = useState({
         builderId: defaultBuilderId ?? '',
@@ -89,7 +92,7 @@ export function CreateEntryModal({ isOpen, onClose, builders, defaultBuilderId }
 
                                 <div className="grid grid-cols-2 gap-3">
                                     <Field label="Builder">
-                                        <select value={form.builderId} onChange={(e) => setForm(f => ({ ...f, builderId: e.target.value }))} className="input-field">
+                                        <select value={form.builderId} onChange={(e) => setForm(f => ({ ...f, builderId: e.target.value, communityId: '' }))} className="input-field">
                                             <option value="">Select builder...</option>
                                             {builders.map(b => (
                                                 <option key={b._id} value={b._id}>{b.name}</option>
