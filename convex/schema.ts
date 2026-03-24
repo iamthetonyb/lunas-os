@@ -247,7 +247,8 @@ export default defineSchema({
         createdAt: v.number(),
     })
         .index("by_builder", ["builderId"])
-        .index("by_service", ["serviceId"]),
+        .index("by_service", ["serviceId"])
+        .index("by_builder_service", ["builderId", "serviceId"]),
 
     // Invoices
     invoices: defineTable({
