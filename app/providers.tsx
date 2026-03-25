@@ -1,18 +1,28 @@
 "use client";
 
 import { ClerkProvider, useAuth } from "@clerk/nextjs";
-import { ConvexReactClient } from "convex/react";
+import { ConvexReactClient, ConvexProvider } from "convex/react";
 import { ConvexProviderWithClerk } from "convex/react-clerk";
 import { ThemeProvider } from "next-themes";
 import { ReactNode, useEffect, useState } from "react";
+import { usePathname } from "next/navigation";
 import { I18nextProvider } from 'react-i18next';
 import i18n from '@/lib/i18n/client';
 
 const convexUrl = process.env.NEXT_PUBLIC_CONVEX_URL;
 const convex = convexUrl ? new ConvexReactClient(convexUrl) : null;
 
+// Routes that don't require Clerk auth — served with plain ConvexProvider
+const PUBLIC_ROUTES = ['/work-log/public'];
+
+function isPublicRoute(pathname: string | null): boolean {
+  if (!pathname) return false;
+  return PUBLIC_ROUTES.some(route => pathname.startsWith(route));
+}
+
 export default function Providers({ children }: { children: ReactNode }) {
   const [mounted, setMounted] = useState(false);
+  const pathname = usePathname();
 
   useEffect(() => {
     setMounted(true);
@@ -31,14 +41,28 @@ export default function Providers({ children }: { children: ReactNode }) {
     );
   }
 
+  const inner = (
+    <ThemeProvider attribute="class" defaultTheme="light" enableSystem={false}>
+      <I18nextProvider i18n={i18n}>
+        {mounted ? children : null}
+      </I18nextProvider>
+    </ThemeProvider>
+  );
+
+  // Public routes: plain ConvexProvider, no Clerk
+  if (isPublicRoute(pathname)) {
+    return (
+      <ConvexProvider client={convex}>
+        {inner}
+      </ConvexProvider>
+    );
+  }
+
+  // Authenticated routes: Clerk + Convex
   return (
     <ClerkProvider>
       <ConvexProviderWithClerk client={convex} useAuth={useAuth}>
-        <ThemeProvider attribute="class" defaultTheme="light" enableSystem={false}>
-          <I18nextProvider i18n={i18n}>
-            {mounted ? children : null}
-          </I18nextProvider>
-        </ThemeProvider>
+        {inner}
       </ConvexProviderWithClerk>
     </ClerkProvider>
   );

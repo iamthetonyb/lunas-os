@@ -304,7 +304,10 @@ export const update = mutation({
 
         const filtered: Record<string, any> = { updatedAt: Date.now() };
         for (const [k, val] of Object.entries(updates)) {
-            if (val !== undefined) filtered[k] = val;
+            if (val !== undefined) {
+                // Convert null FK values to undefined (schema uses v.optional, not v.null)
+                filtered[k] = val === null ? undefined : val;
+            }
         }
 
         // If a FK changed, refresh the corresponding denormalized field.
