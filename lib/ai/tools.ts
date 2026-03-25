@@ -210,6 +210,107 @@ export function createTools(options: ToolOptions = {}) {
             },
         }),
 
+        // ── Work Log Operations ──────────────────────────────────────
+
+        getWorkLogs: tool({
+            description:
+                "Get work logs with optional filters. Returns submitted, verified, and flagged work logs.",
+            inputSchema: z.object({
+                dateFrom: z.string().optional().describe("Filter from date (YYYY-MM-DD)"),
+                dateTo: z.string().optional().describe("Filter to date (YYYY-MM-DD)"),
+                status: z.string().optional().describe("Filter by status: SUBMITTED, VERIFIED, FLAGGED"),
+                limit: z.number().optional().describe("Max results (default 100)"),
+            }),
+            execute: async ({ dateFrom, dateTo, status, limit }) => {
+                const logs = await client.query(api.workLogs.list, {
+                    dateFrom, dateTo, status,
+                    limit: limit ?? 100,
+                });
+                return { count: logs.length, logs };
+            },
+        }),
+
+        getWorkLogStats: tool({
+            description:
+                "Get work log summary statistics: submitted, verified, flagged, pending foreman, extra work counts.",
+            inputSchema: z.object({
+                dateFrom: z.string().optional().describe("Filter from date (YYYY-MM-DD)"),
+                dateTo: z.string().optional().describe("Filter to date (YYYY-MM-DD)"),
+            }),
+            execute: async ({ dateFrom, dateTo }) => {
+                return await client.query(api.workLogs.getStats, { dateFrom, dateTo });
+            },
+        }),
+
+        foremanVerifyWorkLog: tool({
+            description:
+                "Foreman signs off on a crew work log submission. Required before admin can verify.",
+            inputSchema: z.object({
+                workLogId: z.string().describe("The work log ID"),
+                foremanUserId: z.string().describe("The foreman's user ID"),
+            }),
+            execute: async ({ workLogId, foremanUserId }) => {
+                const result = await client.mutation(api.workLogs.foremanVerify, {
+                    id: workLogId as any,
+                    foremanUserId: foremanUserId as any,
+                });
+                await logAction("foremanVerifyWorkLog", { workLogId, foremanUserId }, result);
+                return result;
+            },
+        }),
+
+        verifyWorkLog: tool({
+            description:
+                "Admin final verification of a work log. Requires foreman verification first. Auto-creates Blue Book entry.",
+            inputSchema: z.object({
+                workLogId: z.string().describe("The work log ID"),
+                verifiedBy: z.string().describe("The admin user ID performing verification"),
+            }),
+            execute: async ({ workLogId, verifiedBy }) => {
+                const result = await client.mutation(api.workLogs.verify, {
+                    id: workLogId as any,
+                    verifiedBy: verifiedBy as any,
+                });
+                await logAction("verifyWorkLog", { workLogId, verifiedBy }, result);
+                return result;
+            },
+        }),
+
+        flagWorkLog: tool({
+            description: "Flag a work log for review with a reason.",
+            inputSchema: z.object({
+                workLogId: z.string().describe("The work log ID"),
+                reason: z.string().describe("Reason for flagging"),
+            }),
+            execute: async ({ workLogId, reason }) => {
+                const result = await client.mutation(api.workLogs.flag, {
+                    id: workLogId as any,
+                    reason,
+                });
+                await logAction("flagWorkLog", { workLogId, reason }, result);
+                return result;
+            },
+        }),
+
+        setCommunityBillingStatus: tool({
+            description:
+                "Batch-update billing status for all Blue Book entries in a community. Status: invoiced_paid, admin_paid, or none.",
+            inputSchema: z.object({
+                communityId: z.string().describe("Community ID"),
+                billingStatus: z.enum(["invoiced_paid", "admin_paid", "none"]).describe("New billing status"),
+                builderId: z.string().optional().describe("Optional builder ID to scope within community"),
+            }),
+            execute: async ({ communityId, billingStatus, builderId }) => {
+                const result = await client.mutation(api.workLogs.setCommunityBillingStatus, {
+                    communityId: communityId as any,
+                    billingStatus,
+                    builderId: builderId as any,
+                });
+                await logAction("setCommunityBillingStatus", { communityId, billingStatus }, result);
+                return result;
+            },
+        }),
+
         // ── Write Operations ─────────────────────────────────────────
 
         assignForeman: tool({

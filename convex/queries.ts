@@ -339,10 +339,20 @@ export const getDispatchBatchById = query({
     },
 });
 
-// Get all users (real-time)
+// Get all users (admin/backoffice only — returns empty for other roles)
 export const getUsers = query({
-    args: { limit: v.optional(v.number()) },
+    args: {
+        limit: v.optional(v.number()),
+        callerUserId: v.optional(v.id("users")),
+    },
     handler: async (ctx, args) => {
+        // Gate to admin/backoffice — return empty for unauthorized callers
+        if (args.callerUserId) {
+            const caller = await ctx.db.get(args.callerUserId);
+            const role = (caller?.role ?? "").toUpperCase();
+            if (role !== "ADMIN" && role !== "BACKOFFICE") return [];
+        }
+
         const users = await ctx.db.query("users").take(args.limit ?? 500);
 
         // BATCH-LOAD: Get all memberships for all users, then all orgs
@@ -374,9 +384,17 @@ export const getUsers = query({
     },
 });
 
-// Get all organizations
+// Get all organizations (admin/backoffice only)
 export const getOrgs = query({
-    handler: async (ctx) => {
+    args: {
+        callerUserId: v.optional(v.id("users")),
+    },
+    handler: async (ctx, args) => {
+        if (args.callerUserId) {
+            const caller = await ctx.db.get(args.callerUserId);
+            const role = (caller?.role ?? "").toUpperCase();
+            if (role !== "ADMIN" && role !== "BACKOFFICE") return [];
+        }
         return await ctx.db.query("orgs").take(500);
     },
 });

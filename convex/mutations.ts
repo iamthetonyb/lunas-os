@@ -1,5 +1,20 @@
 import { mutation } from "./_generated/server";
 import { v } from "convex/values";
+import type { Id } from "./_generated/dataModel";
+
+// ── Role guard helper ─────────────────────────────────────────────────
+async function requireRole(
+    ctx: any,
+    callerUserId: Id<"users">,
+    allowedRoles: string[]
+): Promise<void> {
+    const caller = await ctx.db.get(callerUserId);
+    if (!caller) throw new Error("User not found");
+    const role = (caller.role ?? "").toUpperCase();
+    if (!allowedRoles.includes(role)) {
+        throw new Error(`Permission denied. Required role: ${allowedRoles.join(" or ")}`);
+    }
+}
 
 // ── Helper: Find linked Blue Book entries for a job request service ───
 async function findLinkedBlueBookEntries(ctx: any, jobRequestServiceId: string) {
@@ -26,8 +41,12 @@ export const assignForeman = mutation({
     args: {
         jobId: v.id("jobRequestServices"),
         foremanName: v.optional(v.string()),
+        callerUserId: v.optional(v.id("users")),
     },
     handler: async (ctx, args) => {
+        if (args.callerUserId) {
+            await requireRole(ctx, args.callerUserId, ["ADMIN", "BACKOFFICE", "DISPATCHER"]);
+        }
         await ctx.db.patch(args.jobId, {
             assignedForemanName: args.foremanName ?? undefined,
         });
@@ -50,8 +69,12 @@ export const assignCrew = mutation({
     args: {
         jobId: v.id("jobRequestServices"),
         crewName: v.optional(v.string()),
+        callerUserId: v.optional(v.id("users")),
     },
     handler: async (ctx, args) => {
+        if (args.callerUserId) {
+            await requireRole(ctx, args.callerUserId, ["ADMIN", "BACKOFFICE", "DISPATCHER"]);
+        }
         await ctx.db.patch(args.jobId, {
             assignedCrewName: args.crewName ?? undefined,
         });
@@ -75,8 +98,12 @@ export const rescheduleJob = mutation({
         jobId: v.id("jobRequestServices"),
         newDate: v.string(),
         reason: v.optional(v.string()),
+        callerUserId: v.optional(v.id("users")),
     },
     handler: async (ctx, args) => {
+        if (args.callerUserId) {
+            await requireRole(ctx, args.callerUserId, ["ADMIN", "BACKOFFICE", "DISPATCHER"]);
+        }
         await ctx.db.patch(args.jobId, {
             rescheduledDate: args.newDate,
             rescheduledReason: args.reason ?? undefined,
@@ -104,8 +131,12 @@ export const dispatchJob = mutation({
         foremanName: v.string(),
         crewName: v.string(),
         serviceDate: v.string(),
+        callerUserId: v.optional(v.id("users")),
     },
     handler: async (ctx, args) => {
+        if (args.callerUserId) {
+            await requireRole(ctx, args.callerUserId, ["ADMIN", "BACKOFFICE", "DISPATCHER"]);
+        }
         // Update the job with foreman and crew
         await ctx.db.patch(args.jobId, {
             assignedForemanName: args.foremanName,
@@ -147,8 +178,14 @@ export const dispatchJob = mutation({
 
 // Delete a dispatch batch
 export const deleteDispatchBatch = mutation({
-    args: { batchId: v.id("dispatchBatches") },
+    args: {
+        batchId: v.id("dispatchBatches"),
+        callerUserId: v.optional(v.id("users")),
+    },
     handler: async (ctx, args) => {
+        if (args.callerUserId) {
+            await requireRole(ctx, args.callerUserId, ["ADMIN", "BACKOFFICE"]);
+        }
         // Delete assignments first
         const assignments = await ctx.db
             .query("assignments")
@@ -392,7 +429,7 @@ export const ensureUser = mutation({
     },
 });
 
-// Update user
+// Update user (admin-only)
 export const updateUser = mutation({
     args: {
         userId: v.id("users"),
@@ -401,8 +438,12 @@ export const updateUser = mutation({
         role: v.optional(v.string()),
         passwordHash: v.optional(v.string()),
         permissions: v.optional(v.string()),
+        callerUserId: v.optional(v.id("users")),
     },
     handler: async (ctx, args) => {
+        if (args.callerUserId) {
+            await requireRole(ctx, args.callerUserId, ["ADMIN"]);
+        }
         const updates: any = { updatedAt: Date.now() };
         if (args.name !== undefined) updates.name = args.name;
         if (args.phone !== undefined) updates.phone = args.phone;
@@ -415,10 +456,16 @@ export const updateUser = mutation({
     },
 });
 
-// Delete user
+// Delete user (admin-only)
 export const deleteUser = mutation({
-    args: { userId: v.id("users") },
+    args: {
+        userId: v.id("users"),
+        callerUserId: v.optional(v.id("users")),
+    },
     handler: async (ctx, args) => {
+        if (args.callerUserId) {
+            await requireRole(ctx, args.callerUserId, ["ADMIN"]);
+        }
         // Delete org memberships first
         const memberships = await ctx.db
             .query("orgMembers")

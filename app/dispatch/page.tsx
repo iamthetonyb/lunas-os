@@ -32,7 +32,8 @@ export default function DispatchPage() {
   }, []);
 
   // Convex reactive query - no refreshInterval needed, Convex is realtime
-  const allBatches = useQuery(api.queries.getDispatchBatches, {}) ?? [];
+  const callerUserId = session?.user?.id as import('@/convex/_generated/dataModel').Id<'users'> | undefined;
+  const allBatches = useQuery(api.queries.getDispatchBatches, callerUserId ? { callerUserId } : {}) ?? [];
 
   // Convex mutation for deleting batches
   const deleteBatchMutation = useMutation(api.mutations.deleteDispatchBatch);

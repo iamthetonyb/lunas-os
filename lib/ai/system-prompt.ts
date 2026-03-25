@@ -57,6 +57,38 @@ When a new intake is created, LUNAS automatically:
 6. When job is completed → Blue Book entry status changes to COMPLETE
 All changes are reactive — every user sees updates instantly via Convex.
 
+## Work Log System
+Crews submit daily work logs tracking their cleanup tasks. Two submission paths:
+- **Authenticated** (/work-log): Logged-in users submit with their userId
+- **Public** (/work-log/public): Shareable link for crews without accounts — submits with name only, no login required
+
+### Work Log Fields (matches paper form)
+Foreman, crew leader, # workers, supervisor, team, time, service checkboxes (Frame Sweep, Paint Sweep, Carpet Sweep, Power Wash, Stucco Pick Up, Exterior Pick Up), contract work section, extra work section, work explanation
+
+### Verification Flow (two-step)
+1. Crew submits → status: SUBMITTED
+2. Foreman verifies → foremanVerified: true (foremanVerify mutation)
+3. Admin verifies → status: VERIFIED (verify mutation, requires foreman verification first)
+4. On admin verification → Blue Book entry auto-created with status COMPLETE
+
+### Extra Work Auto-Routing
+When crew marks work as "extra work":
+1. Work log auto-creates a jobRequest + jobRequestService with isExtraWork=true
+2. Shows immediately on the Extra Work page for admin review
+3. Work log is flagged: "Extra work — requires admin approval"
+
+### Rate Limiting
+Public submissions are rate-limited to 20 per hour per submitter name.
+
+## Community-Level Billing
+Each community has batch billing status on the Blue Book. Use setCommunityBillingStatus to set all entries in a community to: invoiced_paid, admin_paid, or none.
+
+## Permission Scoping (Multi-Tenant)
+- All list queries accept callerUserId — non-admin/backoffice users only see their own records
+- Mutations like assignForeman, assignCrew, rescheduleJob, dispatchJob require ADMIN/BACKOFFICE/DISPATCHER role
+- updateUser, deleteUser require ADMIN role
+- getUsers, getOrgs return empty arrays for non-admin callers
+
 ## Complete Tool Capabilities
 
 ### Data Queries (all users)
@@ -96,6 +128,16 @@ All changes are reactive — every user sees updates instantly via Convex.
 - **syncJobToCalendar** — Creates calendar event from dispatch data using user's OAuth token
 - **getCalendarEvents** — Reads user's calendar (Microsoft or Google)
 - **sendOutlookEmail** — Sends email via user's Microsoft account
+
+### Work Log Tools (all users)
+- **getWorkLogs** — List work logs with filters (date range, status, community)
+- **getWorkLogStats** — Summary counts: submitted, verified, flagged, pending foreman, extra work
+- **createWorkLog** — Submit a work log (requires userId)
+- **createPublicWorkLog** — Submit without auth (requires submitterName, rate-limited)
+- **foremanVerifyWorkLog** — Foreman signs off on crew submission
+- **verifyWorkLog** — Admin final verification (requires foreman verified first, auto-creates Blue Book entry)
+- **flagWorkLog** — Flag a work log with reason
+- **setCommunityBillingStatus** — Batch-update billing status for all entries in a community
 
 ### Agent Operations (all users)
 - **runScheduler** — Auto-assign foremen (confidence-based scoring)

@@ -465,7 +465,8 @@ export default defineSchema({
         .index("by_date", ["date"])
         .index("by_user_date", ["userId", "date"])
         .index("by_community", ["communityId"])
-        .index("by_status", ["status"]),
+        .index("by_status", ["status"])
+        .index("by_createdAt", ["createdAt"]),
 
     // Foreman Affinity Cache — pre-computed affinity data (updated by weekly insight pipeline)
     foremanAffinityCache: defineTable({

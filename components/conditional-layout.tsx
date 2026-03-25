@@ -3,7 +3,7 @@
 import { usePathname } from 'next/navigation';
 import { AppLayout } from './app-layout';
 
-const publicPaths = ['/login', '/signin', '/api/auth'];
+const publicPaths = ['/login', '/signin', '/api/auth', '/work-log/public'];
 
 export function ConditionalLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();

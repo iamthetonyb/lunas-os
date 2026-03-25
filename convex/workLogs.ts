@@ -463,6 +463,10 @@ export const remove = mutation({
     },
 });
 
+// ── Rate limit config ─────────────────────────────────────────────────
+const RATE_LIMIT_WINDOW_MS = 60 * 60 * 1000; // 1 hour
+const RATE_LIMIT_MAX_SUBMISSIONS = 20; // max per hour per submitter
+
 // ── Public submission (no login required — shareable link) ───────────
 export const createPublic = mutation({
     args: {
@@ -499,6 +503,21 @@ export const createPublic = mutation({
         }
         if (args.isExtraWork && !args.extraWorkDescription?.trim()) {
             throw new Error("Extra work requires a description");
+        }
+
+        // ── Rate limiting: max N submissions per hour per submitter name ──
+        const cutoff = Date.now() - RATE_LIMIT_WINDOW_MS;
+        const recentLogs = await ctx.db
+            .query("workLogs")
+            .withIndex("by_createdAt")
+            .order("desc")
+            .take(200);
+        const recentBySubmitter = recentLogs.filter(
+            (l) => l.userName?.toLowerCase() === args.submitterName.trim().toLowerCase()
+                && (l.createdAt ?? 0) > cutoff
+        );
+        if (recentBySubmitter.length >= RATE_LIMIT_MAX_SUBMISSIONS) {
+            throw new Error("Too many submissions. Please wait before submitting again.");
         }
 
         // Try to find existing user by name
