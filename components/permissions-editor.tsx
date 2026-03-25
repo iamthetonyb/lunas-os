@@ -122,6 +122,17 @@ export const PERMISSION_SECTIONS: SectionDef[] = [
         ],
     },
     {
+        id: 'workLog',
+        labelEn: 'Work Log',
+        labelEs: 'Registro de Trabajo',
+        icon: '📋',
+        permissions: [
+            { key: 'workLog.view', labelEn: 'View work logs', labelEs: 'Ver registros de trabajo' },
+            { key: 'workLog.submit', labelEn: 'Submit work logs', labelEs: 'Enviar registros de trabajo' },
+            { key: 'workLog.verify', labelEn: 'Verify & flag logs', labelEs: 'Verificar y marcar registros' },
+        ],
+    },
+    {
         id: 'ai',
         labelEn: 'AI Assistant',
         labelEs: 'Asistente IA',
@@ -158,6 +169,7 @@ export function getDefaultPermissions(role: string): PermissionsState {
         state.schedule = { enabled: true, permissions: { 'schedule.view': true, 'schedule.manage': false, 'schedule.complete': role === 'FOREMAN' } };
         state.intake = { enabled: true, permissions: { 'intake.view': true, 'intake.create': true, 'intake.manage': false } };
         state.blueBook = { enabled: true, permissions: { 'blueBook.view': true, 'blueBook.manage': false, 'blueBook.viewAmounts': false } };
+        state.workLog = { enabled: true, permissions: { 'workLog.view': true, 'workLog.submit': true, 'workLog.verify': false } };
     }
     return state;
 }

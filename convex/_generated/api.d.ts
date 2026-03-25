@@ -28,6 +28,7 @@ import type * as queries from "../queries.js";
 import type * as scheduler from "../scheduler.js";
 import type * as seedHelpers from "../seedHelpers.js";
 import type * as userFunctions from "../userFunctions.js";
+import type * as workLogs from "../workLogs.js";
 
 import type {
   ApiFromModules,
@@ -56,6 +57,7 @@ declare const fullApi: ApiFromModules<{
   scheduler: typeof scheduler;
   seedHelpers: typeof seedHelpers;
   userFunctions: typeof userFunctions;
+  workLogs: typeof workLogs;
 }>;
 
 /**

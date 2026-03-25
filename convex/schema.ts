@@ -418,6 +418,42 @@ export default defineSchema({
         .index("by_import", ["importId"])
         .index("by_entity", ["entityType", "entityId"]),
 
+    // Work Logs — crew/foreman daily work submissions (survey-style)
+    workLogs: defineTable({
+        userId: v.id("users"),
+        userName: v.optional(v.string()),
+        date: v.string(), // YYYY-MM-DD
+        communityId: v.optional(v.id("communities")),
+        communityName: v.optional(v.string()),
+        builderId: v.optional(v.id("builders")),
+        builderName: v.optional(v.string()),
+        serviceType: v.string(), // e.g. "Final Clean", "QA", "Tubs / Windows", "Frame Sweep"
+        lots: v.string(), // "Lot 13,14,15" — can be multiple
+        sqft: v.optional(v.number()),
+        amount: v.optional(v.number()),
+        isExtraWork: v.optional(v.boolean()),
+        extraWorkDescription: v.optional(v.string()),
+        notes: v.optional(v.string()),
+        subContractorName: v.optional(v.string()),
+        windowCount: v.optional(v.number()), // for tubs/windows jobs
+        hoursWorked: v.optional(v.number()), // for hourly/extra work
+        status: v.string(), // DRAFT, SUBMITTED, VERIFIED, FLAGGED
+        flagReason: v.optional(v.string()),
+        verifiedBy: v.optional(v.id("users")),
+        verifiedAt: v.optional(v.number()),
+        // Links to system records for cross-reference
+        blueBookEntryId: v.optional(v.id("blueBookEntries")),
+        jobRequestServiceId: v.optional(v.id("jobRequestServices")),
+        assignmentValidated: v.optional(v.boolean()), // true if work matches an assignment
+        createdAt: v.number(),
+        updatedAt: v.optional(v.number()),
+    })
+        .index("by_user", ["userId"])
+        .index("by_date", ["date"])
+        .index("by_user_date", ["userId", "date"])
+        .index("by_community", ["communityId"])
+        .index("by_status", ["status"]),
+
     // Foreman Affinity Cache — pre-computed affinity data (updated by weekly insight pipeline)
     foremanAffinityCache: defineTable({
         communityId: v.id("communities"),

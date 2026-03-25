@@ -11,9 +11,10 @@ type Props = {
     onDeleteEntry: (entryId: string) => void;
     onPhaseOverride: (communityId: string, lot: string, phaseCode: string, complete: boolean) => void;
     onServiceToggle: (communityId: string, lot: string, phaseCode: string, serviceName: string, complete: boolean) => void;
+    onSetCommunityBilling?: (communityId: string, billingStatus: string) => void;
 };
 
-export function CommunityGroup({ group, onEditEntry, onDeleteEntry, onPhaseOverride, onServiceToggle }: Props) {
+export function CommunityGroup({ group, onEditEntry, onDeleteEntry, onPhaseOverride, onServiceToggle, onSetCommunityBilling }: Props) {
     const { t } = useTranslation();
     const [isExpanded, setIsExpanded] = useState(false);
     const completionPct = group.totalEntries > 0
@@ -44,6 +45,32 @@ export function CommunityGroup({ group, onEditEntry, onDeleteEntry, onPhaseOverr
                     </span>
                 </div>
                 <div className="flex items-center gap-3">
+                    {isExpanded && onSetCommunityBilling && (
+                        <div
+                            className="flex items-center gap-1"
+                            onClick={(e) => e.stopPropagation()}
+                        >
+                            {[
+                                { value: 'invoiced_paid', label: t('blueBook.invoicedPaid'), color: 'bg-green-500' },
+                                { value: 'admin', label: t('blueBook.adminPaid'), color: 'bg-blue-500' },
+                                { value: 'no_invoice', label: t('blueBook.noBilling'), color: 'bg-gray-300 dark:bg-gray-500' },
+                            ].map((opt) => (
+                                <button
+                                    key={opt.value}
+                                    type="button"
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        onSetCommunityBilling(group.communityId ?? '', opt.value);
+                                    }}
+                                    className="flex items-center gap-1 px-2 py-1 text-[11px] rounded-full border border-gray-200 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors"
+                                    title={opt.label}
+                                >
+                                    <span className={`w-2 h-2 rounded-full ${opt.color}`} />
+                                    <span className="hidden sm:inline">{opt.label}</span>
+                                </button>
+                            ))}
+                        </div>
+                    )}
                     <div className="w-24 h-2 bg-gray-200 dark:bg-gray-600 rounded-full overflow-hidden">
                         <div
                             className="h-full bg-green-500 rounded-full transition-all duration-300"

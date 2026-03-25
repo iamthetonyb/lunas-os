@@ -74,6 +74,7 @@ export default function BlueBookPage() {
     const [showCreate, setShowCreate] = useState(false);
     const [showPhaseConfig, setShowPhaseConfig] = useState(false);
     const removeEntry = useMutation(api.blueBook.remove);
+    const setCommunityBilling = useMutation(api.workLogs.setCommunityBillingStatus);
 
     // ── Data queries ─────────────────────────────────────────────────
     const builders = useQuery(api.queries.getBuilders, {}) ?? [];
@@ -231,6 +232,26 @@ export default function BlueBookPage() {
         [filters.builderId, setOverrideMutation, communityGroups]
     );
 
+    const handleSetCommunityBilling = useCallback(
+        async (communityId: string, billingStatus: string) => {
+            if (!filters.builderId) {
+                toast.error('Select a builder first');
+                return;
+            }
+            try {
+                await setCommunityBilling({
+                    communityId: communityId as Id<'communities'>,
+                    builderId: filters.builderId as Id<'builders'>,
+                    billingStatus,
+                });
+                toast.success('Billing status updated');
+            } catch {
+                toast.error('Failed to update billing status');
+            }
+        },
+        [filters.builderId, setCommunityBilling]
+    );
+
     return (
         <div className="min-h-screen bg-gray-50 dark:bg-slate-900">
             <div className="max-w-7xl mx-auto px-4 py-6">
@@ -299,6 +320,7 @@ export default function BlueBookPage() {
                                             onDeleteEntry={(id) => setDeleteConfirm(id)}
                                             onPhaseOverride={handlePhaseOverride}
                                             onServiceToggle={handleServiceToggle}
+                                            onSetCommunityBilling={handleSetCommunityBilling}
                                         />
                                     ))}
                                 </div>
