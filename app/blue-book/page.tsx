@@ -17,6 +17,7 @@ import { CommunityGroup } from '@/components/blue-book/CommunityGroup';
 import { EditEntryModal } from '@/components/blue-book/EditEntryModal';
 import { CreateEntryModal } from '@/components/blue-book/CreateEntryModal';
 import { PhaseConfigEditor } from '@/components/blue-book/PhaseConfigEditor';
+import { CommunityPhaseEditor } from '@/components/blue-book/CommunityPhaseEditor';
 import { BlueBookPagination } from '@/components/blue-book/BlueBookPagination';
 
 import { useBlueBookFilters } from '@/hooks/useBlueBookFilters';
@@ -73,6 +74,7 @@ export default function BlueBookPage() {
     const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
     const [showCreate, setShowCreate] = useState(false);
     const [showPhaseConfig, setShowPhaseConfig] = useState(false);
+    const [editingCommunityPhases, setEditingCommunityPhases] = useState<{ communityId: string; communityName: string } | null>(null);
     const removeEntry = useMutation(api.blueBook.remove);
     const setCommunityBilling = useMutation(api.workLogs.setCommunityBillingStatus);
 
@@ -136,6 +138,32 @@ export default function BlueBookPage() {
         return map;
     }, [rawOverrides]);
 
+    // ── Community-specific phase configs ─────────────────────────────
+    // Collect unique communityIds from entries to batch-query their custom phases
+    const communityIdsFromEntries = useMemo(() => {
+        const ids = new Set<string>();
+        for (const e of (blueBookResult?.entries ?? []) as any[]) {
+            if (e.communityId) ids.add(e.communityId);
+        }
+        return [...ids];
+    }, [blueBookResult?.entries]);
+
+    const communityPhasesBatch = useQuery(
+        api.blueBookPhases.getByCommunitiesBatch,
+        communityIdsFromEntries.length > 0
+            ? { communityIds: communityIdsFromEntries as Id<'communities'>[] }
+            : 'skip'
+    );
+
+    const communityPhasesMap = useMemo(() => {
+        const map = new Map<string, PhaseDefinition[]>();
+        if (!communityPhasesBatch) return map;
+        for (const [cid, phases] of Object.entries(communityPhasesBatch)) {
+            map.set(cid, phases as unknown as PhaseDefinition[]);
+        }
+        return map;
+    }, [communityPhasesBatch]);
+
     // ── Derived data ─────────────────────────────────────────────────
     // Convex returns Doc types with Id<T> | undefined; cast to string | null for components
     const entries = (blueBookResult?.entries ?? []) as unknown as BlueBookEntry[];
@@ -150,7 +178,8 @@ export default function BlueBookPage() {
     const communityGroups = useCommunityGroups(
         filteredEntries,
         phaseConfigs,
-        overrides
+        overrides,
+        communityPhasesMap
     );
 
     // ── Handlers ─────────────────────────────────────────────────────
@@ -321,6 +350,11 @@ export default function BlueBookPage() {
                                             onPhaseOverride={handlePhaseOverride}
                                             onServiceToggle={handleServiceToggle}
                                             onSetCommunityBilling={handleSetCommunityBilling}
+                                            onEditCommunityPhases={(cid) => setEditingCommunityPhases({
+                                                communityId: cid,
+                                                communityName: group.communityName,
+                                            })}
+                                            hasCustomPhases={!!(group.communityId && communityPhasesMap.has(group.communityId))}
                                         />
                                     ))}
                                 </div>
@@ -357,6 +391,16 @@ export default function BlueBookPage() {
                     builderId={filters.builderId}
                     isOpen={showPhaseConfig}
                     onClose={() => setShowPhaseConfig(false)}
+                />
+            )}
+
+            {editingCommunityPhases && (
+                <CommunityPhaseEditor
+                    communityId={editingCommunityPhases.communityId}
+                    communityName={editingCommunityPhases.communityName}
+                    builderId={filters.builderId ?? undefined}
+                    isOpen={true}
+                    onClose={() => setEditingCommunityPhases(null)}
                 />
             )}
 

@@ -12,11 +12,17 @@ import type {
 /**
  * Groups Blue Book entries into Community → Lot → Phase hierarchy.
  * Computes phase completion status using entries + overrides.
+ *
+ * Phase resolution order (per community):
+ * 1. communityPhasesMap[communityId] — community-specific phases
+ * 2. builderPhases — builder-level defaults
+ * 3. Synthetic "All Services" phase if neither exists
  */
 export function useCommunityGroups(
     entries: BlueBookEntry[],
-    phases: PhaseDefinition[],
-    overrideMap: Map<string, PhaseOverrideState>
+    builderPhases: PhaseDefinition[],
+    overrideMap: Map<string, PhaseOverrideState>,
+    communityPhasesMap?: Map<string, PhaseDefinition[]>
 ): CommunityGroup[] {
     return useMemo(() => {
         if (!entries.length) return [];
@@ -32,6 +38,19 @@ export function useCommunityGroups(
         const groups: CommunityGroup[] = [];
 
         for (const [communityName, communityEntries] of byCommunity) {
+            const communityId = communityEntries[0]?.communityId ?? null;
+
+            // Resolve phases: community-specific > builder defaults > synthetic
+            let effectivePhases: PhaseDefinition[];
+            const communityPhases = communityId ? communityPhasesMap?.get(communityId) : undefined;
+            if (communityPhases && communityPhases.length > 0) {
+                effectivePhases = communityPhases;
+            } else if (builderPhases.length > 0) {
+                effectivePhases = builderPhases;
+            } else {
+                effectivePhases = [];
+            }
+
             // Group by lot within community
             const byLot = new Map<string, BlueBookEntry[]>();
             for (const entry of communityEntries) {
@@ -43,8 +62,8 @@ export function useCommunityGroups(
             const lots: LotSummary[] = [];
 
             for (const [lot, lotEntries] of byLot) {
-                // If no phases defined, create a single "all entries" phase
-                const effectivePhases: PhaseDefinition[] = phases.length > 0 ? phases : [{
+                // If no phases defined at any level, create a single synthetic phase
+                const phasesForLot: PhaseDefinition[] = effectivePhases.length > 0 ? effectivePhases : [{
                     _id: 'all',
                     code: 'ALL',
                     title: 'All Services',
@@ -55,8 +74,7 @@ export function useCommunityGroups(
                 } as PhaseDefinition];
 
                 // Build phases for this lot
-                const lotPhases: LotPhase[] = effectivePhases.map((phase) => {
-                    // Find entries matching this phase's services
+                const lotPhases: LotPhase[] = phasesForLot.map((phase) => {
                     const matchingEntries = lotEntries.filter((e) =>
                         phase.serviceNames.some(
                             (sn) =>
@@ -65,7 +83,6 @@ export function useCommunityGroups(
                         )
                     );
 
-                    // Build service-level detail
                     const services: LotPhaseService[] = phase.serviceNames.map(
                         (serviceName) => {
                             const svcEntries = lotEntries.filter(
@@ -74,8 +91,6 @@ export function useCommunityGroups(
                                     e.accountCategoryName?.toLowerCase().includes(serviceName.toLowerCase())
                             );
                             const baseLogged = svcEntries.length > 0;
-
-                            // Check override for this specific service
                             const overrideKey = `${lot}:${phase.code}`;
                             const override = overrideMap.get(overrideKey);
                             const svcOverride = override?.services?.[serviceName];
@@ -90,7 +105,6 @@ export function useCommunityGroups(
                         }
                     );
 
-                    // Phase completion: all services logged
                     const baseComplete = services.every((s) => s.baseLogged);
                     const overrideKey = `${lot}:${phase.code}`;
                     const phaseOverride = overrideMap.get(overrideKey);
@@ -108,11 +122,10 @@ export function useCommunityGroups(
                     };
                 });
 
-                // Get model plan from first entry that has it
                 const withModel = lotEntries.find((e) => e.modelPlanCode);
 
                 lots.push({
-                    key: `${communityEntries[0]?.communityId ?? "unknown"}:${lot}`,
+                    key: `${communityId ?? "unknown"}:${lot}`,
                     lot,
                     entries: lotEntries,
                     phases: lotPhases,
@@ -121,26 +134,21 @@ export function useCommunityGroups(
                 });
             }
 
-            // Preserve upload/insertion order — lots stay in the order they were imported.
-            // Entries are already sorted by date (earliest→latest) from the query,
-            // so lot order follows the first entry's position in the sorted results.
-
             const completed = communityEntries.filter(
                 (e) => e.status === "COMPLETE"
             ).length;
 
             groups.push({
                 communityName,
-                communityId: communityEntries[0]?.communityId ?? null,
+                communityId,
                 lots,
                 totalEntries: communityEntries.length,
                 completedEntries: completed,
             });
         }
 
-        // Sort communities alphabetically
         groups.sort((a, b) => a.communityName.localeCompare(b.communityName));
 
         return groups;
-    }, [entries, phases, overrideMap]);
+    }, [entries, builderPhases, overrideMap, communityPhasesMap]);
 }

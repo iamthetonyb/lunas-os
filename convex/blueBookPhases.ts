@@ -99,6 +99,138 @@ export const remove = mutation({
     },
 });
 
+// ── Community Phase Configs (per-community overrides of builder defaults) ──
+
+export const getByCommunity = query({
+    args: { communityId: v.id("communities") },
+    handler: async (ctx, args) => {
+        const phases = await ctx.db
+            .query("communityPhaseConfigs")
+            .withIndex("by_community", (q) => q.eq("communityId", args.communityId))
+            .collect();
+        return phases
+            .filter((p) => p.active)
+            .sort((a, b) => a.sortOrder - b.sortOrder);
+    },
+});
+
+/** Get phases for multiple communities in one call (batch) */
+export const getByCommunitiesBatch = query({
+    args: { communityIds: v.array(v.id("communities")) },
+    handler: async (ctx, args) => {
+        const results: Record<string, any[]> = {};
+        for (const cid of args.communityIds) {
+            const phases = await ctx.db
+                .query("communityPhaseConfigs")
+                .withIndex("by_community", (q) => q.eq("communityId", cid))
+                .collect();
+            const active = phases.filter((p) => p.active).sort((a, b) => a.sortOrder - b.sortOrder);
+            if (active.length > 0) {
+                results[cid] = active;
+            }
+        }
+        return results;
+    },
+});
+
+export const createCommunityPhase = mutation({
+    args: {
+        communityId: v.id("communities"),
+        builderId: v.optional(v.id("builders")),
+        code: v.string(),
+        title: v.string(),
+        shorthand: v.string(),
+        serviceNames: v.array(v.string()),
+        sortOrder: v.number(),
+    },
+    handler: async (ctx, args) => {
+        const existing = await ctx.db
+            .query("communityPhaseConfigs")
+            .withIndex("by_community_code", (q) =>
+                q.eq("communityId", args.communityId).eq("code", args.code)
+            )
+            .first();
+        if (existing && existing.active) {
+            throw new Error(`Phase code "${args.code}" already exists for this community`);
+        }
+
+        const id = await ctx.db.insert("communityPhaseConfigs", {
+            ...args,
+            active: true,
+            createdAt: Date.now(),
+        });
+        return { id };
+    },
+});
+
+export const updateCommunityPhase = mutation({
+    args: {
+        id: v.id("communityPhaseConfigs"),
+        title: v.optional(v.string()),
+        shorthand: v.optional(v.string()),
+        serviceNames: v.optional(v.array(v.string())),
+        sortOrder: v.optional(v.number()),
+        active: v.optional(v.boolean()),
+    },
+    handler: async (ctx, args) => {
+        const { id, ...updates } = args;
+        const filtered: Record<string, any> = { updatedAt: Date.now() };
+        for (const [k, val] of Object.entries(updates)) {
+            if (val !== undefined) filtered[k] = val;
+        }
+        await ctx.db.patch(id, filtered);
+        return { success: true };
+    },
+});
+
+export const removeCommunityPhase = mutation({
+    args: { id: v.id("communityPhaseConfigs") },
+    handler: async (ctx, args) => {
+        await ctx.db.patch(args.id, { active: false, updatedAt: Date.now() });
+        return { success: true };
+    },
+});
+
+/** Copy builder phases to a community as starting point */
+export const copyBuilderPhasesToCommunity = mutation({
+    args: {
+        builderId: v.id("builders"),
+        communityId: v.id("communities"),
+    },
+    handler: async (ctx, args) => {
+        // Check if community already has phases
+        const existing = await ctx.db
+            .query("communityPhaseConfigs")
+            .withIndex("by_community", (q) => q.eq("communityId", args.communityId))
+            .collect();
+        if (existing.filter((p) => p.active).length > 0) {
+            throw new Error("Community already has phase configs. Remove them first to copy from builder.");
+        }
+
+        const builderPhases = await ctx.db
+            .query("builderPhaseConfigs")
+            .withIndex("by_builder", (q) => q.eq("builderId", args.builderId))
+            .collect();
+        const active = builderPhases.filter((p) => p.active);
+
+        const now = Date.now();
+        for (const phase of active) {
+            await ctx.db.insert("communityPhaseConfigs", {
+                communityId: args.communityId,
+                builderId: args.builderId,
+                code: phase.code,
+                title: phase.title,
+                shorthand: phase.shorthand,
+                serviceNames: phase.serviceNames,
+                sortOrder: phase.sortOrder,
+                active: true,
+                createdAt: now,
+            });
+        }
+        return { copied: active.length };
+    },
+});
+
 // ── Phase Overrides (replaces localStorage) ─────────────────────────
 
 export const getOverrides = query({

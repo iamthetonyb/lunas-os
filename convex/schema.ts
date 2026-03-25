@@ -345,6 +345,22 @@ export default defineSchema({
         .index("by_builder", ["builderId"])
         .index("by_builder_code", ["builderId", "code"]),
 
+    // Community Phase Configs — per-community phase definitions (overrides builder defaults)
+    communityPhaseConfigs: defineTable({
+        communityId: v.id("communities"),
+        builderId: v.optional(v.id("builders")),
+        code: v.string(),
+        title: v.string(),
+        shorthand: v.string(),
+        serviceNames: v.array(v.string()),
+        sortOrder: v.number(),
+        active: v.boolean(),
+        createdAt: v.number(),
+        updatedAt: v.optional(v.number()),
+    })
+        .index("by_community", ["communityId"])
+        .index("by_community_code", ["communityId", "code"]),
+
     // Phase Overrides — replaces localStorage (persisted, cross-device)
     phaseOverrides: defineTable({
         lotKey: v.string(), // `${communityId}:${lot}`

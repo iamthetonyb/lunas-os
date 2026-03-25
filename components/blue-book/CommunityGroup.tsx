@@ -12,9 +12,11 @@ type Props = {
     onPhaseOverride: (communityId: string, lot: string, phaseCode: string, complete: boolean) => void;
     onServiceToggle: (communityId: string, lot: string, phaseCode: string, serviceName: string, complete: boolean) => void;
     onSetCommunityBilling?: (communityId: string, billingStatus: string) => void;
+    onEditCommunityPhases?: (communityId: string) => void;
+    hasCustomPhases?: boolean;
 };
 
-export function CommunityGroup({ group, onEditEntry, onDeleteEntry, onPhaseOverride, onServiceToggle, onSetCommunityBilling }: Props) {
+export function CommunityGroup({ group, onEditEntry, onDeleteEntry, onPhaseOverride, onServiceToggle, onSetCommunityBilling, onEditCommunityPhases, hasCustomPhases }: Props) {
     const { t } = useTranslation();
     const [isExpanded, setIsExpanded] = useState(false);
     const completionPct = group.totalEntries > 0
@@ -42,6 +44,27 @@ export function CommunityGroup({ group, onEditEntry, onDeleteEntry, onPhaseOverr
                     <h3 className="text-sm font-semibold text-gray-900 dark:text-white">
                         {group.communityName}
                     </h3>
+                    {hasCustomPhases && (
+                        <span className="px-1.5 py-0.5 text-[10px] font-medium bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300 rounded">
+                            {t('blueBook.customPhases', 'Custom')}
+                        </span>
+                    )}
+                    {onEditCommunityPhases && (
+                        <button
+                            type="button"
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                onEditCommunityPhases(group.communityId ?? '');
+                            }}
+                            className="p-1 rounded hover:bg-gray-200 dark:hover:bg-slate-600 transition-colors"
+                            title={t('blueBook.editPhases', 'Edit Phases')}
+                        >
+                            <svg className="w-3.5 h-3.5 text-gray-500 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                            </svg>
+                        </button>
+                    )}
                     <span className="text-xs text-gray-500 dark:text-gray-400">
                         {group.lots.length} {t('blueBook.lots')} · {group.totalEntries} entries
                     </span>
