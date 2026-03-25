@@ -97,12 +97,12 @@ export const list = query({
       }
     }
 
-    // Use by_createdAt index for ordered retrieval instead of unindexed .order("desc").collect()
+    // Use by_createdAt index for ordered retrieval with bounded take
     let requests = await ctx.db
       .query("jobRequests")
       .withIndex("by_createdAt")
       .order("desc")
-      .collect();
+      .take(5000);
 
     if (args.isExtraWork !== undefined) {
       requests = requests.filter((r) => r.isExtraWork === args.isExtraWork);
@@ -179,12 +179,12 @@ export const getRecent = query({
       }
     }
 
-    // Use by_createdAt index for ordered retrieval
+    // Use by_createdAt index for ordered retrieval with bounded take
     let requests = await ctx.db
       .query("jobRequests")
       .withIndex("by_createdAt")
       .order("desc")
-      .collect();
+      .take(5000);
 
     if (args.userId) {
       requests = requests.filter((r) => r.createdById === args.userId);

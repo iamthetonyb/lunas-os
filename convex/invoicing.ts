@@ -49,7 +49,7 @@ export const getById = query({
         const lines = await ctx.db
             .query("invoiceLines")
             .withIndex("by_invoice", (q) => q.eq("invoiceId", args.id))
-            .collect();
+            .take(1000);
 
         return {
             ...invoice,

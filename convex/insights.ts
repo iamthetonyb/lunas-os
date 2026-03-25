@@ -101,7 +101,7 @@ export const getForemanAffinities = internalQuery({
         const cutoff12mo = Date.now() - 365 * 24 * 60 * 60 * 1000;
         const allJrs = (await ctx.db
             .query("jobRequestServices")
-            .take(20000))
+            .take(5000))
             .filter((jrs) => jrs.createdAt >= cutoff12mo);
 
         // Batch-load: collect unique jobRequestIds, fetch all at once, build map
@@ -177,7 +177,7 @@ export const getServicePatterns = internalQuery({
         const cutoff12mo = Date.now() - 365 * 24 * 60 * 60 * 1000;
         const allJrs = (await ctx.db
             .query("jobRequestServices")
-            .take(20000))
+            .take(5000))
             .filter((jrs) => jrs.createdAt >= cutoff12mo);
 
         // Batch-load: collect unique jobRequestIds, fetch all at once, build map

@@ -33,7 +33,7 @@ export const getByCommunity = query({
 
 export const listAll = query({
     handler: async (ctx) => {
-        const aliases = await ctx.db.query("communityAliases").collect();
+        const aliases = await ctx.db.query("communityAliases").take(5000);
 
         // Batch-load community names
         const communityIds = [...new Set(aliases.map((a) => a.communityId))];
@@ -116,7 +116,7 @@ export const resolve = query({
         }
 
         // Layer 3: Fuzzy — check if normalized name is contained in or contains a community name
-        const allCommunities = await ctx.db.query("communities").collect();
+        const allCommunities = await ctx.db.query("communities").take(10000);
         const active = allCommunities.filter((c) => c.active !== false);
 
         for (const community of active) {
@@ -141,7 +141,7 @@ export const resolve = query({
 export const deduplicateCommunities = mutation({
     args: {},
     handler: async (ctx) => {
-        const all = await ctx.db.query("communities").collect();
+        const all = await ctx.db.query("communities").take(10000);
         const active = all.filter((c) => c.active !== false);
 
         // Group by normalized name

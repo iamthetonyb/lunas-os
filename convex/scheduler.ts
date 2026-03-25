@@ -64,11 +64,11 @@ export const getUnassignedJobs = internalQuery({
             ctx.db
                 .query("jobRequestServices")
                 .withIndex("by_status", (q) => q.eq("status", "PENDING"))
-                .collect(),
+                .take(5000),
             ctx.db
                 .query("jobRequestServices")
                 .withIndex("by_status", (q) => q.eq("status", "SCHEDULED"))
-                .collect(),
+                .take(5000),
         ]);
 
         const allCandidates = [...pendingJrs, ...scheduledJrs];
@@ -160,15 +160,15 @@ export const getForemanWorkload = internalQuery({
             ctx.db
                 .query("jobRequestServices")
                 .withIndex("by_status", (q) => q.eq("status", "PENDING"))
-                .collect(),
+                .take(5000),
             ctx.db
                 .query("jobRequestServices")
                 .withIndex("by_status", (q) => q.eq("status", "SCHEDULED"))
-                .collect(),
+                .take(5000),
             ctx.db
                 .query("jobRequestServices")
                 .withIndex("by_status", (q) => q.eq("status", "DISPATCHED"))
-                .collect(),
+                .take(5000),
         ]);
 
         const activeJrs = [...pendingJrs, ...scheduledJrs, ...dispatchedJrs];
@@ -216,19 +216,19 @@ export const getCommunityForemenAffinity = internalQuery({
             ctx.db
                 .query("jobRequestServices")
                 .withIndex("by_status", (q) => q.eq("status", "PENDING"))
-                .collect(),
+                .take(5000),
             ctx.db
                 .query("jobRequestServices")
                 .withIndex("by_status", (q) => q.eq("status", "SCHEDULED"))
-                .collect(),
+                .take(5000),
             ctx.db
                 .query("jobRequestServices")
                 .withIndex("by_status", (q) => q.eq("status", "DISPATCHED"))
-                .collect(),
+                .take(5000),
             ctx.db
                 .query("jobRequestServices")
                 .withIndex("by_status", (q) => q.eq("status", "COMPLETE"))
-                .collect(),
+                .take(5000),
         ]);
 
         const allJrs = [...pendingJrs, ...scheduledJrs, ...dispatchedJrs, ...completeJrs];
@@ -251,7 +251,7 @@ export const getCommunityForemenAffinity = internalQuery({
         const completedBatches = await ctx.db
             .query("dispatchBatches")
             .withIndex("by_status", (q) => q.eq("status", "COMPLETE"))
-            .collect();
+            .take(5000);
 
         const batchesWithForeman = completedBatches.filter((b) => b.foremanName);
 
@@ -712,7 +712,7 @@ export const autoAssignJobs = internalAction({
 export const getCrewsInternal = internalQuery({
     args: {},
     handler: async (ctx) => {
-        const crews = await ctx.db.query("crews").collect();
+        const crews = await ctx.db.query("crews").take(500);
 
         // Batch-load all foreman users in one pass
         const foremanIds = crews
