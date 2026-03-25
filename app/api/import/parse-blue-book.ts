@@ -9,6 +9,8 @@ const SQFT_HEADERS = /^(sq\s*ft|sqft|square\s*feet|sf|area)$/i;
 const DATE_FOREMAN_PATTERN = /^(\d{1,2}\/\d{1,2})\s+(.+)$/;
 const SERVICE_CODE_SUB = /^\d{4,5}\s*-\s*T\d/i;
 const PROJECT_HEADER = /^(Project\s*Name|Community|Subdivision|Development)\s*:\s*/i;
+// Builder/company detection — various labels used in construction docs
+const COMPANY_HEADER = /^(Company\s*Name|Builder(\s*Name)?|Contractor(\s*Name)?|Division(\s*Name)?|Vendor(\s*Name)?|Client(\s*Name)?|GC|General\s*Contractor)\s*:\s*/i;
 
 /**
  * Try to parse an Excel buffer as a Blue Book (construction job tracker).
@@ -24,7 +26,16 @@ const PROJECT_HEADER = /^(Project\s*Name|Community|Subdivision|Development)\s*:\
  */
 export function tryParseBlueBook(buffer: ArrayBuffer): ParsedRow[] | null {
     const wb = XLSX.read(buffer, { type: 'array' });
-    const sheet = wb.Sheets[wb.SheetNames[0]];
+
+    // Try each sheet — some workbooks have the Blue Book data on a non-first sheet
+    for (const sheetName of wb.SheetNames) {
+        const result = tryParseBlueBookSheet(wb.Sheets[sheetName]);
+        if (result && result.length > 0) return result;
+    }
+    return null;
+}
+
+function tryParseBlueBookSheet(sheet: XLSX.WorkSheet): ParsedRow[] | null {
     if (!sheet['!ref']) return null;
 
     const range = XLSX.utils.decode_range(sheet['!ref']!);
@@ -34,29 +45,62 @@ export function tryParseBlueBook(buffer: ArrayBuffer): ParsedRow[] | null {
         return sheet[addr]?.v ?? null;
     };
 
-    // ── Step 1: Find community/project name ─────────────────────────
-    // Check merged cells and early rows for a project header
+    // ── Step 1: Find builder and community/project name ────────────
+    // Scan first 20 rows for labeled headers like "Company Name: PULTE",
+    // "Project Name: RAINBOW CROSSING", etc. These can appear anywhere
+    // in the early rows — not necessarily in fixed cell positions.
     let communityName = '';
+    let builderName = '';
 
-    // Check first 5 rows for "Project Name: ..." or similar
-    for (let r = 0; r <= Math.min(4, range.e.r) && !communityName; r++) {
-        for (let c = 0; c <= range.e.c && !communityName; c++) {
+    // Extended scan — construction docs put these labels in various rows/columns
+    const scanLimit = Math.min(20, range.e.r);
+    for (let r = 0; r <= scanLimit; r++) {
+        for (let c = 0; c <= range.e.c; c++) {
             const v = getCell(r, c);
             if (typeof v !== 'string') continue;
-            const match = v.match(PROJECT_HEADER);
-            if (match) {
-                communityName = v.slice(match[0].length).trim();
+
+            // Check for builder/company name
+            if (!builderName) {
+                const builderMatch = v.match(COMPANY_HEADER);
+                if (builderMatch) {
+                    builderName = v.slice(builderMatch[0].length).trim();
+                    // If value is empty, check the next cell to the right
+                    if (!builderName && c + 1 <= range.e.c) {
+                        const nextCell = getCell(r, c + 1);
+                        if (typeof nextCell === 'string' && nextCell.trim()) {
+                            builderName = nextCell.trim();
+                        }
+                    }
+                }
+            }
+
+            // Check for community/project name
+            if (!communityName) {
+                const projMatch = v.match(PROJECT_HEADER);
+                if (projMatch) {
+                    communityName = v.slice(projMatch[0].length).trim();
+                    // If value is empty, check the next cell to the right
+                    if (!communityName && c + 1 <= range.e.c) {
+                        const nextCell = getCell(r, c + 1);
+                        if (typeof nextCell === 'string' && nextCell.trim()) {
+                            communityName = nextCell.trim();
+                        }
+                    }
+                    // Strip trailing job number pattern (e.g., " - 7003")
+                    communityName = communityName.replace(/\s*[-–]\s*\d{3,5}\s*$/, '').trim();
+                }
             }
         }
+        if (communityName && builderName) break;
     }
 
-    // Fallback: use the first merged cell's text if it spans 3+ columns
+    // Fallback for community: use the first merged cell's text if it spans 3+ columns
     if (!communityName && sheet['!merges']) {
         for (const merge of sheet['!merges']) {
             if (merge.s.r <= 2 && (merge.e.c - merge.s.c) >= 2) {
                 const v = getCell(merge.s.r, merge.s.c);
                 if (typeof v === 'string' && v.length > 3) {
-                    communityName = v.replace(PROJECT_HEADER, '').trim();
+                    communityName = v.replace(PROJECT_HEADER, '').replace(COMPANY_HEADER, '').trim();
                     break;
                 }
             }
@@ -175,6 +219,7 @@ export function tryParseBlueBook(buffer: ArrayBuffer): ParsedRow[] | null {
                 startDate: m[1],
                 assignedForemanName: m[2].trim(),
             };
+            if (builderName) row.builderName = builderName;
             if (communityName) row.communityName = communityName;
             if (plan) row.modelPlanCode = plan;
             if (sqft) row.modelPlanSqft = sqft;
@@ -184,6 +229,7 @@ export function tryParseBlueBook(buffer: ArrayBuffer): ParsedRow[] | null {
         // Lot with no service entries — still include as base row
         if (!hasEntry) {
             const row: ParsedRow = { lot };
+            if (builderName) row.builderName = builderName;
             if (communityName) row.communityName = communityName;
             if (plan) row.modelPlanCode = plan;
             if (sqft) row.modelPlanSqft = sqft;
@@ -195,32 +241,36 @@ export function tryParseBlueBook(buffer: ArrayBuffer): ParsedRow[] | null {
 }
 
 /**
- * Convert an Excel sheet to a plain-text representation for LLM extraction.
- * Preserves the cell grid layout so the LLM can understand structure.
+ * Convert Excel sheets to a plain-text representation for LLM extraction.
+ * Includes all sheets (not just the first) to capture builder/community info
+ * that may appear on secondary sheets. Preserves the cell grid layout.
  */
 export function excelSheetToText(buffer: ArrayBuffer): string {
     const wb = XLSX.read(buffer, { type: 'array' });
-    const sheet = wb.Sheets[wb.SheetNames[0]];
-    if (!sheet['!ref']) return '';
+    const allLines: string[] = [];
 
-    const range = XLSX.utils.decode_range(sheet['!ref']);
-    const lines: string[] = [];
+    // Process all sheets (limit to first 3 to avoid token bloat)
+    const sheetsToProcess = wb.SheetNames.slice(0, 3);
+    for (const sheetName of sheetsToProcess) {
+        const sheet = wb.Sheets[sheetName];
+        if (!sheet['!ref']) continue;
 
-    // Include sheet name
-    lines.push(`Sheet: ${wb.SheetNames[0]}`);
-    lines.push('');
+        const range = XLSX.utils.decode_range(sheet['!ref']);
+        allLines.push(`=== Sheet: ${sheetName} ===`);
+        allLines.push('');
 
-    for (let r = 0; r <= range.e.r; r++) {
-        const cells: string[] = [];
-        for (let c = 0; c <= range.e.c; c++) {
-            const addr = XLSX.utils.encode_cell({ r, c });
-            const cell = sheet[addr];
-            cells.push(cell ? String(cell.v) : '');
+        for (let r = 0; r <= range.e.r; r++) {
+            const cells: string[] = [];
+            for (let c = 0; c <= range.e.c; c++) {
+                const addr = XLSX.utils.encode_cell({ r, c });
+                const cell = sheet[addr];
+                cells.push(cell ? String(cell.v) : '');
+            }
+            if (cells.every(c => !c)) continue;
+            allLines.push(cells.join('\t'));
         }
-        // Skip fully empty rows
-        if (cells.every(c => !c)) continue;
-        lines.push(cells.join('\t'));
+        allLines.push('');
     }
 
-    return lines.join('\n');
+    return allLines.join('\n');
 }

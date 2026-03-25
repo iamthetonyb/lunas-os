@@ -87,6 +87,7 @@ export default function BlueBookPage() {
         }
     }, [builders, filters.builderId, autoSelected, setBuilderId]);
 
+    const callerUserId = session?.user?.id as Id<"users"> | undefined;
     const blueBookResult = useQuery(api.blueBook.list, {
         builderId: filters.builderId
             ? (filters.builderId as Id<'builders'>)
@@ -96,6 +97,7 @@ export default function BlueBookPage() {
         page,
         pageSize: PAGE_SIZE,
         sort: filters.sort,
+        callerUserId,
     });
 
     // Phase definitions for the active builder (or skip if "All Builders")

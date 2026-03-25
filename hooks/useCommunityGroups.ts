@@ -121,13 +121,9 @@ export function useCommunityGroups(
                 });
             }
 
-            // Sort lots naturally
-            lots.sort((a, b) => {
-                const numA = parseInt(a.lot);
-                const numB = parseInt(b.lot);
-                if (!isNaN(numA) && !isNaN(numB)) return numA - numB;
-                return a.lot.localeCompare(b.lot);
-            });
+            // Preserve upload/insertion order — lots stay in the order they were imported.
+            // Entries are already sorted by date (earliest→latest) from the query,
+            // so lot order follows the first entry's position in the sorted results.
 
             const completed = communityEntries.filter(
                 (e) => e.status === "COMPLETE"

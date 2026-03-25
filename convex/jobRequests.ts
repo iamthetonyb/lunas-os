@@ -82,8 +82,21 @@ export const list = query({
   args: {
     isExtraWork: v.optional(v.boolean()),
     limit: v.optional(v.number()),
+    callerUserId: v.optional(v.id("users")),
   },
   handler: async (ctx, args) => {
+    // ── Permission scoping ──────────────────────────────────────────
+    let restrictToUserId: string | null = null;
+    if (args.callerUserId) {
+      const caller = await ctx.db.get(args.callerUserId);
+      if (caller) {
+        const role = (caller.role ?? "").toUpperCase();
+        if (role !== "ADMIN" && role !== "BACKOFFICE") {
+          restrictToUserId = args.callerUserId;
+        }
+      }
+    }
+
     // Use by_createdAt index for ordered retrieval instead of unindexed .order("desc").collect()
     let requests = await ctx.db
       .query("jobRequests")
@@ -93,6 +106,11 @@ export const list = query({
 
     if (args.isExtraWork !== undefined) {
       requests = requests.filter((r) => r.isExtraWork === args.isExtraWork);
+    }
+
+    // Filter to only show records created by the caller (non-admin/backoffice)
+    if (restrictToUserId) {
+      requests = requests.filter((r) => r.createdById === restrictToUserId);
     }
 
     const limited = requests.slice(0, args.limit ?? 100);
@@ -142,11 +160,24 @@ export const getRecent = query({
     userId: v.optional(v.id("users")),
     limit: v.optional(v.number()),
     page: v.optional(v.number()),
+    callerUserId: v.optional(v.id("users")),
   },
   handler: async (ctx, args) => {
     const limit = args.limit ?? 10;
     const page = args.page ?? 1;
     const offset = (page - 1) * limit;
+
+    // ── Permission scoping ──────────────────────────────────────────
+    let restrictToUserId: string | null = null;
+    if (args.callerUserId) {
+      const caller = await ctx.db.get(args.callerUserId);
+      if (caller) {
+        const role = (caller.role ?? "").toUpperCase();
+        if (role !== "ADMIN" && role !== "BACKOFFICE") {
+          restrictToUserId = args.callerUserId;
+        }
+      }
+    }
 
     // Use by_createdAt index for ordered retrieval
     let requests = await ctx.db
@@ -157,6 +188,11 @@ export const getRecent = query({
 
     if (args.userId) {
       requests = requests.filter((r) => r.createdById === args.userId);
+    }
+
+    // Apply permission filter: non-admin/backoffice only see their own records
+    if (restrictToUserId) {
+      requests = requests.filter((r) => r.createdById === restrictToUserId);
     }
 
     const total = requests.length;

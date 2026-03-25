@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useEffect, useMemo, useState, Fragment } from 'react';
 import { useQuery, useMutation } from 'convex/react';
 import { api } from '@/convex/_generated/api';
+import type { Id } from '@/convex/_generated/dataModel';
 import { useConvexUser } from '@/hooks/useConvexUser';
 import { ScheduleKanban } from '@/components/schedule-kanban';
 import { getFriendlyName } from '@/lib/utils/community-display';
@@ -232,7 +233,8 @@ export default function SchedulePage() {
   }, [date]);
 
   // Convex queries - reactive, no need for SWR polling or cache invalidation
-  const upcomingJobs = useQuery(api.queries.getScheduleJobs, date ? { startDate: scheduleRange.start, endDate: scheduleRange.end } : 'skip') ?? [];
+  const callerUserId = session?.user?.id as Id<"users"> | undefined;
+  const upcomingJobs = useQuery(api.queries.getScheduleJobs, date ? { startDate: scheduleRange.start, endDate: scheduleRange.end, callerUserId } : 'skip') ?? [];
   const crews = useQuery(api.queries.getCrews, {}) ?? [];
   const crewNames = useMemo(() => crews.map((c: any) => c.name).sort(), [crews]);
 

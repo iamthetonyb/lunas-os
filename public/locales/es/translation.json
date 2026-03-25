@@ -296,7 +296,11 @@
         "toDate": "Hasta fecha",
         "to": "a",
         "reset": "Restablecer",
-        "services": "servicios"
+        "services": "servicios",
+        "billingStatus": "Estado de Facturación",
+        "invoicedPaid": "Facturado y Pagado",
+        "adminPaid": "Trabajo Admin (Pagado)",
+        "noBilling": "Sin Factura"
     },
     "extraWork": {
         "title": "Trabajo Extra",

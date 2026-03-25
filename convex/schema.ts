@@ -227,6 +227,11 @@ export default defineSchema({
         assignedForemanName: v.optional(v.string()),
         crewName: v.optional(v.string()),
         source: v.optional(v.string()),
+        // Billing status tracking — maps to cell colors from uploaded Excel files
+        // 'invoiced_paid' (green), 'admin_paid' (blue), 'none' (white/default)
+        billingStatus: v.optional(v.string()),
+        // Preserve original upload ordering (row index within an import batch)
+        importOrder: v.optional(v.number()),
         createdAt: v.number(),
         updatedAt: v.optional(v.number()),
     })

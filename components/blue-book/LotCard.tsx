@@ -58,6 +58,7 @@ export function LotCard({ lot, onEditEntry, onDeleteEntry, onPhaseOverride, onSe
                     <table className="min-w-full text-xs">
                         <thead>
                             <tr className="text-left text-gray-500 dark:text-gray-400">
+                                <th className="pr-2 py-1 w-4" title={t('blueBook.billingStatus')}></th>
                                 <th className="pr-2 py-1">{t('blueBook.serviceHeader')}</th>
                                 <th className="pr-2 py-1">{t('blueBook.startHeader')}</th>
                                 <th className="pr-2 py-1">{t('blueBook.statusHeader')}</th>
@@ -70,6 +71,20 @@ export function LotCard({ lot, onEditEntry, onDeleteEntry, onPhaseOverride, onSe
                         <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
                             {lot.entries.map((entry) => (
                                 <tr key={entry.id} className="text-gray-700 dark:text-gray-300">
+                                    <td className="pr-2 py-1">
+                                        <span
+                                            className={`inline-block w-2.5 h-2.5 rounded-full ${
+                                                entry.billingStatus === 'invoiced_paid' ? 'bg-green-500' :
+                                                entry.billingStatus === 'admin_paid' ? 'bg-blue-500' :
+                                                'bg-gray-300 dark:bg-gray-500'
+                                            }`}
+                                            title={
+                                                entry.billingStatus === 'invoiced_paid' ? t('blueBook.invoicedPaid') :
+                                                entry.billingStatus === 'admin_paid' ? t('blueBook.adminPaid') :
+                                                t('blueBook.noBilling')
+                                            }
+                                        />
+                                    </td>
                                     <td className="pr-2 py-1">{entry.serviceName ?? entry.accountCategoryName ?? '—'}</td>
                                     <td className="pr-2 py-1">{entry.startDate ?? '—'}</td>
                                     <td className="pr-2 py-1">

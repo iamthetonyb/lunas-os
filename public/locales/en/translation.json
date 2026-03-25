@@ -296,7 +296,11 @@
         "toDate": "To date",
         "to": "to",
         "reset": "Reset",
-        "services": "services"
+        "services": "services",
+        "billingStatus": "Billing Status",
+        "invoicedPaid": "Invoiced & Paid",
+        "adminPaid": "Admin Work (Paid)",
+        "noBilling": "No Invoice"
     },
     "extraWork": {
         "title": "Extra Work",

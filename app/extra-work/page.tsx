@@ -3,6 +3,7 @@
 import { useMemo, useState } from 'react';
 import { useQuery, useMutation } from 'convex/react';
 import { api } from '@/convex/_generated/api';
+import type { Id } from '@/convex/_generated/dataModel';
 import { useConvexUser } from '@/hooks/useConvexUser';
 import { useTranslation } from 'react-i18next';
 import { useRouter } from 'next/navigation';
@@ -32,7 +33,8 @@ export default function ExtraWorkPage() {
   const isContractor = session?.user?.role === 'FOREMAN' || session?.user?.role === 'CREW';
 
   // Convex reactive query - no polling needed
-  const jobs = useQuery(api.jobRequests.list, { isExtraWork: true }) as JobRequest[] | undefined;
+  const callerUserId = session?.user?.id as Id<"users"> | undefined;
+  const jobs = useQuery(api.jobRequests.list, { isExtraWork: true, callerUserId }) as JobRequest[] | undefined;
   const isLoading = jobs === undefined;
 
   const [page, setPage] = useState(1);

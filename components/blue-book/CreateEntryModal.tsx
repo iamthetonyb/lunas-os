@@ -8,6 +8,7 @@ import { toast } from 'sonner';
 import type { Id } from '@/convex/_generated/dataModel';
 import type { Builder } from '@/types/blue-book';
 import { SearchableSelect } from '../searchable-select';
+import { useTranslation } from 'react-i18next';
 
 type Props = {
     isOpen: boolean;
@@ -17,6 +18,7 @@ type Props = {
 };
 
 export function CreateEntryModal({ isOpen, onClose, builders, defaultBuilderId }: Props) {
+    const { t } = useTranslation();
     const createEntry = useMutation(api.blueBook.create);
     const createCommunity = useMutation(api.mutations.createCommunity);
     const services = useQuery(api.queries.getServices, {}) ?? [];
@@ -33,6 +35,7 @@ export function CreateEntryModal({ isOpen, onClose, builders, defaultBuilderId }
         checkNumber: '',
         checkDate: '',
         invoiceNumber: '',
+        billingStatus: 'none',
     });
 
     const communities = useQuery(
@@ -76,6 +79,7 @@ export function CreateEntryModal({ isOpen, onClose, builders, defaultBuilderId }
                 checkNumber: form.checkNumber || undefined,
                 checkDate: form.checkDate || undefined,
                 invoiceNumber: form.invoiceNumber || undefined,
+                billingStatus: form.billingStatus || undefined,
             });
             toast.success('Entry created');
             onClose();
@@ -91,6 +95,7 @@ export function CreateEntryModal({ isOpen, onClose, builders, defaultBuilderId }
                 checkNumber: '',
                 checkDate: '',
                 invoiceNumber: '',
+                billingStatus: 'none',
             });
         } catch {
             toast.error('Failed to create entry');
@@ -169,6 +174,28 @@ export function CreateEntryModal({ isOpen, onClose, builders, defaultBuilderId }
                                     </Field>
                                     <Field label="Invoice #">
                                         <input type="text" value={form.invoiceNumber} onChange={(e) => setForm(f => ({ ...f, invoiceNumber: e.target.value }))} className="input-field" />
+                                    </Field>
+                                    <Field label={t('blueBook.billingStatus', 'Billing Status')}>
+                                        <div className="col-span-2 flex flex-col gap-1.5">
+                                            {([
+                                                { value: 'none', label: t('blueBook.noBilling', 'No Invoice'), color: 'bg-gray-300 dark:bg-gray-500' },
+                                                { value: 'invoiced_paid', label: t('blueBook.invoicedPaid', 'Invoiced & Paid'), color: 'bg-green-500' },
+                                                { value: 'admin_paid', label: t('blueBook.adminPaid', 'Admin Work (Paid)'), color: 'bg-blue-500' },
+                                            ] as const).map((opt) => (
+                                                <label key={opt.value} className="flex items-center gap-2 cursor-pointer text-sm text-gray-700 dark:text-gray-300">
+                                                    <input
+                                                        type="radio"
+                                                        name="billingStatusCreate"
+                                                        value={opt.value}
+                                                        checked={form.billingStatus === opt.value}
+                                                        onChange={(e) => setForm(f => ({ ...f, billingStatus: e.target.value }))}
+                                                        className="sr-only"
+                                                    />
+                                                    <span className={`w-3 h-3 rounded-full border-2 ${form.billingStatus === opt.value ? 'border-gray-900 dark:border-white ring-2 ring-offset-1 ring-offset-white dark:ring-offset-slate-800' : 'border-gray-400 dark:border-gray-500'} ${opt.color}`} />
+                                                    {opt.label}
+                                                </label>
+                                            ))}
+                                        </div>
                                     </Field>
                                 </div>
 

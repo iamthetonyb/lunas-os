@@ -42,6 +42,7 @@ export function EditEntryModal({ entry, isOpen, onClose, onDelete }: Props) {
         startDate: '',
         invoiceNumber: '',
         modelPlanId: '',
+        billingStatus: 'none',
     });
 
     useEffect(() => {
@@ -59,6 +60,7 @@ export function EditEntryModal({ entry, isOpen, onClose, onDelete }: Props) {
                 startDate: entry.startDate ?? '',
                 invoiceNumber: entry.invoiceNumber ?? '',
                 modelPlanId: entry.modelPlanId ?? '',
+                billingStatus: entry.billingStatus ?? 'none',
             });
         }
     }, [entry]);
@@ -82,6 +84,7 @@ export function EditEntryModal({ entry, isOpen, onClose, onDelete }: Props) {
                 modelPlanId: form.modelPlanId
                     ? form.modelPlanId as Id<'modelPlans'>
                     : null,
+                billingStatus: form.billingStatus || undefined,
             });
             toast.success('Entry updated');
             onClose();
@@ -164,6 +167,28 @@ export function EditEntryModal({ entry, isOpen, onClose, onDelete }: Props) {
                                         />
                                         <label className="text-sm text-gray-700 dark:text-gray-300">ACH Payment</label>
                                     </div>
+                                    <Field label={t('blueBook.billingStatus', 'Billing Status')}>
+                                        <div className="col-span-2 flex flex-col gap-1.5">
+                                            {([
+                                                { value: 'none', label: t('blueBook.noBilling', 'No Invoice'), color: 'bg-gray-300 dark:bg-gray-500' },
+                                                { value: 'invoiced_paid', label: t('blueBook.invoicedPaid', 'Invoiced & Paid'), color: 'bg-green-500' },
+                                                { value: 'admin_paid', label: t('blueBook.adminPaid', 'Admin Work (Paid)'), color: 'bg-blue-500' },
+                                            ] as const).map((opt) => (
+                                                <label key={opt.value} className="flex items-center gap-2 cursor-pointer text-sm text-gray-700 dark:text-gray-300">
+                                                    <input
+                                                        type="radio"
+                                                        name="billingStatus"
+                                                        value={opt.value}
+                                                        checked={form.billingStatus === opt.value}
+                                                        onChange={(e) => setForm(f => ({ ...f, billingStatus: e.target.value }))}
+                                                        className="sr-only"
+                                                    />
+                                                    <span className={`w-3 h-3 rounded-full border-2 ${form.billingStatus === opt.value ? 'border-gray-900 dark:border-white ring-2 ring-offset-1 ring-offset-white dark:ring-offset-slate-800' : 'border-gray-400 dark:border-gray-500'} ${opt.color}`} />
+                                                    {opt.label}
+                                                </label>
+                                            ))}
+                                        </div>
+                                    </Field>
                                 </div>
 
                                 <div className="flex items-center justify-between mt-6">

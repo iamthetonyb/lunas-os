@@ -396,10 +396,12 @@ export default function ImportPage() {
                         checkTotal: row.checkTotal || undefined,
                         poNumber: row.poNumber || undefined,
                         isAch: row.isAch === 'true' || row.isAch === 'yes' || row.isAch === '1' ? true : undefined,
+                        billingStatus: row.billingStatus || undefined,
                         builderId,
                         communityId,
                         modelPlanId,
                         source: 'import',
+                        importOrder: parsedRows.indexOf(raw),
                     });
                     blueBookEntryIds.push({ id: bbResult.id, rowIndex: parsedRows.indexOf(raw), data: row });
                     results.blueBook.success++;

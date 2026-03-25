@@ -303,19 +303,51 @@ function parseExcel(buffer: ArrayBuffer): ParsedRow[] {
     const blueBookRows = tryParseBlueBook(buffer);
     if (blueBookRows) return blueBookRows;
 
-    // Standard tabular parsing
+    // Standard tabular parsing — try all sheets, pick the one with most recognized fields
     const workbook = XLSX.read(buffer, { type: 'array' });
-    const sheetName = workbook.SheetNames[0];
-    const sheet = workbook.Sheets[sheetName];
-    const raw = XLSX.utils.sheet_to_json<Record<string, any>>(sheet, { defval: '' });
+    let bestRows: ParsedRow[] = [];
+    let bestScore = 0;
 
-    return raw.map((row) => {
-        const normalized: ParsedRow = {};
-        for (const [key, val] of Object.entries(row)) {
-            normalized[normalizeHeader(key)] = String(val ?? '').trim();
+    for (const sheetName of workbook.SheetNames) {
+        const sheet = workbook.Sheets[sheetName];
+        const raw = XLSX.utils.sheet_to_json<Record<string, any>>(sheet, { defval: '' });
+        if (raw.length === 0) continue;
+
+        const rows = raw.map((row) => {
+            const normalized: ParsedRow = {};
+            for (const [key, val] of Object.entries(row)) {
+                normalized[normalizeHeader(key)] = String(val ?? '').trim();
+            }
+            return normalized;
+        });
+
+        // Score by recognized field count
+        const allCols = new Set<string>();
+        rows.forEach(r => Object.keys(r).forEach(k => allCols.add(k)));
+        const known = ['lot', 'communityName', 'builderName', 'serviceName', 'amount',
+            'checkNumber', 'startDate', 'assignedForemanName', 'modelPlanCode', 'address'];
+        const score = known.filter(k => allCols.has(k)).length;
+
+        if (score > bestScore || (score === bestScore && rows.length > bestRows.length)) {
+            bestRows = rows;
+            bestScore = score;
         }
-        return normalized;
-    });
+    }
+
+    // If no sheet had recognized fields, fall back to first sheet
+    if (bestRows.length === 0) {
+        const sheet = workbook.Sheets[workbook.SheetNames[0]];
+        const raw = XLSX.utils.sheet_to_json<Record<string, any>>(sheet, { defval: '' });
+        bestRows = raw.map((row) => {
+            const normalized: ParsedRow = {};
+            for (const [key, val] of Object.entries(row)) {
+                normalized[normalizeHeader(key)] = String(val ?? '').trim();
+            }
+            return normalized;
+        });
+    }
+
+    return bestRows;
 }
 
 function parseOcrText(text: string): ParsedRow[] {
@@ -593,8 +625,24 @@ function normalizeHeader(raw: string): string {
         community: 'communityName',
         communityname: 'communityName',
         subdivision: 'communityName',
+        projectname: 'communityName',
+        project: 'communityName',
+        development: 'communityName',
+        neighborhood: 'communityName',
         builder: 'builderName',
         buildername: 'builderName',
+        companyname: 'builderName',
+        company: 'builderName',
+        contractor: 'builderName',
+        contractorname: 'builderName',
+        divisionname: 'builderName',
+        division: 'builderName',
+        vendorname: 'builderName',
+        vendor: 'builderName',
+        clientname: 'builderName',
+        client: 'builderName',
+        gc: 'builderName',
+        generalcontractor: 'builderName',
         service: 'serviceName',
         servicename: 'serviceName',
         servicedescription: 'serviceName',

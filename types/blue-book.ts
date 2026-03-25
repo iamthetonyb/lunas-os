@@ -25,6 +25,7 @@ export type BlueBookEntry = {
     modelPlanName: string | null;
     modelPlanCode: string | null;
     modelPlanSqft: string | null;
+    billingStatus?: string | null;
     source?: string | null;
     jobRequestId?: string | null;
     jobRequestServiceId?: string | null;

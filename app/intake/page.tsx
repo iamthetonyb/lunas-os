@@ -202,10 +202,10 @@ function IntakeDetailModal({
   );
 }
 
-function RecentIntakes({ onIntakeSelect, onDelete, onEdit }: { onIntakeSelect: (intake: RecentIntake) => void, onDelete: (intakeId: string) => void, onEdit: (intake: RecentIntake) => void }) {
+function RecentIntakes({ onIntakeSelect, onDelete, onEdit, callerUserId }: { onIntakeSelect: (intake: RecentIntake) => void, onDelete: (intakeId: string) => void, onEdit: (intake: RecentIntake) => void, callerUserId?: Id<"users"> }) {
   const { t } = useTranslation();
   const [page, setPage] = useState(1);
-  const data = useQuery(api.jobRequests.getRecent, { page, limit: 10 });
+  const data = useQuery(api.jobRequests.getRecent, { page, limit: 10, callerUserId });
 
   const isLoading = data === undefined;
 
@@ -373,7 +373,7 @@ export default function IntakePage() {
       <main className="px-6 py-6">
         <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
           <h3 className="text-lg font-semibold text-gray-900 mb-4">{t('dashboard.recentIntakes')}</h3>
-          <RecentIntakes onIntakeSelect={handleIntakeSelect} onDelete={handleDelete} onEdit={handleEditFromTable} />
+          <RecentIntakes onIntakeSelect={handleIntakeSelect} onDelete={handleDelete} onEdit={handleEditFromTable} callerUserId={session?.user?.id as Id<"users"> | undefined} />
         </div>
       </main>
       <IntakeDetailModal

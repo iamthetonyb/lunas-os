@@ -11,8 +11,21 @@ export const list = query({
         page: v.optional(v.number()),
         pageSize: v.optional(v.number()),
         sort: v.optional(v.string()),
+        callerUserId: v.optional(v.id("users")),
     },
     handler: async (ctx, args) => {
+        // ── Permission scoping ──────────────────────────────────────────
+        let callerName: string | null = null;
+        if (args.callerUserId) {
+            const caller = await ctx.db.get(args.callerUserId);
+            if (caller) {
+                const role = (caller.role ?? "").toUpperCase();
+                if (role !== "ADMIN" && role !== "BACKOFFICE") {
+                    callerName = caller.name ?? null;
+                }
+            }
+        }
+
         // ── Index-first filtering ──────────────────────────────────────
         // Pick the most selective compound index based on supplied filters.
         let baseQuery;
@@ -40,6 +53,14 @@ export const list = query({
         // ── Filter out soft-deleted entries ─────────────────────────────
         entries = entries.filter((e) => e.status !== 'DELETED');
 
+        // ── Apply permission filter: non-admin/backoffice only see their own entries ──
+        if (callerName) {
+            const lowerCallerName = callerName.toLowerCase();
+            entries = entries.filter((e) =>
+                (e.assignedForemanName ?? "").toLowerCase() === lowerCallerName
+            );
+        }
+
         // ── In-memory filters (not indexable) ──────────────────────────
         if (args.invoiced === false) {
             entries = entries.filter((e) => !e.invoiceLineId);
@@ -58,6 +79,8 @@ export const list = query({
         }
 
         // ── Sort ───────────────────────────────────────────────────────
+        // Default: group by community, then sort by date earliest→latest,
+        // preserving upload/insertion order within the same date (importOrder or createdAt).
         if (args.sort === "checkDate") {
             entries.sort((a, b) =>
                 (a.checkDate ?? "").localeCompare(b.checkDate ?? "")
@@ -68,7 +91,12 @@ export const list = query({
                     b.communityId ?? ""
                 );
                 if (cmp !== 0) return cmp;
-                return (a.startDate ?? "").localeCompare(b.startDate ?? "");
+                const dateCmp = (a.startDate ?? "").localeCompare(b.startDate ?? "");
+                if (dateCmp !== 0) return dateCmp;
+                // Same date → preserve upload order (importOrder or createdAt)
+                const orderA = a.importOrder ?? a.createdAt;
+                const orderB = b.importOrder ?? b.createdAt;
+                return orderA - orderB;
             });
         }
 
@@ -183,6 +211,7 @@ export const create = mutation({
         accountCategoryCode: v.optional(v.string()),
         checkNumber: v.optional(v.string()),
         checkDate: v.optional(v.string()),
+        billingStatus: v.optional(v.string()),
     },
     handler: async (ctx, args) => {
         // ── Input validation ─────────────────────────────────────────
@@ -198,6 +227,10 @@ export const create = mutation({
         const validStatuses = ["PENDING", "SCHEDULED", "DISPATCHED", "COMPLETE"];
         if (args.status && !validStatuses.includes(args.status)) {
             throw new Error(`Invalid status. Must be one of: ${validStatuses.join(", ")}`);
+        }
+        const validBillingStatuses = ["invoiced_paid", "admin_paid", "none"];
+        if (args.billingStatus && !validBillingStatuses.includes(args.billingStatus)) {
+            throw new Error(`Invalid billingStatus. Must be one of: ${validBillingStatuses.join(", ")}`);
         }
 
         const now = Date.now();
@@ -235,6 +268,7 @@ export const create = mutation({
             serviceName: service?.name,
             modelPlanCode: modelPlan?.code,
             modelPlanSqft: modelPlan?.sqft,
+            billingStatus: args.billingStatus ?? "none",
             source: "manual",
             createdAt: now,
             updatedAt: now,
@@ -263,6 +297,7 @@ export const update = mutation({
         communityId: v.optional(v.union(v.id("communities"), v.null())),
         serviceId: v.optional(v.union(v.id("services"), v.null())),
         modelPlanId: v.optional(v.union(v.id("modelPlans"), v.null())),
+        billingStatus: v.optional(v.string()),
     },
     handler: async (ctx, args) => {
         const { id, ...updates } = args;

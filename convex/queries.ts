@@ -102,8 +102,20 @@ export const getScheduleJobs = query({
     args: {
         startDate: v.string(),
         endDate: v.string(),
+        callerUserId: v.optional(v.id("users")),
     },
     handler: async (ctx, args) => {
+        // ── Permission scoping ──────────────────────────────────────────
+        let callerName: string | null = null;
+        if (args.callerUserId) {
+            const caller = await ctx.db.get(args.callerUserId);
+            if (caller) {
+                const role = (caller.role ?? "").toUpperCase();
+                if (role !== "ADMIN" && role !== "BACKOFFICE") {
+                    callerName = caller.name ?? null;
+                }
+            }
+        }
         // Index-first: query by scheduledDate range, then filter in memory for rescheduled
         const indexedJrs = await ctx.db
             .query("jobRequestServices")
@@ -161,7 +173,7 @@ export const getScheduleJobs = query({
         );
 
         // O(1) lookups
-        return jobServices.map((jrs) => {
+        const results = jobServices.map((jrs) => {
             const jobRequest = jrMap.get(jrs.jobRequestId);
             const communityName = jobRequest?.communityId
                 ? communityMap.get(jobRequest.communityId as string)?.name ?? null
@@ -191,6 +203,16 @@ export const getScheduleJobs = query({
                 isExtraWork: jobRequest?.isExtraWork ?? false,
             };
         });
+
+        // ── Apply permission filter: non-admin/backoffice only see their own jobs ──
+        if (callerName) {
+            const lowerCallerName = callerName.toLowerCase();
+            return results.filter((job) =>
+                (job.assignedForemanName ?? "").toLowerCase() === lowerCallerName
+            );
+        }
+
+        return results;
     },
 });
 

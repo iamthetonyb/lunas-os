@@ -28,6 +28,8 @@ export const createBlueBookEntry = mutation({
         checkTotal: v.optional(v.string()),
         isAch: v.optional(v.boolean()),
         source: v.optional(v.string()),
+        billingStatus: v.optional(v.string()),
+        importOrder: v.optional(v.number()),
     },
     handler: async (ctx, args) => {
         const id = await ctx.db.insert("blueBookEntries", {
