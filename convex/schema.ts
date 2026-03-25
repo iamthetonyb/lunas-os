@@ -420,29 +420,42 @@ export default defineSchema({
 
     // Work Logs — crew/foreman daily work submissions (survey-style)
     workLogs: defineTable({
-        userId: v.id("users"),
+        userId: v.optional(v.id("users")), // optional for public/anonymous submissions
         userName: v.optional(v.string()),
         date: v.string(), // YYYY-MM-DD
+        time: v.optional(v.string()), // HH:MM
         communityId: v.optional(v.id("communities")),
         communityName: v.optional(v.string()),
         builderId: v.optional(v.id("builders")),
         builderName: v.optional(v.string()),
         serviceType: v.string(), // e.g. "Final Clean", "QA", "Tubs / Windows", "Frame Sweep"
+        serviceChecks: v.optional(v.array(v.string())), // checkbox selections from paper form
         lots: v.string(), // "Lot 13,14,15" — can be multiple
         sqft: v.optional(v.number()),
         amount: v.optional(v.number()),
         isExtraWork: v.optional(v.boolean()),
         extraWorkDescription: v.optional(v.string()),
+        workExplanation: v.optional(v.string()), // "Explain work completed" from paper form
         notes: v.optional(v.string()),
         subContractorName: v.optional(v.string()),
         windowCount: v.optional(v.number()), // for tubs/windows jobs
         hoursWorked: v.optional(v.number()), // for hourly/extra work
+        // Paper form fields
+        crewLeader: v.optional(v.string()),
+        numWorkers: v.optional(v.number()),
+        supervisor: v.optional(v.string()),
+        team: v.optional(v.string()),
+        // Verification flow: foreman verifies crew → admin verifies final
         status: v.string(), // DRAFT, SUBMITTED, VERIFIED, FLAGGED
         flagReason: v.optional(v.string()),
+        foremanVerified: v.optional(v.boolean()),
+        foremanVerifiedBy: v.optional(v.id("users")),
+        foremanVerifiedAt: v.optional(v.number()),
         verifiedBy: v.optional(v.id("users")),
         verifiedAt: v.optional(v.number()),
         // Links to system records for cross-reference
         blueBookEntryId: v.optional(v.id("blueBookEntries")),
+        extraWorkJobRequestId: v.optional(v.id("jobRequests")), // auto-created when extra work
         jobRequestServiceId: v.optional(v.id("jobRequestServices")),
         assignmentValidated: v.optional(v.boolean()), // true if work matches an assignment
         createdAt: v.number(),

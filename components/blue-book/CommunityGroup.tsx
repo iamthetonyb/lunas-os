@@ -23,10 +23,12 @@ export function CommunityGroup({ group, onEditEntry, onDeleteEntry, onPhaseOverr
 
     return (
         <div className="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden mb-4">
-            <button
-                type="button"
+            <div
+                role="button"
+                tabIndex={0}
                 onClick={() => setIsExpanded(!isExpanded)}
-                className="w-full flex items-center justify-between px-4 py-3 bg-gray-50 dark:bg-slate-800 hover:bg-gray-100 dark:hover:bg-slate-750 transition-colors"
+                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setIsExpanded(!isExpanded); } }}
+                className="w-full flex items-center justify-between px-4 py-3 bg-gray-50 dark:bg-slate-800 hover:bg-gray-100 dark:hover:bg-slate-750 transition-colors cursor-pointer"
             >
                 <div className="flex items-center gap-3">
                     <svg
@@ -52,8 +54,8 @@ export function CommunityGroup({ group, onEditEntry, onDeleteEntry, onPhaseOverr
                         >
                             {[
                                 { value: 'invoiced_paid', label: t('blueBook.invoicedPaid'), color: 'bg-green-500' },
-                                { value: 'admin', label: t('blueBook.adminPaid'), color: 'bg-blue-500' },
-                                { value: 'no_invoice', label: t('blueBook.noBilling'), color: 'bg-gray-300 dark:bg-gray-500' },
+                                { value: 'admin_paid', label: t('blueBook.adminPaid'), color: 'bg-blue-500' },
+                                { value: 'none', label: t('blueBook.noBilling'), color: 'bg-gray-300 dark:bg-gray-500' },
                             ].map((opt) => (
                                 <button
                                     key={opt.value}
@@ -81,7 +83,7 @@ export function CommunityGroup({ group, onEditEntry, onDeleteEntry, onPhaseOverr
                         {completionPct}%
                     </span>
                 </div>
-            </button>
+            </div>
 
             {isExpanded && (
                 <div className="p-4 space-y-3">

@@ -2,7 +2,7 @@ import { query, mutation } from "./_generated/server";
 import { v } from "convex/values";
 import type { Doc, Id } from "./_generated/dataModel";
 
-// ── Predefined service types (matching Blue Book phases) ────────────
+// ── Predefined service types (matching Blue Book phases + paper form) ─
 export const SERVICE_TYPES = [
     "Final Clean",
     "QA",
@@ -17,6 +17,8 @@ export const SERVICE_TYPES = [
     "After Carpet",
     "Carpet Sweep",
     "Power Wash",
+    "Stucco Pick Up",
+    "Exterior Pick Up",
     "Extra Sweep",
     "Extra Clean",
     "Other",
@@ -135,8 +137,9 @@ export const getStats = query({
         const totalAmount = logs.reduce((sum, l) => sum + (l.amount ?? 0), 0);
         const extraWork = logs.filter((l) => l.isExtraWork).length;
         const unvalidated = logs.filter((l) => l.assignmentValidated === false).length;
+        const pendingForeman = logs.filter((l) => l.status === "SUBMITTED" && !l.foremanVerified).length;
 
-        return { submitted, verified, flagged, totalAmount, extraWork, unvalidated, total: logs.length };
+        return { submitted, verified, flagged, totalAmount, extraWork, unvalidated, pendingForeman, total: logs.length };
     },
 });
 
@@ -146,17 +149,24 @@ export const create = mutation({
     args: {
         userId: v.id("users"),
         date: v.string(),
+        time: v.optional(v.string()),
         communityId: v.optional(v.id("communities")),
         serviceType: v.string(),
+        serviceChecks: v.optional(v.array(v.string())),
         lots: v.string(),
         sqft: v.optional(v.number()),
         amount: v.optional(v.number()),
         isExtraWork: v.optional(v.boolean()),
         extraWorkDescription: v.optional(v.string()),
+        workExplanation: v.optional(v.string()),
         notes: v.optional(v.string()),
         subContractorName: v.optional(v.string()),
         windowCount: v.optional(v.number()),
         hoursWorked: v.optional(v.number()),
+        crewLeader: v.optional(v.string()),
+        numWorkers: v.optional(v.number()),
+        supervisor: v.optional(v.string()),
+        team: v.optional(v.string()),
     },
     handler: async (ctx, args) => {
         // Validation
@@ -221,47 +231,154 @@ export const create = mutation({
             ? "Extra work — requires admin approval"
             : undefined;
 
+        const now = Date.now();
+
+        // ── Auto-create extra work job request ────────────────────────
+        let extraWorkJobRequestId: Id<"jobRequests"> | undefined;
+        if (args.isExtraWork && args.communityId) {
+            const jrId = await ctx.db.insert("jobRequests", {
+                builderId,
+                communityId: args.communityId,
+                lot: args.lots,
+                dueDate: args.date,
+                notes: args.extraWorkDescription ?? args.workExplanation ?? "",
+                requestedBy: userName,
+                isExtraWork: true,
+                status: "PENDING",
+                createdAt: now,
+                createdById: args.userId,
+            });
+
+            // Create the service line for this extra work
+            await ctx.db.insert("jobRequestServices", {
+                jobRequestId: jrId,
+                serviceName: args.serviceType,
+                status: "PENDING",
+                createdAt: now,
+            });
+
+            extraWorkJobRequestId = jrId;
+        }
+
         const id = await ctx.db.insert("workLogs", {
             userId: args.userId,
             userName,
             date: args.date,
+            time: args.time,
             communityId: args.communityId,
             communityName,
             builderId,
             builderName,
             serviceType: args.serviceType,
+            serviceChecks: args.serviceChecks,
             lots: args.lots,
             sqft: args.sqft,
             amount: args.amount,
             isExtraWork: args.isExtraWork ?? false,
             extraWorkDescription: args.extraWorkDescription,
+            workExplanation: args.workExplanation,
             notes: args.notes,
             subContractorName: args.subContractorName,
             windowCount: args.windowCount,
             hoursWorked: args.hoursWorked,
+            crewLeader: args.crewLeader,
+            numWorkers: args.numWorkers,
+            supervisor: args.supervisor,
+            team: args.team,
             status,
             flagReason,
             assignmentValidated,
             jobRequestServiceId,
-            createdAt: Date.now(),
+            extraWorkJobRequestId,
+            createdAt: now,
         });
 
-        return { id, status, assignmentValidated, flagReason };
+        return { id, status, assignmentValidated, flagReason, extraWorkJobRequestId };
     },
 });
 
+// ── Foreman verification (crew submits → foreman signs off) ──────────
+export const foremanVerify = mutation({
+    args: {
+        id: v.id("workLogs"),
+        foremanUserId: v.id("users"),
+    },
+    handler: async (ctx, args) => {
+        const log = await ctx.db.get(args.id);
+        if (!log) throw new Error("Work log not found");
+        if (log.status !== "SUBMITTED") {
+            throw new Error("Only SUBMITTED logs can be foreman-verified");
+        }
+
+        // Verify the caller is a foreman
+        const foreman = await ctx.db.get(args.foremanUserId);
+        const role = (foreman?.role ?? "").toUpperCase();
+        if (role !== "FOREMAN" && role !== "ADMIN" && role !== "BACKOFFICE") {
+            throw new Error("Only foremen or admins can verify work logs");
+        }
+
+        await ctx.db.patch(args.id, {
+            foremanVerified: true,
+            foremanVerifiedBy: args.foremanUserId,
+            foremanVerifiedAt: Date.now(),
+            updatedAt: Date.now(),
+        });
+        return { success: true };
+    },
+});
+
+// ── Admin verification (final — requires foreman verification first) ─
 export const verify = mutation({
     args: {
         id: v.id("workLogs"),
         verifiedBy: v.id("users"),
     },
     handler: async (ctx, args) => {
+        const log = await ctx.db.get(args.id);
+        if (!log) throw new Error("Work log not found");
+        if (log.status === "VERIFIED") {
+            throw new Error("Work log already verified");
+        }
+
+        // Require foreman verification first (skip for admin-submitted logs)
+        if (!log.foremanVerified) {
+            throw new Error("Work log must be foreman-verified before admin verification");
+        }
+
+        const now = Date.now();
+
         await ctx.db.patch(args.id, {
             status: "VERIFIED",
             verifiedBy: args.verifiedBy,
-            verifiedAt: Date.now(),
-            updatedAt: Date.now(),
+            verifiedAt: now,
+            updatedAt: now,
         });
+
+        // ── Auto-create Blue Book entry on verification ──────────────
+        if (log.communityId && log.builderId) {
+            const bbId = await ctx.db.insert("blueBookEntries", {
+                builderId: log.builderId,
+                communityId: log.communityId,
+                lot: log.lots,
+                startDate: log.date,
+                startDateNum: new Date(log.date).getTime() || undefined,
+                status: "COMPLETE",
+                amount: log.amount != null ? String(log.amount) : undefined,
+                // Denormalized names
+                builderName: log.builderName,
+                communityName: log.communityName,
+                serviceName: log.serviceType,
+                assignedForemanName: log.userName,
+                billingStatus: "none",
+                source: "work_log",
+                createdAt: now,
+                updatedAt: now,
+            });
+
+            // Link the Blue Book entry back to the work log
+            await ctx.db.patch(args.id, { blueBookEntryId: bbId });
+        }
+
         return { success: true };
     },
 });
@@ -285,17 +402,24 @@ export const update = mutation({
     args: {
         id: v.id("workLogs"),
         date: v.optional(v.string()),
+        time: v.optional(v.string()),
         communityId: v.optional(v.id("communities")),
         serviceType: v.optional(v.string()),
+        serviceChecks: v.optional(v.array(v.string())),
         lots: v.optional(v.string()),
         sqft: v.optional(v.number()),
         amount: v.optional(v.number()),
         isExtraWork: v.optional(v.boolean()),
         extraWorkDescription: v.optional(v.string()),
+        workExplanation: v.optional(v.string()),
         notes: v.optional(v.string()),
         subContractorName: v.optional(v.string()),
         windowCount: v.optional(v.number()),
         hoursWorked: v.optional(v.number()),
+        crewLeader: v.optional(v.string()),
+        numWorkers: v.optional(v.number()),
+        supervisor: v.optional(v.string()),
+        team: v.optional(v.string()),
     },
     handler: async (ctx, args) => {
         const { id, ...updates } = args;
@@ -336,6 +460,128 @@ export const remove = mutation({
         }
         await ctx.db.delete(args.id);
         return { success: true };
+    },
+});
+
+// ── Public submission (no login required — shareable link) ───────────
+export const createPublic = mutation({
+    args: {
+        submitterName: v.string(),
+        date: v.string(),
+        time: v.optional(v.string()),
+        communityId: v.optional(v.id("communities")),
+        serviceType: v.string(),
+        serviceChecks: v.optional(v.array(v.string())),
+        lots: v.string(),
+        sqft: v.optional(v.number()),
+        amount: v.optional(v.number()),
+        isExtraWork: v.optional(v.boolean()),
+        extraWorkDescription: v.optional(v.string()),
+        workExplanation: v.optional(v.string()),
+        notes: v.optional(v.string()),
+        subContractorName: v.optional(v.string()),
+        windowCount: v.optional(v.number()),
+        hoursWorked: v.optional(v.number()),
+        crewLeader: v.optional(v.string()),
+        numWorkers: v.optional(v.number()),
+        supervisor: v.optional(v.string()),
+        team: v.optional(v.string()),
+    },
+    handler: async (ctx, args) => {
+        if (!args.submitterName.trim()) {
+            throw new Error("Name is required");
+        }
+        if (!args.date || !/^\d{4}-\d{2}-\d{2}/.test(args.date)) {
+            throw new Error("Date must be YYYY-MM-DD format");
+        }
+        if (!args.lots.trim()) {
+            throw new Error("At least one lot is required");
+        }
+        if (args.isExtraWork && !args.extraWorkDescription?.trim()) {
+            throw new Error("Extra work requires a description");
+        }
+
+        // Try to find existing user by name
+        const users = await ctx.db
+            .query("users")
+            .withIndex("by_name", (q) => q.eq("name", args.submitterName.trim()))
+            .take(1);
+        const matchedUser = users[0];
+
+        // Resolve community → builder
+        let communityName: string | undefined;
+        let builderId: Id<"builders"> | undefined;
+        let builderName: string | undefined;
+        if (args.communityId) {
+            const community = await ctx.db.get(args.communityId);
+            communityName = community?.name;
+            if (community?.builderId) {
+                builderId = community.builderId;
+                const builder = await ctx.db.get(community.builderId);
+                builderName = builder?.name;
+            }
+        }
+
+        const now = Date.now();
+        const status = args.isExtraWork ? "FLAGGED" : "SUBMITTED";
+        const flagReason = args.isExtraWork ? "Extra work — requires admin approval" : undefined;
+
+        // Auto-create extra work job request
+        let extraWorkJobRequestId: Id<"jobRequests"> | undefined;
+        if (args.isExtraWork && args.communityId) {
+            const jrId = await ctx.db.insert("jobRequests", {
+                builderId,
+                communityId: args.communityId,
+                lot: args.lots,
+                dueDate: args.date,
+                notes: args.extraWorkDescription ?? args.workExplanation ?? "",
+                requestedBy: args.submitterName.trim(),
+                isExtraWork: true,
+                status: "PENDING",
+                createdAt: now,
+            });
+            await ctx.db.insert("jobRequestServices", {
+                jobRequestId: jrId,
+                serviceName: args.serviceType,
+                status: "PENDING",
+                createdAt: now,
+            });
+            extraWorkJobRequestId = jrId;
+        }
+
+        const id = await ctx.db.insert("workLogs", {
+            userId: matchedUser?._id,
+            userName: args.submitterName.trim(),
+            date: args.date,
+            time: args.time,
+            communityId: args.communityId,
+            communityName,
+            builderId,
+            builderName,
+            serviceType: args.serviceType,
+            serviceChecks: args.serviceChecks,
+            lots: args.lots,
+            sqft: args.sqft,
+            amount: args.amount,
+            isExtraWork: args.isExtraWork ?? false,
+            extraWorkDescription: args.extraWorkDescription,
+            workExplanation: args.workExplanation,
+            notes: args.notes,
+            subContractorName: args.subContractorName,
+            windowCount: args.windowCount,
+            hoursWorked: args.hoursWorked,
+            crewLeader: args.crewLeader,
+            numWorkers: args.numWorkers,
+            supervisor: args.supervisor,
+            team: args.team,
+            status,
+            flagReason,
+            assignmentValidated: false,
+            extraWorkJobRequestId,
+            createdAt: now,
+        });
+
+        return { id, status };
     },
 });
 

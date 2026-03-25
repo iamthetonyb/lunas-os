@@ -313,7 +313,7 @@ export const update = mutation({
         if (updates.builderId !== undefined) {
             lookups.push(
                 ctx.db.get(updates.builderId).then((b) => {
-                    filtered.builderName = b?.name ?? null;
+                    filtered.builderName = b?.name ?? undefined;
                 })
             );
         }
@@ -321,10 +321,10 @@ export const update = mutation({
             lookups.push(
                 updates.communityId
                     ? ctx.db.get(updates.communityId).then((c) => {
-                          filtered.communityName = c?.name ?? null;
+                          filtered.communityName = c?.name ?? undefined;
                       })
                     : Promise.resolve().then(() => {
-                          filtered.communityName = null;
+                          filtered.communityName = undefined;
                       })
             );
         }
@@ -332,10 +332,10 @@ export const update = mutation({
             lookups.push(
                 updates.serviceId
                     ? ctx.db.get(updates.serviceId).then((s) => {
-                          filtered.serviceName = s?.name ?? null;
+                          filtered.serviceName = s?.name ?? undefined;
                       })
                     : Promise.resolve().then(() => {
-                          filtered.serviceName = null;
+                          filtered.serviceName = undefined;
                       })
             );
         }
@@ -343,12 +343,12 @@ export const update = mutation({
             lookups.push(
                 updates.modelPlanId
                     ? ctx.db.get(updates.modelPlanId).then((mp) => {
-                          filtered.modelPlanCode = mp?.code ?? null;
-                          filtered.modelPlanSqft = mp?.sqft ?? null;
+                          filtered.modelPlanCode = mp?.code ?? undefined;
+                          filtered.modelPlanSqft = mp?.sqft ?? undefined;
                       })
                     : Promise.resolve().then(() => {
-                          filtered.modelPlanCode = null;
-                          filtered.modelPlanSqft = null;
+                          filtered.modelPlanCode = undefined;
+                          filtered.modelPlanSqft = undefined;
                       })
             );
         }

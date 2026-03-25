@@ -218,12 +218,35 @@ export const getScheduleJobs = query({
 
 // Get all dispatch batches (real-time)
 export const getDispatchBatches = query({
-    args: { limit: v.optional(v.number()) },
+    args: {
+        limit: v.optional(v.number()),
+        callerUserId: v.optional(v.id("users")),
+    },
     handler: async (ctx, args) => {
-        const batches = await ctx.db
+        // Permission scoping
+        let callerName: string | null = null;
+        if (args.callerUserId) {
+            const caller = await ctx.db.get(args.callerUserId);
+            if (caller) {
+                const role = (caller.role ?? "").toUpperCase();
+                if (role !== "ADMIN" && role !== "BACKOFFICE") {
+                    callerName = caller.name ?? null;
+                }
+            }
+        }
+
+        let batches = await ctx.db
             .query("dispatchBatches")
             .order("desc")
             .take(args.limit ?? 200);
+
+        // Non-admin users only see batches assigned to them
+        if (callerName) {
+            const lowerCallerName = callerName.toLowerCase();
+            batches = batches.filter(
+                (b) => (b.foremanName ?? "").toLowerCase() === lowerCallerName
+            );
+        }
 
         // BATCH-LOAD: Get all assignments for all batches in one pass
         const allAssignments = await Promise.all(

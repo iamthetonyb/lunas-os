@@ -4,6 +4,7 @@ import { PageHeader } from '@/components/page-header';
 import Link from 'next/link';
 import { useQuery } from 'convex/react';
 import { api } from '@/convex/_generated/api';
+import type { Id } from '@/convex/_generated/dataModel';
 import { useConvexUser } from '@/hooks/useConvexUser';
 import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -19,10 +20,11 @@ export default function DashboardPage() {
   const blueBookData = useQuery(api.blueBook.list, canAccessBlueBook ? {} : 'skip');
   const blueBookEntries = blueBookData?.entries ?? [];
 
-  const recentData = useQuery(api.jobRequests.getRecent, {});
+  const callerUserId = session?.user?.id as Id<"users"> | undefined;
+  const recentData = useQuery(api.jobRequests.getRecent, callerUserId ? { callerUserId } : {});
   const intakeList = recentData?.intakes ?? [];
 
-  const dispatchBatches = useQuery(api.queries.getDispatchBatches, {}) ?? [];
+  const dispatchBatches = useQuery(api.queries.getDispatchBatches, callerUserId ? { callerUserId } : {}) ?? [];
 
   // Contractor assignments
   const isContractor = orgRole === 'contractor' || (session?.user as any)?.role === 'FOREMAN' || (session?.user as any)?.role === 'CREW';
