@@ -4,6 +4,7 @@ const isPublicRoute = createRouteMatcher([
   '/login(.*)',
   '/forgot-password(.*)',
   '/reset-password(.*)',
+  '/work-log/public(.*)', // Public work log (no login required)
   '/t/(.*)',               // Public ticket submission
   '/api/auth/(.*)',        // Auth API routes (password reset)
   '/api/telegram/(.*)',    // Telegram webhook
