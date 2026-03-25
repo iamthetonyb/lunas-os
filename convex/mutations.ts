@@ -618,6 +618,31 @@ export const findOrCreateCommunity = mutation({
     },
 });
 
+// Normalize service name for fuzzy matching: lowercase, collapse whitespace,
+// strip trailing "ing"/"s", common synonyms → canonical form
+function normalizeServiceName(name: string): string {
+    let n = name.toLowerCase().trim().replace(/\s+/g, ' ');
+    // Common cleaning industry synonyms
+    const synonyms: [RegExp, string][] = [
+        [/\bpower\s*wash(ing)?\b/, 'powerwash'],
+        [/\bpressure\s*wash(ing)?\b/, 'powerwash'],
+        [/\bfinal\s*clean(ing)?\b/, 'final clean'],
+        [/\brough\s*clean(ing)?\b/, 'rough clean'],
+        [/\bframe\s*sweep(ing)?\b/, 'frame sweep'],
+        [/\btouch\s*up\s*clean(ing)?\b/, 'touch up clean'],
+        [/\bmove[\s-]*in\s*clean(ing)?\b/, 'move in clean'],
+        [/\bcarpet\s*sweep(ing)?\b/, 'carpet sweep'],
+        [/\btubs?\s*(&|and)\s*windows?\b/, 'tubs & windows'],
+        [/\bq\/?a\b/, 'qa'],
+    ];
+    for (const [pattern, replacement] of synonyms) {
+        n = n.replace(pattern, replacement);
+    }
+    // Strip trailing "ing" and plural "s" for generic matching
+    n = n.replace(/\b(\w{4,})ing\b/g, '$1').replace(/\b(\w{4,})s\b/g, '$1');
+    return n.replace(/[^a-z0-9 ]/g, '').replace(/\s+/g, ' ').trim();
+}
+
 export const findOrCreateService = mutation({
     args: {
         name: v.string(),
@@ -631,17 +656,107 @@ export const findOrCreateService = mutation({
         if (trimmed.length < 1 || trimmed.length > 100) {
             throw new Error("Service name must be 1-100 characters");
         }
-        const existing = await ctx.db
+        const normalized = normalizeServiceName(trimmed);
+
+        // 1. Exact name match
+        const exactMatch = await ctx.db
             .query("services")
             .withIndex("by_name", (q) => q.eq("name", trimmed))
             .first();
-        if (existing) return { id: existing._id, existed: true };
+        if (exactMatch) return { id: exactMatch._id, existed: true };
+
+        // 2. Normalized name match (fuzzy)
+        const normalizedMatch = await ctx.db
+            .query("services")
+            .withIndex("by_normalizedName", (q) => q.eq("normalizedName", normalized))
+            .first();
+        if (normalizedMatch) return { id: normalizedMatch._id, existed: true };
+
+        // 3. Scan active services for word-overlap similarity (catches edge cases)
+        const allActive = await ctx.db
+            .query("services")
+            .withIndex("by_active", (q) => q.eq("active", true))
+            .collect();
+        const inputWords = new Set(normalized.split(' '));
+        for (const svc of allActive) {
+            const svcNorm = normalizeServiceName(svc.name);
+            const svcWords = new Set(svcNorm.split(' '));
+            const overlap = [...inputWords].filter(w => svcWords.has(w)).length;
+            const maxLen = Math.max(inputWords.size, svcWords.size);
+            // 80%+ word overlap = same service
+            if (maxLen > 0 && overlap / maxLen >= 0.8) {
+                // Backfill normalizedName if missing
+                if (!svc.normalizedName) {
+                    await ctx.db.patch(svc._id, { normalizedName: svcNorm });
+                }
+                return { id: svc._id, existed: true };
+            }
+        }
+
+        // 4. Create new
         const id = await ctx.db.insert("services", {
             name: trimmed,
+            normalizedName: normalized,
             description: args.description,
             code: args.code,
             category: args.category,
             unitKind: args.unitKind,
+            active: true,
+            createdAt: Date.now(),
+        });
+        return { id, existed: false };
+    },
+});
+
+export const findOrCreateModelPlan = mutation({
+    args: {
+        name: v.string(),
+        sqft: v.optional(v.string()),
+        code: v.optional(v.string()),
+        communityId: v.optional(v.id("communities")),
+        builderId: v.optional(v.id("builders")),
+    },
+    handler: async (ctx, args) => {
+        const trimmed = args.name.trim();
+        if (trimmed.length < 1 || trimmed.length > 100) {
+            throw new Error("Model plan name must be 1-100 characters");
+        }
+        const normalized = trimmed.toLowerCase();
+
+        // Look for existing plan by name within the same community (or globally)
+        let existing;
+        if (args.communityId) {
+            existing = await ctx.db
+                .query("modelPlans")
+                .withIndex("by_community_name", (q) =>
+                    q.eq("communityId", args.communityId).eq("normalizedName", normalized)
+                )
+                .first();
+        }
+        if (!existing) {
+            existing = await ctx.db
+                .query("modelPlans")
+                .withIndex("by_normalizedName", (q) => q.eq("normalizedName", normalized))
+                .first();
+        }
+        if (existing && existing.active !== false) {
+            // Backfill missing fields on existing plan
+            const patch: Record<string, unknown> = {};
+            if (args.sqft && !existing.sqft) patch.sqft = args.sqft;
+            if (args.communityId && !existing.communityId) patch.communityId = args.communityId;
+            if (args.builderId && !existing.builderId) patch.builderId = args.builderId;
+            if (!existing.normalizedName) patch.normalizedName = normalized;
+            if (Object.keys(patch).length > 0) await ctx.db.patch(existing._id, patch);
+            return { id: existing._id, existed: true };
+        }
+
+        const id = await ctx.db.insert("modelPlans", {
+            name: trimmed,
+            normalizedName: normalized,
+            code: args.code,
+            sqft: args.sqft,
+            communityId: args.communityId,
+            builderId: args.builderId,
             active: true,
             createdAt: Date.now(),
         });
@@ -718,6 +833,163 @@ export const updateImportedEntityData = mutation({
     handler: async (ctx, args) => {
         await ctx.db.patch(args.id, { mappedData: args.mappedData });
         return { success: true };
+    },
+});
+
+// Soft-delete an import record + cascade deactivate selected linked entities
+export const softDeleteImport = mutation({
+    args: {
+        id: v.id("importHistory"),
+        keepEntityIds: v.optional(v.array(v.string())), // entity IDs user chose to KEEP
+    },
+    handler: async (ctx, args) => {
+        await ctx.db.patch(args.id, { deletedAt: Date.now() });
+
+        // Cascade: deactivate all entities that were created by this import
+        const linked = await ctx.db
+            .query("importedEntities")
+            .withIndex("by_import", (q) => q.eq("importId", args.id))
+            .collect();
+
+        const keepSet = new Set(args.keepEntityIds ?? []);
+        let deactivated = 0;
+        for (const entity of linked) {
+            if (entity.existed) continue; // Don't touch pre-existing entities
+            if (keepSet.has(entity.entityId)) continue; // User chose to keep this
+            try {
+                const doc = await ctx.db.get(entity.entityId as any);
+                if (!doc) continue;
+                if (entity.entityType === 'blueBookEntry') {
+                    await ctx.db.patch(entity.entityId as any, { status: 'DELETED' } as any);
+                } else if (entity.entityType === 'jobRequest') {
+                    await ctx.db.patch(entity.entityId as any, { status: 'DELETED' } as any);
+                } else {
+                    // Builders, communities, services: set active = false
+                    await ctx.db.patch(entity.entityId as any, { active: false } as any);
+                }
+                // Mark link record so restore knows which were actually deactivated
+                await ctx.db.patch(entity._id, { deactivated: true });
+                deactivated++;
+            } catch { /* entity may already be gone */ }
+        }
+        return { success: true, deactivated };
+    },
+});
+
+// Restore a soft-deleted import + reactivate only entities that were deactivated
+export const restoreImport = mutation({
+    args: { id: v.id("importHistory") },
+    handler: async (ctx, args) => {
+        await ctx.db.patch(args.id, { deletedAt: undefined });
+
+        // Cascade: reactivate only entities that were actually deactivated during soft-delete
+        const linked = await ctx.db
+            .query("importedEntities")
+            .withIndex("by_import", (q) => q.eq("importId", args.id))
+            .collect();
+
+        let reactivated = 0;
+        for (const entity of linked) {
+            if (entity.existed) continue;
+            if (!entity.deactivated) continue; // Only restore what was deactivated
+            try {
+                const doc = await ctx.db.get(entity.entityId as any);
+                if (!doc) continue;
+                if (entity.entityType === 'blueBookEntry') {
+                    await ctx.db.patch(entity.entityId as any, { status: 'PENDING' } as any);
+                } else if (entity.entityType === 'jobRequest') {
+                    await ctx.db.patch(entity.entityId as any, { status: 'PENDING' } as any);
+                } else {
+                    await ctx.db.patch(entity.entityId as any, { active: true } as any);
+                }
+                // Clear the deactivated flag
+                await ctx.db.patch(entity._id, { deactivated: undefined });
+                reactivated++;
+            } catch { /* entity may be gone */ }
+        }
+        return { success: true, reactivated };
+    },
+});
+
+// Hard-delete an import + cascade delete selected linked entities
+export const hardDeleteImport = mutation({
+    args: {
+        id: v.id("importHistory"),
+        entityIdsToDelete: v.array(v.string()), // entity IDs to cascade-delete
+    },
+    handler: async (ctx, args) => {
+        // Delete selected linked entities from their respective tables
+        const linkedEntities = await ctx.db
+            .query("importedEntities")
+            .withIndex("by_import", (q) => q.eq("importId", args.id))
+            .collect();
+
+        const deleteSet = new Set(args.entityIdsToDelete);
+
+        for (const entity of linkedEntities) {
+            if (deleteSet.has(entity.entityId)) {
+                // Try to soft-delete or hard-delete the actual entity
+                try {
+                    const entityDoc = await ctx.db.get(entity.entityId as any);
+                    if (entityDoc) {
+                        // Soft delete for main entities, hard delete for entries
+                        if (entity.entityType === 'blueBookEntry') {
+                            await ctx.db.delete(entity.entityId as any);
+                        } else {
+                            await ctx.db.patch(entity.entityId as any, { active: false } as any);
+                        }
+                    }
+                } catch {
+                    // Entity may already be deleted
+                }
+            }
+            // Always delete the link record
+            await ctx.db.delete(entity._id);
+        }
+
+        // Delete the import record itself
+        await ctx.db.delete(args.id);
+        return { success: true, deletedEntities: deleteSet.size };
+    },
+});
+
+// Purge imports soft-deleted more than 90 days ago (called by cron)
+export const purgeOldImports = mutation({
+    handler: async (ctx) => {
+        const cutoff = Date.now() - 90 * 24 * 60 * 60 * 1000;
+        const expired = await ctx.db
+            .query("importHistory")
+            .withIndex("by_deletedAt")
+            .filter((q) => q.and(
+                q.neq(q.field("deletedAt"), undefined),
+                q.lt(q.field("deletedAt"), cutoff)
+            ))
+            .take(50); // batch to avoid timeouts
+
+        let purged = 0;
+        for (const record of expired) {
+            // Delete all linked entities
+            const linked = await ctx.db
+                .query("importedEntities")
+                .withIndex("by_import", (q) => q.eq("importId", record._id))
+                .collect();
+            for (const entity of linked) {
+                try {
+                    const doc = await ctx.db.get(entity.entityId as any);
+                    if (doc) {
+                        if (entity.entityType === 'blueBookEntry') {
+                            await ctx.db.delete(entity.entityId as any);
+                        } else {
+                            await ctx.db.patch(entity.entityId as any, { active: false } as any);
+                        }
+                    }
+                } catch { /* already gone */ }
+                await ctx.db.delete(entity._id);
+            }
+            await ctx.db.delete(record._id);
+            purged++;
+        }
+        return { purged };
     },
 });
 
@@ -843,6 +1115,54 @@ export const updateCommunity = mutation({
             filtered.normalizedName = updates.name.toLowerCase().trim();
         }
         await ctx.db.patch(id, filtered);
+
+        // Cascade builder change to Blue Book entries + job requests referencing this community
+        if (updates.builderId) {
+            const newBuilder = await ctx.db.get(updates.builderId);
+            const newBuilderName = newBuilder?.name;
+
+            // Update Blue Book entries
+            const bbEntries = await ctx.db
+                .query("blueBookEntries")
+                .withIndex("by_community", (q: any) => q.eq("communityId", id))
+                .collect();
+            for (const entry of bbEntries) {
+                await ctx.db.patch(entry._id, {
+                    builderId: updates.builderId,
+                    builderName: newBuilderName,
+                    updatedAt: Date.now(),
+                });
+            }
+
+            // Update job requests
+            const jobRequests = await ctx.db
+                .query("jobRequests")
+                .withIndex("by_community", (q: any) => q.eq("communityId", id))
+                .collect();
+            for (const jr of jobRequests) {
+                await ctx.db.patch(jr._id, { builderId: updates.builderId });
+            }
+
+            // Update community name on entries if name also changed
+            if (updates.name) {
+                for (const entry of bbEntries) {
+                    await ctx.db.patch(entry._id, { communityName: updates.name });
+                }
+            }
+        } else if (updates.name) {
+            // Only name changed — update denormalized communityName on Blue Book entries
+            const bbEntries = await ctx.db
+                .query("blueBookEntries")
+                .withIndex("by_community", (q: any) => q.eq("communityId", id))
+                .collect();
+            for (const entry of bbEntries) {
+                await ctx.db.patch(entry._id, {
+                    communityName: updates.name,
+                    updatedAt: Date.now(),
+                });
+            }
+        }
+
         return { success: true };
     },
 });

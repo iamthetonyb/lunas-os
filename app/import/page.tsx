@@ -121,6 +121,7 @@ export default function ImportPage() {
     const findOrCreateBuilder = useMutation(api.mutations.findOrCreateBuilder);
     const findOrCreateCommunity = useMutation(api.mutations.findOrCreateCommunity);
     const findOrCreateService = useMutation(api.mutations.findOrCreateService);
+    const findOrCreateModelPlan = useMutation(api.mutations.findOrCreateModelPlan);
     const createImportRecord = useMutation(api.mutations.createImportRecord);
     const createImportedEntity = useMutation(api.mutations.createImportedEntity);
 
@@ -294,6 +295,9 @@ export default function ImportPage() {
         const builderIdCache = new Map<string, Id<'builders'>>();
         const communityIdCache = new Map<string, Id<'communities'>>();
         const serviceIdCache = new Map<string, Id<'services'>>();
+        const modelPlanIdCache = new Map<string, Id<'modelPlans'>>();
+        const blueBookEntryIds: { id: string; rowIndex: number; data: Record<string, string> }[] = [];
+        const jobRequestIds: { id: string; rowIndex: number; data: Record<string, string> }[] = [];
 
         for (const raw of parsedRows) {
             const row = remapRow(raw);
@@ -334,7 +338,7 @@ export default function ImportPage() {
                 try {
                     const builderId = builderIdCache.get(row.builderName?.toLowerCase() ?? '') ?? resolveId(row.builderName, builders) as Id<'builders'> | undefined;
                     const communityId = communityIdCache.get(row.communityName?.toLowerCase() ?? '') ?? resolveId(row.communityName, communities) as Id<'communities'> | undefined;
-                    await createJobRequest({
+                    const jrResult = await createJobRequest({
                         lot: row.lot || undefined,
                         dueDate: row.dueDate || row.startDate || undefined,
                         address: row.address || undefined,
@@ -344,8 +348,26 @@ export default function ImportPage() {
                         communityId,
                         services: [{ serviceName: row.serviceName }],
                     });
+                    if (jrResult?.jobRequestId) {
+                        jobRequestIds.push({ id: jrResult.jobRequestId, rowIndex: parsedRows.indexOf(raw), data: row });
+                    }
                     results.jobRequests.success++;
                 } catch { results.jobRequests.errors++; }
+            }
+
+            // Model Plans — findOrCreate when modelPlanCode is present
+            if (row.modelPlanCode && !modelPlanIdCache.has(row.modelPlanCode.toLowerCase())) {
+                try {
+                    const communityId = communityIdCache.get(row.communityName?.toLowerCase() ?? '') ?? resolveId(row.communityName, communities) as Id<'communities'> | undefined;
+                    const builderId = builderIdCache.get(row.builderName?.toLowerCase() ?? '') ?? resolveId(row.builderName, builders) as Id<'builders'> | undefined;
+                    const res = await findOrCreateModelPlan({
+                        name: row.modelPlanCode,
+                        sqft: row.modelPlanSqft || undefined,
+                        communityId,
+                        builderId,
+                    });
+                    modelPlanIdCache.set(row.modelPlanCode.toLowerCase(), res.id);
+                } catch { /* non-fatal — entry still gets created without link */ }
             }
 
             // Blue Book
@@ -353,11 +375,17 @@ export default function ImportPage() {
                 try {
                     const builderId = builderIdCache.get(row.builderName?.toLowerCase() ?? '') ?? resolveId(row.builderName, builders) as Id<'builders'> | undefined;
                     const communityId = communityIdCache.get(row.communityName?.toLowerCase() ?? '') ?? resolveId(row.communityName, communities) as Id<'communities'> | undefined;
-                    await createBlueBookEntry({
+                    const modelPlanId = modelPlanIdCache.get(row.modelPlanCode?.toLowerCase() ?? '') as Id<'modelPlans'> | undefined;
+                    const bbResult = await createBlueBookEntry({
                         lot: row.lot || undefined,
                         startDate: row.startDate || undefined,
                         status: row.status || undefined,
                         amount: row.amount || undefined,
+                        serviceName: row.serviceName || undefined,
+                        modelPlanCode: row.modelPlanCode || undefined,
+                        modelPlanSqft: row.modelPlanSqft || undefined,
+                        assignedForemanName: row.assignedForemanName || undefined,
+                        crewName: row.crewName || undefined,
                         accountCategoryName: row.accountCategoryName || undefined,
                         accountCategoryCode: row.accountCategoryCode || undefined,
                         checkNumber: row.checkNumber || undefined,
@@ -367,8 +395,10 @@ export default function ImportPage() {
                         isAch: row.isAch === 'true' || row.isAch === 'yes' || row.isAch === '1' ? true : undefined,
                         builderId,
                         communityId,
+                        modelPlanId,
                         source: 'import',
                     });
+                    blueBookEntryIds.push({ id: bbResult.id, rowIndex: parsedRows.indexOf(raw), data: row });
                     results.blueBook.success++;
                 } catch { results.blueBook.errors++; }
             }
@@ -413,6 +443,20 @@ export default function ImportPage() {
                 entityPromises.push(createImportedEntity({
                     importId, entityType: 'service', entityId: id as string,
                     rowIndex: 0, mappedData: JSON.stringify({ serviceName: name }),
+                    existed: false,
+                }));
+            }
+            for (const bb of blueBookEntryIds) {
+                entityPromises.push(createImportedEntity({
+                    importId, entityType: 'blueBookEntry', entityId: bb.id,
+                    rowIndex: bb.rowIndex, mappedData: JSON.stringify(bb.data),
+                    existed: false,
+                }));
+            }
+            for (const jr of jobRequestIds) {
+                entityPromises.push(createImportedEntity({
+                    importId, entityType: 'jobRequest', entityId: jr.id,
+                    rowIndex: jr.rowIndex, mappedData: JSON.stringify(jr.data),
                     existed: false,
                 }));
             }

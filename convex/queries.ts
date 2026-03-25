@@ -70,6 +70,17 @@ export const getModelPlans = query({
     },
 });
 
+export const getModelPlansByCommunity = query({
+    args: { communityId: v.id("communities") },
+    handler: async (ctx, args) => {
+        const plans = await ctx.db
+            .query("modelPlans")
+            .withIndex("by_community", (q) => q.eq("communityId", args.communityId))
+            .take(200);
+        return plans.filter((p) => p.active !== false);
+    },
+});
+
 // ── Communities by builder ────────────────────────────────────────────
 
 export const getCommunitiesByBuilder = query({
@@ -397,13 +408,15 @@ export const getCrews = query({
 // ── Import History ───────────────────────────────────────────────────
 
 export const getImportHistory = query({
-    args: { limit: v.optional(v.number()) },
+    args: { limit: v.optional(v.number()), includeDeleted: v.optional(v.boolean()) },
     handler: async (ctx, args) => {
-        return await ctx.db
+        const records = await ctx.db
             .query("importHistory")
             .withIndex("by_createdAt")
             .order("desc")
-            .take(args.limit ?? 20);
+            .take(args.limit ?? 50);
+        if (args.includeDeleted) return records;
+        return records.filter(r => !r.deletedAt);
     },
 });
 

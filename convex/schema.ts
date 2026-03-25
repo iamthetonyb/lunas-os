@@ -68,6 +68,7 @@ export default defineSchema({
     // Services
     services: defineTable({
         name: v.string(),
+        normalizedName: v.optional(v.string()),
         description: v.optional(v.string()),
         code: v.optional(v.string()),
         category: v.optional(v.string()),
@@ -76,12 +77,14 @@ export default defineSchema({
         createdAt: v.number(),
     })
         .index("by_name", ["name"])
+        .index("by_normalizedName", ["normalizedName"])
         .index("by_code", ["code"])
         .index("by_active", ["active"]),
 
     // Model Plans
     modelPlans: defineTable({
         name: v.string(),
+        normalizedName: v.optional(v.string()),
         communityId: v.optional(v.id("communities")),
         builderId: v.optional(v.id("builders")),
         code: v.optional(v.string()),
@@ -92,7 +95,9 @@ export default defineSchema({
     })
         .index("by_community", ["communityId"])
         .index("by_builder", ["builderId"])
-        .index("by_active", ["active"]),
+        .index("by_active", ["active"])
+        .index("by_normalizedName", ["normalizedName"])
+        .index("by_community_name", ["communityId", "normalizedName"]),
 
     // Crews
     crews: defineTable({
@@ -305,13 +310,16 @@ export default defineSchema({
     // Community Lots
     communityLots: defineTable({
         communityId: v.id("communities"),
+        modelPlanId: v.optional(v.id("modelPlans")),
         jobNumber: v.optional(v.string()),
         lotNumber: v.optional(v.string()),
         address: v.optional(v.string()),
         model: v.optional(v.string()),
         status: v.optional(v.string()),
         createdAt: v.number(),
-    }).index("by_community", ["communityId"]),
+    })
+        .index("by_community", ["communityId"])
+        .index("by_modelPlan", ["modelPlanId"]),
 
     // ── NEW TABLES (Phase 1) ────────────────────────────────────────────
 
@@ -382,10 +390,12 @@ export default defineSchema({
         fieldMapping: v.optional(v.string()), // JSON of field mapping used
         parsedRows: v.optional(v.string()), // JSON: mapped row data (fields user chose)
         rawRows: v.optional(v.string()), // JSON: full extraction (all fields from OCR/parse)
+        deletedAt: v.optional(v.number()), // soft delete timestamp
         createdAt: v.number(),
     })
         .index("by_fileHash", ["fileHash"])
-        .index("by_createdAt", ["createdAt"]),
+        .index("by_createdAt", ["createdAt"])
+        .index("by_deletedAt", ["deletedAt"]),
 
     // Imported Entities — links import records to created system entities
     importedEntities: defineTable({
@@ -395,6 +405,7 @@ export default defineSchema({
         rowIndex: v.number(), // which row in the import this came from
         mappedData: v.string(), // JSON of the mapped row data at import time
         existed: v.optional(v.boolean()), // true if entity existed before import
+        deactivated: v.optional(v.boolean()), // true if entity was deactivated during soft-delete
         createdAt: v.number(),
     })
         .index("by_import", ["importId"])

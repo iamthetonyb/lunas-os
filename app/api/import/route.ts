@@ -1,14 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 import Papa from 'papaparse';
 import * as XLSX from 'xlsx';
-import { generateObject } from 'ai';
+import { generateObject, generateText } from 'ai';
 import { createOpenRouter } from '@openrouter/ai-sdk-provider';
 import { createOpenAI } from '@ai-sdk/openai';
 import { createGoogleGenerativeAI } from '@ai-sdk/google';
 import { z } from 'zod';
+import { tryParseBlueBook, excelSheetToText } from './parse-blue-book';
 
 export const runtime = 'nodejs';
-export const maxDuration = 60;
+export const maxDuration = 120;
 
 type ParsedRow = Record<string, string>;
 
@@ -59,12 +60,33 @@ export async function POST(req: NextRequest) {
 
         // Spreadsheet path
         let rows: ParsedRow[] = [];
+        let source = ext;
         if (ext === 'csv') {
             const text = await file.text();
             rows = parseCsv(text);
         } else if (['xlsx', 'xls', 'ods'].includes(ext)) {
             const buffer = await file.arrayBuffer();
             rows = parseExcel(buffer);
+
+            // If heuristic parsing found nothing useful, fall back to LLM extraction
+            if (rows.length === 0 || !hasRecognizedFields(rows)) {
+                const text = excelSheetToText(buffer);
+                if (text.length > 50) {
+                    const result = await generateObject({
+                        model: getExtractionModel(),
+                        schema: visionRowSchema,
+                        messages: [{
+                            role: 'user',
+                            content: EXTRACTION_PROMPT + '\n\nSpreadsheet data:\n' + text,
+                        }],
+                    });
+                    const llmResult = buildOcrResult(result.object);
+                    if (llmResult.rows.length > 0) {
+                        rows = llmResult.rows;
+                        source = 'llm';
+                    }
+                }
+            }
         } else {
             return NextResponse.json(
                 { error: `Unsupported file type: .${ext}` },
@@ -76,7 +98,7 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({
             success: true,
             rows,
-            source: ext,
+            source,
             rowCount: rows.length,
             ...detection,
         });
@@ -167,7 +189,7 @@ async function runVisionOcr(file: File): Promise<{ rows: ParsedRow[]; rawText: s
 
     if (!isImage) throw new Error(`Unsupported file type for vision OCR: .${ext}`);
 
-    // Image files: Sharp preprocessing → vision model
+    // Image files: Sharp preprocessing → single-call vision extraction
     const sharp = (await import('sharp')).default;
     const processed = await sharp(rawBuffer)
         .grayscale()
@@ -178,19 +200,73 @@ async function runVisionOcr(file: File): Promise<{ rows: ParsedRow[]; rawText: s
         .jpeg({ quality: 85 })
         .toBuffer();
 
-    const result = await generateObject({
+    // Single call: vision → text with embedded JSON extraction
+    const visionPrompt = `You are a construction document parser. Look at this image and extract ALL data.
+
+Return your response in EXACTLY this format — raw text first, then JSON:
+
+---RAW TEXT---
+(paste all text you can read from the image here, preserving layout)
+
+---JSON DATA---
+(a JSON array of objects, each object representing one data row with these field names when applicable: lot, communityName, builderName, serviceName, amount, checkNumber, checkDate, checkTotal, invoiceNumber, poNumber, startDate, status, modelPlanCode, modelPlanSqft, assignedForemanName, crewName, address, notes)
+
+Example JSON:
+[{"lot":"101","communityName":"Highrock","builderName":"Toll Brothers","serviceName":"Frame Sweep","startDate":"7/31","assignedForemanName":"Connie"}]
+
+Extract EVERY row of data you can see. All values must be strings.`;
+
+    const textResult = await generateText({
         model: getExtractionModel(),
-        schema: visionRowSchema,
         messages: [{
             role: 'user',
             content: [
-                { type: 'image' as const, image: `data:image/jpeg;base64,${processed.toString('base64')}` },
-                { type: 'text' as const, text: EXTRACTION_PROMPT },
+                { type: 'image' as const, image: new Uint8Array(processed) },
+                { type: 'text' as const, text: visionPrompt },
             ],
         }],
     });
 
-    return buildOcrResult(result.object);
+    const fullResponse = textResult.text;
+
+    // Parse the response: extract raw text and JSON sections
+    const rawTextMatch = fullResponse.match(/---RAW TEXT---\s*([\s\S]*?)(?=---JSON DATA---|$)/i);
+    const jsonMatch = fullResponse.match(/---JSON DATA---\s*([\s\S]*)/i);
+    const rawText = rawTextMatch?.[1]?.trim() || fullResponse;
+
+    let rows: ParsedRow[] = [];
+    let confidence = 30;
+
+    if (jsonMatch) {
+        try {
+            // Extract JSON array from the response (handle markdown code fences)
+            let jsonStr = jsonMatch[1].trim();
+            jsonStr = jsonStr.replace(/^```json?\s*/i, '').replace(/\s*```$/, '').trim();
+            const parsed = JSON.parse(jsonStr);
+            if (Array.isArray(parsed)) {
+                rows = parsed.map((row: any) => {
+                    const normalized: ParsedRow = {};
+                    for (const [key, val] of Object.entries(row)) {
+                        if (val !== null && val !== undefined && val !== '') {
+                            normalized[normalizeHeader(key)] = String(val).trim();
+                        }
+                    }
+                    return normalized;
+                }).filter((r: ParsedRow) => Object.keys(r).length > 0);
+                confidence = 70;
+            }
+        } catch (parseErr) {
+            console.warn('JSON extraction from vision failed, falling back to text parsing:', parseErr);
+        }
+    }
+
+    // Fallback: if JSON extraction failed, parse the raw text heuristically
+    if (rows.length === 0 && rawText.length > 20) {
+        rows = parseOcrText(rawText);
+        confidence = 40;
+    }
+
+    return { rows, rawText, confidence };
 }
 
 function buildOcrResult(extracted: z.infer<typeof visionRowSchema>): { rows: ParsedRow[]; rawText: string; confidence: number } {
@@ -223,6 +299,11 @@ function parseCsv(text: string): ParsedRow[] {
 }
 
 function parseExcel(buffer: ArrayBuffer): ParsedRow[] {
+    // Try Blue Book format first (multi-section layout with "Project Name:" header)
+    const blueBookRows = tryParseBlueBook(buffer);
+    if (blueBookRows) return blueBookRows;
+
+    // Standard tabular parsing
     const workbook = XLSX.read(buffer, { type: 'array' });
     const sheetName = workbook.SheetNames[0];
     const sheet = workbook.Sheets[sheetName];
@@ -490,10 +571,23 @@ function detectDataType(rows: ParsedRow[], fileNameHints?: FileNameHints): {
 
 // ── Helpers ──────────────────────────────────────────────────────────
 
+/** Check if parsed rows have at least some recognized system fields. */
+function hasRecognizedFields(rows: ParsedRow[]): boolean {
+    if (rows.length === 0) return false;
+    const allCols = new Set<string>();
+    rows.forEach(r => Object.keys(r).forEach(k => allCols.add(k)));
+    const known = ['lot', 'communityName', 'builderName', 'serviceName', 'amount',
+        'checkNumber', 'startDate', 'assignedForemanName', 'modelPlanCode',
+        'modelPlanSqft', 'address', 'status', 'dueDate', 'invoiceNumber'];
+    const matchCount = known.filter(k => allCols.has(k)).length;
+    return matchCount >= 2;
+}
+
 function normalizeHeader(raw: string): string {
     const h = raw.toLowerCase().trim().replace(/[^a-z0-9]/g, '');
     const map: Record<string, string> = {
         lot: 'lot',
+        lots: 'lot',
         lotnumber: 'lot',
         lotno: 'lot',
         community: 'communityName',

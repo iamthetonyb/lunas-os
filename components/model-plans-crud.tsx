@@ -27,6 +27,7 @@ interface ModelPlan {
   name: string;
   code: string;
   builderId: string;
+  communityId?: string;
   sqft: string;
   defaults?: unknown;
 }
@@ -47,6 +48,7 @@ export function ModelPlansCrud() {
   const [isOpen, setIsOpen] = useState(false);
   const [selectedModelPlan, setSelectedModelPlan] = useState<ModelPlan | null>(null);
   const [isDeleting, setIsDeleting] = useState<string | null>(null);
+  const [expandedPlanId, setExpandedPlanId] = useState<string | null>(null);
 
   const {
     register,
@@ -170,10 +172,14 @@ export function ModelPlansCrud() {
               </thead>
               <tbody className="bg-white dark:bg-slate-900 divide-y divide-gray-200 dark:divide-gray-700">
                 {modelPlans?.map((plan) => (
-                  <tr key={plan._id} className="hover:bg-gray-50 dark:hover:bg-slate-800 transition-colors">
+                  <Fragment key={plan._id}>
+                  <tr
+                    className={`cursor-pointer transition-colors ${expandedPlanId === plan._id ? 'bg-blue-50 dark:bg-blue-900/10' : 'hover:bg-gray-50 dark:hover:bg-slate-800'}`}
+                    onClick={() => setExpandedPlanId(expandedPlanId === plan._id ? null : plan._id)}
+                  >
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center gap-2">
-                        <span className="text-xl">🏠</span>
+                        <svg className={`w-3 h-3 text-gray-400 transition-transform ${expandedPlanId === plan._id ? 'rotate-90' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
                         <span className="text-sm font-medium text-gray-900 dark:text-gray-100">
                           {plan.name}
                         </span>
@@ -188,13 +194,10 @@ export function ModelPlansCrud() {
                       {getBuilderName(plan.builderId)}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700 dark:text-gray-300">
-                      <span className="flex items-center gap-1">
-                        <span>📏</span>
-                        {plan.sqft} sqft
-                      </span>
+                      {plan.sqft} sqft
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                      <div className="flex gap-2 justify-end">
+                      <div className="flex gap-2 justify-end" onClick={(e) => e.stopPropagation()}>
                         <button
                           onClick={() => openModal(plan)}
                           className="inline-flex items-center gap-1 px-3 py-1.5 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 hover:bg-blue-100 dark:hover:bg-blue-900/40 rounded-md transition-colors"
@@ -229,6 +232,14 @@ export function ModelPlansCrud() {
                       </div>
                     </td>
                   </tr>
+                  {expandedPlanId === plan._id && (
+                    <tr>
+                      <td colSpan={5} className="px-6 py-0">
+                        <PlanLots modelPlanId={plan._id} communityId={plan.communityId} />
+                      </td>
+                    </tr>
+                  )}
+                  </Fragment>
                 ))}
               </tbody>
             </table>
@@ -391,6 +402,126 @@ export function ModelPlansCrud() {
         confirmLabel="Delete"
         variant="danger"
       />
+    </div>
+  );
+}
+
+// ── Inline Lots Panel (shown when a plan row is expanded) ─────────────
+
+function PlanLots({ modelPlanId, communityId }: { modelPlanId: Id<"modelPlans">; communityId?: string }) {
+  const { t } = useTranslation();
+  const lots = useQuery(api.communityLots.byModelPlan, { modelPlanId }) ?? [];
+  const createLot = useMutation(api.communityLots.create);
+  const updateLot = useMutation(api.communityLots.update);
+  const removeLot = useMutation(api.communityLots.remove);
+
+  const [adding, setAdding] = useState(false);
+  const [newLotNumber, setNewLotNumber] = useState('');
+  const [newAddress, setNewAddress] = useState('');
+  const [newJobNumber, setNewJobNumber] = useState('');
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editLotNumber, setEditLotNumber] = useState('');
+  const [editAddress, setEditAddress] = useState('');
+  const [editJobNumber, setEditJobNumber] = useState('');
+
+  const handleAdd = async () => {
+    if (!newLotNumber.trim()) return;
+    try {
+      await createLot({
+        communityId: (communityId ?? '') as Id<"communities">,
+        modelPlanId,
+        lotNumber: newLotNumber.trim(),
+        address: newAddress.trim() || undefined,
+        jobNumber: newJobNumber.trim() || undefined,
+      });
+      toast.success(t('lots.added', { lot: newLotNumber }));
+      setNewLotNumber(''); setNewAddress(''); setNewJobNumber('');
+      setAdding(false);
+    } catch { toast.error(t('lots.addError')); }
+  };
+
+  const handleUpdate = async (id: string) => {
+    if (!editLotNumber.trim()) return;
+    try {
+      await updateLot({
+        id: id as Id<"communityLots">,
+        lotNumber: editLotNumber.trim(),
+        address: editAddress.trim() || undefined,
+        jobNumber: editJobNumber.trim() || undefined,
+      });
+      toast.success(t('lots.updated'));
+      setEditingId(null);
+    } catch { toast.error(t('lots.updateError')); }
+  };
+
+  const handleRemove = async (id: string) => {
+    try {
+      await removeLot({ id: id as Id<"communityLots"> });
+      toast.success(t('lots.removed'));
+    } catch { toast.error(t('lots.removeError')); }
+  };
+
+  const startEdit = (lot: any) => {
+    setEditingId(lot._id);
+    setEditLotNumber(lot.lotNumber ?? '');
+    setEditAddress(lot.address ?? '');
+    setEditJobNumber(lot.jobNumber ?? '');
+  };
+
+  return (
+    <div className="py-3 mb-2 border-t border-gray-100 dark:border-gray-700">
+      <div className="flex items-center justify-between mb-2">
+        <span className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">
+          {t('lots.title')} ({lots.length})
+        </span>
+        {!adding && (
+          <button onClick={() => setAdding(true)} className="text-xs text-blue-600 dark:text-blue-400 hover:underline">
+            + {t('lots.add')}
+          </button>
+        )}
+      </div>
+
+      {adding && (
+        <div className="flex gap-2 mb-2 items-center">
+          <input value={newLotNumber} onChange={(e) => setNewLotNumber(e.target.value)} placeholder={t('lots.lotNumber')} className="w-20 px-2 py-1 border rounded text-sm dark:bg-slate-800 dark:border-gray-600 dark:text-white" autoFocus />
+          <input value={newAddress} onChange={(e) => setNewAddress(e.target.value)} placeholder={t('lots.address')} className="flex-1 px-2 py-1 border rounded text-sm dark:bg-slate-800 dark:border-gray-600 dark:text-white" />
+          <input value={newJobNumber} onChange={(e) => setNewJobNumber(e.target.value)} placeholder={t('lots.jobNumber')} className="w-24 px-2 py-1 border rounded text-sm dark:bg-slate-800 dark:border-gray-600 dark:text-white" />
+          <button onClick={handleAdd} disabled={!newLotNumber.trim()} className="text-xs text-green-600 hover:underline disabled:opacity-50">{t('common.save')}</button>
+          <button onClick={() => setAdding(false)} className="text-xs text-gray-500 hover:underline">{t('common.cancel')}</button>
+        </div>
+      )}
+
+      {lots.length === 0 && !adding ? (
+        <p className="text-xs text-gray-400 italic">{t('lots.none')}</p>
+      ) : (
+        <div className="space-y-1">
+          {lots.map((lot) => (
+            <div key={lot._id} className="flex items-center justify-between px-2 py-1.5 rounded hover:bg-gray-50 dark:hover:bg-slate-700/30 text-sm">
+              {editingId === lot._id ? (
+                <div className="flex gap-2 flex-1 items-center">
+                  <input value={editLotNumber} onChange={(e) => setEditLotNumber(e.target.value)} className="w-20 px-2 py-1 border rounded text-sm dark:bg-slate-800 dark:border-gray-600 dark:text-white" autoFocus />
+                  <input value={editAddress} onChange={(e) => setEditAddress(e.target.value)} placeholder={t('lots.address')} className="flex-1 px-2 py-1 border rounded text-sm dark:bg-slate-800 dark:border-gray-600 dark:text-white" />
+                  <input value={editJobNumber} onChange={(e) => setEditJobNumber(e.target.value)} placeholder={t('lots.jobNumber')} className="w-24 px-2 py-1 border rounded text-sm dark:bg-slate-800 dark:border-gray-600 dark:text-white" />
+                  <button onClick={() => handleUpdate(lot._id)} className="text-xs text-green-600">{t('common.save')}</button>
+                  <button onClick={() => setEditingId(null)} className="text-xs text-gray-500">{t('common.cancel')}</button>
+                </div>
+              ) : (
+                <>
+                  <div className="flex items-center gap-3 flex-1">
+                    <span className="font-medium text-gray-800 dark:text-gray-200">Lot {lot.lotNumber || '—'}</span>
+                    {lot.address && <span className="text-xs text-gray-400">{lot.address}</span>}
+                    {lot.jobNumber && <span className="text-[10px] px-1.5 py-0.5 bg-gray-100 dark:bg-slate-700 text-gray-500 rounded">{lot.jobNumber}</span>}
+                  </div>
+                  <div className="flex gap-1">
+                    <button onClick={() => startEdit(lot)} className="px-2 py-0.5 text-xs text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded">{t('common.edit')}</button>
+                    <button onClick={() => handleRemove(lot._id)} className="px-2 py-0.5 text-xs text-red-500 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded">{t('common.delete')}</button>
+                  </div>
+                </>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

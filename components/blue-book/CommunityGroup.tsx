@@ -15,7 +15,7 @@ type Props = {
 
 export function CommunityGroup({ group, onEditEntry, onDeleteEntry, onPhaseOverride, onServiceToggle }: Props) {
     const { t } = useTranslation();
-    const [isExpanded, setIsExpanded] = useState(true);
+    const [isExpanded, setIsExpanded] = useState(false);
     const completionPct = group.totalEntries > 0
         ? Math.round((group.completedEntries / group.totalEntries) * 100)
         : 0;
@@ -40,7 +40,7 @@ export function CommunityGroup({ group, onEditEntry, onDeleteEntry, onPhaseOverr
                         {group.communityName}
                     </h3>
                     <span className="text-xs text-gray-500 dark:text-gray-400">
-                        {group.lots.length} {t('blueBook.lots')}
+                        {group.lots.length} {t('blueBook.lots')} · {group.totalEntries} entries
                     </span>
                 </div>
                 <div className="flex items-center gap-3">

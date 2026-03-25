@@ -113,18 +113,47 @@ export const purgeStaleRecords = internalMutation({
             }
         }
 
-        // 7. Import history — strip rawRows/parsedRows data > 90 days (keep metadata)
+        // 7a. Soft-deleted imports > 90 days → hard delete with cascade
+        const deletedImports = await ctx.db
+            .query("importHistory")
+            .withIndex("by_deletedAt")
+            .take(BATCH_LIMIT);
+        for (const imp of deletedImports) {
+            if (imp.deletedAt && imp.deletedAt < cutoff90) {
+                // Cascade: delete linked entities
+                const linked = await ctx.db
+                    .query("importedEntities")
+                    .withIndex("by_import", (q) => q.eq("importId", imp._id))
+                    .collect();
+                for (const entity of linked) {
+                    try {
+                        const doc = await ctx.db.get(entity.entityId as any);
+                        if (doc) {
+                            if (entity.entityType === 'blueBookEntry') {
+                                await ctx.db.delete(entity.entityId as any);
+                            } else {
+                                await ctx.db.patch(entity.entityId as any, { active: false } as any);
+                            }
+                        }
+                    } catch { /* already gone */ }
+                    await ctx.db.delete(entity._id);
+                }
+                await ctx.db.delete(imp._id);
+                stats.importRawData++;
+            }
+        }
+
+        // 7b. Active imports > 90 days — strip raw data (keep metadata)
         const oldImports = await ctx.db
             .query("importHistory")
             .withIndex("by_createdAt")
             .take(BATCH_LIMIT);
         for (const imp of oldImports) {
-            if (imp.createdAt < cutoff90 && (imp.rawRows || imp.parsedRows)) {
+            if (!imp.deletedAt && imp.createdAt < cutoff90 && (imp.rawRows || imp.parsedRows)) {
                 await ctx.db.patch(imp._id, {
                     rawRows: undefined,
                     parsedRows: undefined,
                 });
-                stats.importRawData++;
             }
         }
 

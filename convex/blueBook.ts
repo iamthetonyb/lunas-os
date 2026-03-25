@@ -37,6 +37,9 @@ export const list = query({
         // Limit to prevent unbounded table scans — paginate server-side
         let entries = await baseQuery.take(10000);
 
+        // ── Filter out soft-deleted entries ─────────────────────────────
+        entries = entries.filter((e) => e.status !== 'DELETED');
+
         // ── In-memory filters (not indexable) ──────────────────────────
         if (args.invoiced === false) {
             entries = entries.filter((e) => !e.invoiceLineId);

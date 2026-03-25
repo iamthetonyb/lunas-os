@@ -23,7 +23,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as readline from 'readline';
 
-const BASE_URL = process.env.DEMO_URL ?? 'http://localhost:3000';
+const BASE_URL = process.env.DEMO_URL ?? 'http://localhost:4010';
 const OUTPUT_DIR = path.resolve(__dirname, '../recordings/scenes');
 const VIEWPORT = { width: 1920, height: 1080 };
 const SLOW_MO = 60;
@@ -696,8 +696,9 @@ async function main() {
     console.log('╚══════════════════════════════════════════════╝');
     console.log('');
 
-    // If no auth state exists and not running scene 0 only, do login first
-    const needsAuth = !fs.existsSync(STORAGE_PATH);
+    // Skip auth scene when BYPASS_AUTH is set (local dev recording)
+    const bypassAuth = process.env.BYPASS_AUTH === 'true';
+    const needsAuth = !bypassAuth && !fs.existsSync(STORAGE_PATH);
 
     if (sceneNum >= 0) {
         const scene = allScenes.find(s => s.num === sceneNum);
@@ -710,8 +711,9 @@ async function main() {
         }
         await scene.fn();
     } else {
-        // Run all scenes in order
-        for (const scene of allScenes) {
+        // Run all scenes in order — skip login when auth is bypassed
+        const scenes = bypassAuth ? allScenes.filter(s => s.num > 0) : allScenes;
+        for (const scene of scenes) {
             console.log(`\n── Scene ${scene.num}: ${scene.name} ──`);
             await scene.fn();
         }

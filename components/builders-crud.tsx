@@ -7,6 +7,7 @@ import { Id } from '@/convex/_generated/dataModel';
 import { toast } from 'sonner';
 import { useTranslation } from 'react-i18next';
 import { ConfirmationDialog } from './ConfirmationDialog';
+import { CommunityDetail } from './community-detail';
 
 type Builder = { _id: Id<"builders">; name: string };
 type Community = { _id: Id<"communities">; name: string; builderId?: Id<"builders"> | null };
@@ -34,7 +35,9 @@ export function BuildersCrud() {
     const [editingBuilderName, setEditingBuilderName] = useState('');
     const [editingCommunityId, setEditingCommunityId] = useState<string | null>(null);
     const [editingCommunityName, setEditingCommunityName] = useState('');
+    const [editingCommunityBuilderId, setEditingCommunityBuilderId] = useState<string>('');
     const [deleteConfirm, setDeleteConfirm] = useState<{ id: string; name: string; type: 'builder' | 'community' } | null>(null);
+    const [selectedCommunityId, setSelectedCommunityId] = useState<string | null>(null);
 
     const filteredCommunities = selectedBuilderId
         ? communities.filter(c => c.builderId === selectedBuilderId)
@@ -95,7 +98,14 @@ export function BuildersCrud() {
     const handleUpdateCommunity = async (id: string) => {
         if (!editingCommunityName.trim()) return;
         try {
-            await updateCommunity({ id: id as Id<"communities">, name: editingCommunityName.trim() });
+            const updates: { id: Id<"communities">; name?: string; builderId?: Id<"builders"> } = {
+                id: id as Id<"communities">,
+                name: editingCommunityName.trim(),
+            };
+            if (editingCommunityBuilderId) {
+                updates.builderId = editingCommunityBuilderId as Id<"builders">;
+            }
+            await updateCommunity(updates);
             setEditingCommunityId(null);
             toast.success('Community updated!');
         } catch (error) {
@@ -240,46 +250,72 @@ export function BuildersCrud() {
                 ) : (
                     <div className="space-y-2 max-h-[400px] overflow-y-auto">
                         {filteredCommunities.map((community) => (
-                            <div
-                                key={community._id}
-                                className="flex items-center justify-between px-3 py-2 bg-white dark:bg-slate-800 rounded-lg text-sm"
-                            >
-                                {editingCommunityId === community._id ? (
-                                    <div className="flex gap-2 flex-1">
-                                        <input
-                                            type="text"
-                                            value={editingCommunityName}
-                                            onChange={(e) => setEditingCommunityName(e.target.value)}
-                                            className="flex-1 px-2 py-1 border rounded text-sm"
-                                            onKeyDown={(e) => e.key === 'Enter' && handleUpdateCommunity(community._id)}
-                                            autoFocus
-                                        />
-                                        <button onClick={() => handleUpdateCommunity(community._id)} className="text-green-600 text-xs">{t('common.save')}</button>
-                                        <button onClick={() => setEditingCommunityId(null)} className="text-gray-500 text-xs">{t('common.cancel')}</button>
-                                    </div>
-                                ) : (
-                                    <>
-                                        <span className="text-gray-700 dark:text-gray-300 flex-1">{community.name}</span>
-                                        {!selectedBuilderId && community.builderId && (
-                                            <span className="text-xs text-gray-500 mr-2">
-                                                {builders.find(b => b._id === community.builderId)?.name}
-                                            </span>
-                                        )}
-                                        <div className="flex gap-1">
-                                            <button
-                                                onClick={() => { setEditingCommunityId(community._id); setEditingCommunityName(community.name); }}
-                                                className="px-2 py-1 text-xs text-blue-600 hover:bg-blue-50 rounded"
+                            <div key={community._id}>
+                                <div
+                                    className={`flex items-center justify-between px-3 py-2 rounded-lg text-sm cursor-pointer transition-colors ${
+                                        selectedCommunityId === community._id
+                                            ? 'bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800'
+                                            : 'bg-white dark:bg-slate-800 hover:bg-gray-50 dark:hover:bg-slate-700/50'
+                                    }`}
+                                    onClick={() => setSelectedCommunityId(selectedCommunityId === community._id ? null : community._id)}
+                                >
+                                    {editingCommunityId === community._id ? (
+                                        <div className="flex gap-2 flex-1 flex-wrap" onClick={(e) => e.stopPropagation()}>
+                                            <input
+                                                type="text"
+                                                value={editingCommunityName}
+                                                onChange={(e) => setEditingCommunityName(e.target.value)}
+                                                className="flex-1 min-w-[120px] px-2 py-1 border rounded text-sm dark:bg-slate-800 dark:border-gray-600 dark:text-white"
+                                                onKeyDown={(e) => e.key === 'Enter' && handleUpdateCommunity(community._id)}
+                                                autoFocus
+                                            />
+                                            <select
+                                                value={editingCommunityBuilderId}
+                                                onChange={(e) => setEditingCommunityBuilderId(e.target.value)}
+                                                className="px-2 py-1 border rounded text-sm dark:bg-slate-800 dark:border-gray-600 dark:text-white min-w-[100px]"
                                             >
-                                                {t('common.edit')}
-                                            </button>
-                                            <button
-                                                onClick={() => setDeleteConfirm({ id: community._id, name: community.name, type: 'community' })}
-                                                className="px-2 py-1 text-xs text-red-600 hover:bg-red-50 rounded"
-                                            >
-                                                {t('common.delete')}
-                                            </button>
+                                                <option value="">{t('common.builder')}...</option>
+                                                {builders.map(b => (
+                                                    <option key={b._id} value={b._id}>{b.name}</option>
+                                                ))}
+                                            </select>
+                                            <button onClick={() => handleUpdateCommunity(community._id)} className="text-green-600 text-xs">{t('common.save')}</button>
+                                            <button onClick={() => setEditingCommunityId(null)} className="text-gray-500 text-xs">{t('common.cancel')}</button>
                                         </div>
-                                    </>
+                                    ) : (
+                                        <>
+                                            <span className="text-gray-700 dark:text-gray-300 flex-1">{community.name}</span>
+                                            {!selectedBuilderId && community.builderId && (
+                                                <span className="text-xs text-gray-500 mr-2">
+                                                    {builders.find(b => b._id === community.builderId)?.name}
+                                                </span>
+                                            )}
+                                            <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
+                                                <button
+                                                    onClick={() => { setEditingCommunityId(community._id); setEditingCommunityName(community.name); setEditingCommunityBuilderId(community.builderId ?? ''); }}
+                                                    className="px-2 py-1 text-xs text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded"
+                                                >
+                                                    {t('common.edit')}
+                                                </button>
+                                                <button
+                                                    onClick={() => setDeleteConfirm({ id: community._id, name: community.name, type: 'community' })}
+                                                    className="px-2 py-1 text-xs text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded"
+                                                >
+                                                    {t('common.delete')}
+                                                </button>
+                                            </div>
+                                        </>
+                                    )}
+                                </div>
+                                {selectedCommunityId === community._id && (
+                                    <div className="mt-2 ml-2">
+                                        <CommunityDetail
+                                            communityId={community._id}
+                                            communityName={community.name}
+                                            builderId={community.builderId}
+                                            onClose={() => setSelectedCommunityId(null)}
+                                        />
+                                    </div>
                                 )}
                             </div>
                         ))}

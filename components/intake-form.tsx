@@ -102,6 +102,8 @@ export function IntakeForm() {
 
   const createJobRequest = useMutation(api.mutations.createJobRequest);
   const createCommunity = useMutation(api.mutations.createCommunity);
+  const createBuilder = useMutation(api.mutations.createBuilder);
+  const createLot = useMutation(api.communityLots.create);
   const convex = useConvex();
 
   const [duplicateWarning, setDuplicateWarning] = useState<{
@@ -260,17 +262,54 @@ export function IntakeForm() {
     }
   }, [createCommunity, builderId]);
 
+  const handleCreateBuilder = useCallback(async (name: string) => {
+    try {
+      const result = await createBuilder({ name });
+      toast.success(`Builder "${name}" created`);
+      return result.id as string;
+    } catch (err: any) {
+      toast.error(err?.message ?? 'Failed to create builder');
+    }
+  }, [createBuilder]);
+
+  const handleCreateLot = useCallback(async (lotNumber: string) => {
+    if (!communityId) {
+      toast.error('Select a community first');
+      return;
+    }
+    try {
+      await createLot({
+        communityId: communityId as Id<'communities'>,
+        lotNumber,
+        modelPlanId: modelPlanId ? modelPlanId as Id<'modelPlans'> : undefined,
+      });
+      toast.success(`Lot ${lotNumber} created`);
+      return lotNumber;
+    } catch (err: any) {
+      toast.error(err?.message ?? 'Failed to create lot');
+    }
+  }, [createLot, communityId, modelPlanId]);
+
   const modelPlanOptions = useMemo(() => {
     if (!modelPlans) return [] as SelectOption[];
-    const filtered = builderId
-      ? modelPlans.filter((plan: any) => plan.builderId === builderId)
-      : modelPlans;
+    let filtered = modelPlans;
+    // Filter by community first (most specific), then by builder
+    if (communityId) {
+      const communityPlans = modelPlans.filter((plan: any) => plan.communityId === communityId);
+      if (communityPlans.length > 0) {
+        filtered = communityPlans;
+      } else if (builderId) {
+        filtered = modelPlans.filter((plan: any) => plan.builderId === builderId);
+      }
+    } else if (builderId) {
+      filtered = modelPlans.filter((plan: any) => plan.builderId === builderId);
+    }
     return filtered.map((plan: any) => ({
       value: plan._id,
-      label: plan.name,
+      label: `${plan.name}${plan.sqft ? ` (${plan.sqft} sqft)` : ''}`,
       description: plan.code ?? undefined,
     }));
-  }, [modelPlans, builderId]);
+  }, [modelPlans, builderId, communityId]);
 
   const requestedByOptions = useMemo<SelectOption[]>(
     () => foremanNames.map((name: string) => ({ value: name, label: name })),
@@ -422,15 +461,15 @@ export function IntakeForm() {
   return (
     <form onSubmit={onSubmit} className="space-y-6">
       {/* Builder & Community Section */}
-      <div className="bg-white border-2 border-gray-200 rounded-lg p-6">
-        <h3 className="text-lg font-semibold text-gray-900 mb-4 pb-2 border-b border-gray-200">
+      <div className="bg-white dark:bg-slate-800 border-2 border-gray-200 dark:border-gray-700 rounded-lg p-6">
+        <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 pb-2 border-b border-gray-200 dark:border-gray-700">
           {t('intake.builderLocation')}
         </h3>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              {t('community')} <span className="text-red-500">*</span>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              {t('intake.community')} <span className="text-red-500">*</span>
             </label>
             <Controller
               control={control}
@@ -455,8 +494,8 @@ export function IntakeForm() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              {t('builder')} <span className="text-red-500">*</span>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              {t('intake.builder')} <span className="text-red-500">*</span>
             </label>
             <Controller
               control={control}
@@ -466,9 +505,12 @@ export function IntakeForm() {
                   value={field.value ?? ''}
                   onChange={field.onChange}
                   options={builderOptions}
-                  placeholder="Search builder..."
-                  disabled={!builderOptions.length}
-                  emptyStateLabel="No builders found"
+                  placeholder={t('intake.selectBuilder')}
+                  disabled={false}
+                  emptyStateLabel={t('intake.noBuilders', 'No builders found')}
+                  allowCreate
+                  onCreateOption={handleCreateBuilder}
+                  createLabel={t('intake.createBuilder', 'Create builder')}
                 />
               )}
             />
@@ -478,8 +520,8 @@ export function IntakeForm() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              {t('modelPlan')}
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              {t('intake.modelPlan')}
             </label>
             <Controller
               control={control}
@@ -498,46 +540,40 @@ export function IntakeForm() {
           </div>
 
           <div>
-            <label htmlFor="lot" className="block text-sm font-medium text-gray-700 mb-2">
-              {t('lot')} <span className="text-red-500">*</span>
+            <label htmlFor="lot" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              {t('intake.lot')} <span className="text-red-500">*</span>
             </label>
-            {lotOptions.length > 0 ? (
-              <Controller
-                control={control}
-                name="lot"
-                render={({ field }) => (
-                  <SearchableSelect
-                    value={field.value ?? ''}
-                    onChange={field.onChange}
-                    options={lotOptions}
-                    placeholder="Select lot number..."
-                    disabled={!lotOptions.length}
-                    emptyStateLabel="No lots found"
-                  />
-                )}
-              />
-            ) : (
-              <input
-                id="lot"
-                {...register('lot')}
-                placeholder="e.g., Lot 123"
-                className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              />
-            )}
+            <Controller
+              control={control}
+              name="lot"
+              render={({ field }) => (
+                <SearchableSelect
+                  value={field.value ?? ''}
+                  onChange={field.onChange}
+                  options={lotOptions}
+                  placeholder={t('intake.lotPlaceholder', 'Type or select lot number...')}
+                  disabled={false}
+                  emptyStateLabel={communityId ? t('intake.noLots', 'No lots found — type to add') : t('intake.selectCommunityFirst', 'Select a community first')}
+                  allowCreate
+                  onCreateOption={handleCreateLot}
+                  createLabel={t('intake.createLot', 'Add lot')}
+                />
+              )}
+            />
             {errors.lot && (
               <p className="mt-1 text-sm text-red-600">{errors.lot.message}</p>
             )}
           </div>
 
           <div className="md:col-span-2">
-            <label htmlFor="address" className="block text-sm font-medium text-gray-700 mb-2">
-              {t('address')}
+            <label htmlFor="address" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              {t('intake.address', 'Address')}
             </label>
             <input
               id="address"
               {...register('address')}
               placeholder="Full street address"
-              className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              className="w-full px-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-slate-900 dark:text-white"
             />
             {errors.address && (
               <p className="mt-1 text-sm text-red-600">{errors.address.message}</p>
@@ -547,8 +583,8 @@ export function IntakeForm() {
       </div>
 
       {/* Services Section */}
-      <div className="bg-white border-2 border-gray-200 rounded-lg p-6">
-        <h3 className="text-lg font-semibold text-gray-900 mb-4 pb-2 border-b border-gray-200">
+      <div className="bg-white dark:bg-slate-800 border-2 border-gray-200 dark:border-gray-700 rounded-lg p-6">
+        <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 pb-2 border-b border-gray-200 dark:border-gray-700">
           {t('intake.services')} <span className="text-red-500">*</span>
         </h3>
 
@@ -571,22 +607,22 @@ export function IntakeForm() {
       </div>
 
       {/* Schedule Section */}
-      <div className="bg-white border-2 border-gray-200 rounded-lg p-6">
-        <h3 className="text-lg font-semibold text-gray-900 mb-4 pb-2 border-b border-gray-200">
+      <div className="bg-white dark:bg-slate-800 border-2 border-gray-200 dark:border-gray-700 rounded-lg p-6">
+        <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 pb-2 border-b border-gray-200 dark:border-gray-700">
           {t('intake.scheduleInfo')}
         </h3>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div>
-            <label htmlFor="dueDate" className="block text-sm font-medium text-gray-700 mb-2">
-              {t('dueDate')} <span className="text-red-500">*</span>
+            <label htmlFor="dueDate" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              {t('intake.dueDate')} <span className="text-red-500">*</span>
             </label>
             <div className="relative">
               <input
                 id="dueDate"
                 type="date"
                 {...register('dueDate')}
-                className="w-full px-4 py-2.5 bg-transparent border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 cursor-pointer [&::-webkit-calendar-picker-indicator]:opacity-0 [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:inset-0 [&::-webkit-calendar-picker-indicator]:w-full [&::-webkit-calendar-picker-indicator]:cursor-pointer"
+                className="w-full px-4 py-2.5 bg-transparent border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-slate-900 dark:text-white cursor-pointer [&::-webkit-calendar-picker-indicator]:opacity-0 [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:inset-0 [&::-webkit-calendar-picker-indicator]:w-full [&::-webkit-calendar-picker-indicator]:cursor-pointer"
               />
             </div>
             {errors.dueDate && (
@@ -595,13 +631,13 @@ export function IntakeForm() {
           </div>
 
           <div>
-            <label htmlFor="walkTime" className="block text-sm font-medium text-gray-700 mb-2">
-              {t('walkTime')}
+            <label htmlFor="walkTime" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              {t('intake.walkTime', 'Walk Time')}
             </label>
             <select
               id="walkTime"
               {...register('walkTime')}
-              className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              className="w-full px-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-slate-900 dark:text-white"
             >
               {WALK_TIME_OPTIONS.map((option) => (
                 <option key={option.value} value={option.value}>
@@ -614,15 +650,15 @@ export function IntakeForm() {
       </div>
 
       {/* Contact Information Section */}
-      <div className="bg-white border-2 border-gray-200 rounded-lg p-6">
-        <h3 className="text-lg font-semibold text-gray-900 mb-4 pb-2 border-b border-gray-200">
+      <div className="bg-white dark:bg-slate-800 border-2 border-gray-200 dark:border-gray-700 rounded-lg p-6">
+        <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 pb-2 border-b border-gray-200 dark:border-gray-700">
           {t('intake.contactInfo')}
         </h3>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div>
-            <label htmlFor="requestedBy" className="block text-sm font-medium text-gray-700 mb-2">
-              {t('requestedBy')} <span className="text-red-500">*</span>
+            <label htmlFor="requestedBy" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              {t('intake.requestedBy')} <span className="text-red-500">*</span>
             </label>
             <Controller
               control={control}
@@ -644,14 +680,14 @@ export function IntakeForm() {
           </div>
 
           <div>
-            <label htmlFor="contact" className="block text-sm font-medium text-gray-700 mb-2">
-              {t('contact')} <span className="text-red-500">*</span>
+            <label htmlFor="contact" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              {t('intake.contact')} <span className="text-red-500">*</span>
             </label>
             <input
               id="contact"
               {...register('contact')}
               placeholder="Phone or email"
-              className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              className="w-full px-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-slate-900 dark:text-white"
             />
             {errors.contact && (
               <p className="mt-1 text-sm text-red-600">{errors.contact.message}</p>
@@ -659,28 +695,28 @@ export function IntakeForm() {
           </div>
 
           <div>
-            <label htmlFor="poNumber" className="block text-sm font-medium text-gray-700 mb-2">
-              {t('poNumber')}
+            <label htmlFor="poNumber" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              {t('intake.poNumber')}
             </label>
             <input
               id="poNumber"
               {...register('poNumber')}
               placeholder="Purchase Order Number"
-              className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              className="w-full px-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-slate-900 dark:text-white"
             />
           </div>
         </div>
       </div>
 
       {/* Notes Section */}
-      <div className="bg-white border-2 border-gray-200 rounded-lg p-6">
-        <h3 className="text-lg font-semibold text-gray-900 mb-4 pb-2 border-b border-gray-200">
+      <div className="bg-white dark:bg-slate-800 border-2 border-gray-200 dark:border-gray-700 rounded-lg p-6">
+        <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 pb-2 border-b border-gray-200 dark:border-gray-700">
           {t('intake.additionalNotes')}
         </h3>
 
         <div>
-          <label htmlFor="notes" className="block text-sm font-medium text-gray-700 mb-2">
-            {t('notes')} {extraWorkSelected && <span className="text-red-500">*</span>}
+          <label htmlFor="notes" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+            {t('intake.notes')} {extraWorkSelected && <span className="text-red-500">*</span>}
           </label>
           <textarea
             id="notes"
@@ -688,7 +724,7 @@ export function IntakeForm() {
             rows={4}
             spellCheck="true"
             placeholder="Any additional information or special instructions..."
-            className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none"
+            className="w-full px-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-slate-900 dark:text-white resize-none"
           />
           {extraWorkSelected && (
             <p className="mt-1 text-xs text-red-500">
