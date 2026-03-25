@@ -268,6 +268,7 @@ export const listWithOrgs = query({
                 phone: user.phone,
                 systemRole: user.role,
                 preferredContactMethod: user.preferredContactMethod,
+                permissions: user.permissions,
                 memberships: membershipDetails,
             };
         });

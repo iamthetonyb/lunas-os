@@ -519,25 +519,7 @@ export function IntakeForm() {
             )}
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              {t('intake.modelPlan')}
-            </label>
-            <Controller
-              control={control}
-              name="modelPlanId"
-              render={({ field }) => (
-                <SearchableSelect
-                  value={field.value ?? ''}
-                  onChange={field.onChange}
-                  options={modelPlanOptions}
-                  placeholder="Search model plans..."
-                  disabled={!modelPlanOptions.length}
-                  emptyStateLabel={builderId ? 'No model plans for this builder' : 'Select a builder first'}
-                />
-              )}
-            />
-          </div>
+          {/* Model plan auto-resolves on backend from community/lot/builder */}
 
           <div>
             <label htmlFor="lot" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">

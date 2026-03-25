@@ -10,6 +10,7 @@ import { useTranslation } from 'react-i18next';
 import { ConfirmationDialog } from '@/components/ConfirmationDialog';
 import { toast } from 'sonner';
 import { Pagination } from '@/components/ui/pagination';
+import { PermissionsEditor, parsePermissions, getDefaultPermissions, type PermissionsState } from '@/components/permissions-editor';
 
 type AdminUser = {
   id: string;
@@ -18,6 +19,7 @@ type AdminUser = {
   phone?: string;
   systemRole: string;
   preferredContactMethod?: string;
+  permissions?: string;
   memberships: { orgId: string; orgName: string; role: string }[];
 };
 
@@ -34,7 +36,17 @@ type UserFormData = {
   password: string;
   confirmPassword: string;
   preferredContactMethod: 'email' | 'call' | 'text';
+  role: string;
 };
+
+const SYSTEM_ROLES = [
+  { value: 'ADMIN', label: 'Admin' },
+  { value: 'BACKOFFICE', label: 'Back Office' },
+  { value: 'FOREMAN', label: 'Foreman' },
+  { value: 'CREW', label: 'Crew' },
+  { value: 'CONTRACTOR', label: 'Contractor' },
+  { value: 'MEMBER', label: 'Member' },
+];
 
 function UserModal({
   open,
@@ -59,11 +71,15 @@ function UserModal({
     password: '',
     confirmPassword: '',
     preferredContactMethod: 'email',
+    role: 'MEMBER',
   });
+  const [permissions, setPermissions] = useState<PermissionsState>(() => getDefaultPermissions('MEMBER'));
+  const [activeTab, setActiveTab] = useState<'info' | 'permissions'>('info');
 
   // Reset form when user changes
   useEffect(() => {
     if (user) {
+      const role = user.systemRole || 'MEMBER';
       setFormData({
         name: user.name || '',
         email: user.email || '',
@@ -71,7 +87,9 @@ function UserModal({
         password: '',
         confirmPassword: '',
         preferredContactMethod: (user.preferredContactMethod as any) || 'email',
+        role,
       });
+      setPermissions(parsePermissions(user.permissions, role));
     } else {
       setFormData({
         name: '',
@@ -80,8 +98,11 @@ function UserModal({
         password: '',
         confirmPassword: '',
         preferredContactMethod: 'email',
+        role: 'MEMBER',
       });
+      setPermissions(getDefaultPermissions('MEMBER'));
     }
+    setActiveTab('info');
   }, [user, open]);
 
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -126,6 +147,8 @@ function UserModal({
           userId: user.id as Id<"users">,
           name: formData.name,
           phone: formData.phone || undefined,
+          role: formData.role,
+          permissions: JSON.stringify(permissions),
         });
         // Update Clerk password if changed
         if (formData.password) {
@@ -162,7 +185,8 @@ function UserModal({
           email: formData.email,
           name: formData.name,
           phone: formData.phone || undefined,
-          role: 'MEMBER',
+          role: formData.role,
+          permissions: JSON.stringify(permissions),
         });
       }
 
@@ -203,33 +227,61 @@ function UserModal({
               leaveFrom="opacity-100 scale-100"
               leaveTo="opacity-0 scale-95"
             >
-              <Dialog.Panel className="w-full max-w-md transform overflow-hidden rounded-2xl bg-white p-6 text-left align-middle shadow-xl transition-all">
-                <Dialog.Title as="h3" className="text-lg font-medium leading-6 text-gray-900 mb-4">
+              <Dialog.Panel className="w-full max-w-2xl transform overflow-hidden rounded-2xl bg-white dark:bg-slate-800 p-6 text-left align-middle shadow-xl transition-all">
+                <Dialog.Title as="h3" className="text-lg font-medium leading-6 text-gray-900 dark:text-white mb-4">
                   {isEdit ? t('users.editUser') : t('users.createNewUser')}
                 </Dialog.Title>
 
+                {/* Tabs: User Info / Permissions */}
+                <div className="flex gap-1 border-b border-gray-200 dark:border-gray-700 mb-4">
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab('info')}
+                    className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+                      activeTab === 'info'
+                        ? 'border-blue-600 text-blue-600 dark:text-blue-400'
+                        : 'border-transparent text-gray-500 hover:text-gray-700'
+                    }`}
+                  >
+                    {t('users.userInfo', 'User Info')}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab('permissions')}
+                    className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+                      activeTab === 'permissions'
+                        ? 'border-blue-600 text-blue-600 dark:text-blue-400'
+                        : 'border-transparent text-gray-500 hover:text-gray-700'
+                    }`}
+                  >
+                    {t('users.rolesPermissions', 'Roles & Permissions')}
+                  </button>
+                </div>
+
                 <form onSubmit={handleSubmit} className="space-y-4">
                   {error && (
-                    <div className="rounded-lg bg-red-50 p-3 text-sm text-red-700">
+                    <div className="rounded-lg bg-red-50 dark:bg-red-900/20 p-3 text-sm text-red-700 dark:text-red-400">
                       {error}
                     </div>
                   )}
 
+                  {activeTab === 'info' ? (
+                    <>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                       {t('common.name')} *
                     </label>
                     <input
                       type="text"
                       value={formData.name}
                       onChange={(e) => handleChange('name', e.target.value)}
-                      className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      className="w-full px-4 py-2.5 border border-gray-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-700 text-gray-900 dark:text-white"
                       placeholder="John Doe"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                       {t('common.email')} *
                     </label>
                     <input
@@ -242,7 +294,7 @@ function UserModal({
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                       {t('common.phone')}
                     </label>
                     <input
@@ -252,6 +304,24 @@ function UserModal({
                       className="w-full px-4 py-2.5 border border-gray-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-700 text-gray-900 dark:text-white"
                       placeholder="555-1234"
                     />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      {t('common.role')} *
+                    </label>
+                    <select
+                      value={formData.role}
+                      onChange={(e) => {
+                        handleChange('role', e.target.value);
+                        setPermissions(getDefaultPermissions(e.target.value));
+                      }}
+                      className="w-full px-4 py-2.5 border border-gray-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-700 text-gray-900 dark:text-white"
+                    >
+                      {SYSTEM_ROLES.map((r) => (
+                        <option key={r.value} value={r.value}>{r.label}</option>
+                      ))}
+                    </select>
                   </div>
 
                   <div>
@@ -275,30 +345,39 @@ function UserModal({
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                       {isEdit ? t('users.newPassword') : `${t('common.password')} *`}
                     </label>
                     <input
                       type="password"
                       value={formData.password}
                       onChange={(e) => handleChange('password', e.target.value)}
-                      className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      className="w-full px-4 py-2.5 border border-gray-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-700 text-gray-900 dark:text-white"
                       placeholder="••••••••"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                       {t('users.confirmPassword')}
                     </label>
                     <input
                       type="password"
                       value={formData.confirmPassword}
                       onChange={(e) => handleChange('confirmPassword', e.target.value)}
-                      className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      className="w-full px-4 py-2.5 border border-gray-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-700 text-gray-900 dark:text-white"
                       placeholder="••••••••"
                     />
                   </div>
+                    </>
+                  ) : (
+                    /* Permissions tab */
+                    <PermissionsEditor
+                      value={permissions}
+                      onChange={setPermissions}
+                      role={formData.role}
+                    />
+                  )}
 
                   <div className="flex justify-end gap-3 pt-4">
                     <button
@@ -503,7 +582,7 @@ export default function UsersPage() {
                   <tr>
                     <th className="px-4 py-2 text-left font-semibold text-gray-500">{t('common.name')}</th>
                     <th className="px-4 py-2 text-left font-semibold text-gray-500">{t('common.email')}</th>
-                    <th className="px-4 py-2 text-left font-semibold text-gray-500">{t('common.phone')}</th>
+                    <th className="px-4 py-2 text-left font-semibold text-gray-500">{t('common.role')}</th>
                     <th className="px-4 py-2 text-left font-semibold text-gray-500">{t('users.memberships')}</th>
                     <th className="px-4 py-2 text-left font-semibold text-gray-500">{t('common.actions')}</th>
                   </tr>
@@ -511,9 +590,18 @@ export default function UsersPage() {
                 <tbody className="divide-y divide-gray-100">
                   {paginatedUsers.map((user) => (
                     <tr key={user.id}>
-                      <td className="px-4 py-3 text-gray-900">{user.name || '—'}</td>
-                      <td className="px-4 py-3 text-gray-900">{user.email}</td>
-                      <td className="px-4 py-3 text-gray-900">{user.phone || '—'}</td>
+                      <td className="px-4 py-3 text-gray-900 dark:text-gray-100">{user.name || '—'}</td>
+                      <td className="px-4 py-3 text-gray-900 dark:text-gray-100">{user.email}</td>
+                      <td className="px-4 py-3">
+                        <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
+                          user.systemRole === 'ADMIN' ? 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300' :
+                          user.systemRole === 'BACKOFFICE' ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300' :
+                          user.systemRole === 'FOREMAN' ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300' :
+                          'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300'
+                        }`}>
+                          {user.systemRole}
+                        </span>
+                      </td>
                       <td className="px-4 py-3 text-gray-900">
                         {user.memberships.length === 0 ? (
                           <span className="text-xs text-gray-500">{t('users.noOrgAccess')}</span>

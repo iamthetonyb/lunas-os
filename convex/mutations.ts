@@ -237,8 +237,28 @@ export const createJobRequest = mutation({
             const community = await ctx.db.get(args.communityId);
             communityName = community?.name;
         }
-        if (args.modelPlanId) {
-            const mp = await ctx.db.get(args.modelPlanId);
+        // Auto-resolve model plan if not provided: community lot → model plan
+        let resolvedModelPlanId = args.modelPlanId;
+        if (!resolvedModelPlanId && args.communityId && args.lot) {
+            const lotRecord = await ctx.db
+                .query("communityLots")
+                .withIndex("by_community", (q: any) => q.eq("communityId", args.communityId))
+                .filter((q) => q.eq(q.field("lotNumber"), args.lot))
+                .first();
+            if (lotRecord?.modelPlanId) {
+                resolvedModelPlanId = lotRecord.modelPlanId;
+            }
+        }
+        if (!resolvedModelPlanId && args.communityId) {
+            // Fallback: find any model plan linked to this community
+            const communityPlan = await ctx.db
+                .query("modelPlans")
+                .filter((q) => q.eq(q.field("communityId"), args.communityId))
+                .first();
+            if (communityPlan) resolvedModelPlanId = communityPlan._id;
+        }
+        if (resolvedModelPlanId) {
+            const mp = await ctx.db.get(resolvedModelPlanId);
             modelPlanCode = mp?.code ?? undefined;
             modelPlanSqft = mp?.sqft ?? undefined;
         }
@@ -247,7 +267,7 @@ export const createJobRequest = mutation({
         const jobRequestId = await ctx.db.insert("jobRequests", {
             builderId: args.builderId,
             communityId: args.communityId,
-            modelPlanId: args.modelPlanId,
+            modelPlanId: resolvedModelPlanId,
             lot: args.lot,
             address: args.address,
             dueDate: args.dueDate,
@@ -318,6 +338,7 @@ export const createUser = mutation({
         phone: v.optional(v.string()),
         role: v.string(),
         passwordHash: v.optional(v.string()),
+        permissions: v.optional(v.string()),
     },
     handler: async (ctx, args) => {
         // ── Input validation ─────────────────────────────────────────
@@ -325,7 +346,7 @@ export const createUser = mutation({
         if (!emailRegex.test(args.email)) {
             throw new Error("Invalid email format");
         }
-        const validRoles = ["ADMIN", "FOREMAN", "DISPATCHER", "VIEWER", "MEMBER"];
+        const validRoles = ["ADMIN", "BACKOFFICE", "FOREMAN", "CREW", "CONTRACTOR", "DISPATCHER", "VIEWER", "MEMBER"];
         if (!validRoles.includes(args.role)) {
             throw new Error(`Invalid role. Must be one of: ${validRoles.join(", ")}`);
         }
@@ -339,6 +360,7 @@ export const createUser = mutation({
             phone: args.phone?.trim(),
             role: args.role,
             passwordHash: args.passwordHash,
+            permissions: args.permissions,
             createdAt: Date.now(),
         });
         return { success: true, userId };
@@ -378,6 +400,7 @@ export const updateUser = mutation({
         phone: v.optional(v.string()),
         role: v.optional(v.string()),
         passwordHash: v.optional(v.string()),
+        permissions: v.optional(v.string()),
     },
     handler: async (ctx, args) => {
         const updates: any = { updatedAt: Date.now() };
@@ -385,6 +408,7 @@ export const updateUser = mutation({
         if (args.phone !== undefined) updates.phone = args.phone;
         if (args.role !== undefined) updates.role = args.role;
         if (args.passwordHash) updates.passwordHash = args.passwordHash;
+        if (args.permissions !== undefined) updates.permissions = args.permissions;
 
         await ctx.db.patch(args.userId, updates);
         return { success: true };

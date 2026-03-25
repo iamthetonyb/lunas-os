@@ -48,7 +48,7 @@ const TARGET_FIELDS: Record<ActiveTarget, { value: string; label: string }[]> = 
         { value: 'poNumber', label: 'PO Number' },
         { value: 'accountCategoryName', label: 'Account Category' },
         { value: 'accountCategoryCode', label: 'Account Category Code' },
-        { value: 'startDate', label: 'Start Date' },
+        { value: 'startDate', label: 'Completed Date' },
         { value: 'status', label: 'Status' },
         { value: 'modelPlanCode', label: 'Model/Plan Code' },
         { value: 'modelPlanSqft', label: 'Sq Ft' },
@@ -151,32 +151,35 @@ export default function ImportPage() {
     }, [selectedTargets]);
 
     const mappedCount = Object.values(fieldMapping).filter(v => v && v !== '__skip__').length;
+    const [isDragging, setIsDragging] = useState(false);
 
     // ── Handlers ──────────────────────────────────────────────────────
 
+    const processFile = async (file: File) => {
+        setSelectedFile(file);
+        setParsedRows([]);
+        setImportResult(null);
+        setOcrRawText(null);
+        setOcrConfidence(0);
+        setFieldMapping({});
+        setMappingConfirmed(false);
+        setDetectedTargets([]);
+        setSelectedTargets(new Set());
+        setDuplicateOverride(false);
+        // Compute SHA-256 hash for dedup
+        try {
+            const buf = await file.arrayBuffer();
+            const hashBuf = await crypto.subtle.digest('SHA-256', buf);
+            const hashArr = Array.from(new Uint8Array(hashBuf));
+            setFileHash(hashArr.map(b => b.toString(16).padStart(2, '0')).join(''));
+        } catch {
+            setFileHash(null);
+        }
+    };
+
     const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
-        if (file) {
-            setSelectedFile(file);
-            setParsedRows([]);
-            setImportResult(null);
-            setOcrRawText(null);
-            setOcrConfidence(0);
-            setFieldMapping({});
-            setMappingConfirmed(false);
-            setDetectedTargets([]);
-            setSelectedTargets(new Set());
-            setDuplicateOverride(false);
-            // Compute SHA-256 hash for dedup
-            try {
-                const buf = await file.arrayBuffer();
-                const hashBuf = await crypto.subtle.digest('SHA-256', buf);
-                const hashArr = Array.from(new Uint8Array(hashBuf));
-                setFileHash(hashArr.map(b => b.toString(16).padStart(2, '0')).join(''));
-            } catch {
-                setFileHash(null);
-            }
-        }
+        if (file) await processFile(file);
     };
 
     const isDuplicate = !!(existingImport && selectedFile && !duplicateOverride);
@@ -528,13 +531,27 @@ export default function ImportPage() {
                     {!selectedFile ? (
                         <div
                             onClick={() => fileInputRef.current?.click()}
-                            className="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-12 text-center cursor-pointer hover:border-blue-400 dark:hover:border-blue-500 transition-colors"
+                            onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); setIsDragging(true); }}
+                            onDragEnter={(e) => { e.preventDefault(); e.stopPropagation(); setIsDragging(true); }}
+                            onDragLeave={(e) => { e.preventDefault(); e.stopPropagation(); setIsDragging(false); }}
+                            onDrop={async (e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                setIsDragging(false);
+                                const file = e.dataTransfer.files?.[0];
+                                if (file) await processFile(file);
+                            }}
+                            className={`border-2 border-dashed rounded-lg p-12 text-center cursor-pointer transition-colors ${
+                                isDragging
+                                    ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20 dark:border-blue-400'
+                                    : 'border-gray-300 dark:border-gray-600 hover:border-blue-400 dark:hover:border-blue-500'
+                            }`}
                         >
-                            <svg className="w-12 h-12 mx-auto text-gray-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <svg className={`w-12 h-12 mx-auto mb-4 transition-colors ${isDragging ? 'text-blue-500' : 'text-gray-400'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
                             </svg>
-                            <p className="text-gray-600 dark:text-gray-400 mb-2 font-medium">
-                                {t('import.clickToSelect')}
+                            <p className={`mb-2 font-medium transition-colors ${isDragging ? 'text-blue-600 dark:text-blue-400' : 'text-gray-600 dark:text-gray-400'}`}>
+                                {isDragging ? t('import.dropHere', 'Drop file here') : t('import.clickToSelect')}
                             </p>
                             <p className="text-xs text-gray-500 dark:text-gray-500">
                                 {t('import.supportedFormats')}

@@ -152,7 +152,7 @@ export function CreateEntryModal({ isOpen, onClose, builders, defaultBuilderId }
                                     <Field label="Lot">
                                         <input type="text" value={form.lot} onChange={(e) => setForm(f => ({ ...f, lot: e.target.value }))} className="input-field" />
                                     </Field>
-                                    <Field label="Start Date">
+                                    <Field label="Completed Date">
                                         <input type="date" value={form.startDate} onChange={(e) => setForm(f => ({ ...f, startDate: e.target.value }))} className="input-field" />
                                     </Field>
                                     <Field label="Amount">

@@ -14,6 +14,8 @@ export default defineSchema({
         resetToken: v.optional(v.string()),
         resetTokenExpiry: v.optional(v.number()),
         active: v.optional(v.boolean()),
+        // GHL-style granular permissions — JSON string of { section: { enabled, permissions: { key: bool } } }
+        permissions: v.optional(v.string()),
         createdAt: v.number(),
         updatedAt: v.optional(v.number()),
     })
