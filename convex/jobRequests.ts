@@ -229,6 +229,12 @@ export const update = mutation({
     lot: v.optional(v.string()),
     address: v.optional(v.string()),
     poNumber: v.optional(v.string()),
+    awrNumber: v.optional(v.string()),
+    serviceDate: v.optional(v.string()),
+    superintendent: v.optional(v.string()),
+    requestedBy: v.optional(v.string()),
+    requestedByEmail: v.optional(v.string()),
+    invoiceNumber: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const { id, ...updates } = args;

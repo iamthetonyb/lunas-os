@@ -99,6 +99,7 @@
         "title": "Dashboard",
         "description": "Welcome to Lunas OS - Construction Cleanup Management",
         "activeJobs": "Active Jobs",
+        "completedJobs": "Completed Jobs",
         "pendingIntakes": "Pending Intakes",
         "scheduledToday": "Scheduled Today",
         "dispatchBatches": "Dispatch Batches",
@@ -315,7 +316,18 @@
         "accessRestricted": "Access Restricted",
         "accessRestrictedMessage": "The Extra Work page is only accessible to admin and back office staff.",
         "approved": "Approved",
-        "billed": "Billed"
+        "billed": "Billed",
+        "records": "records",
+        "newExtraWork": "New Extra Work",
+        "searchPlaceholder": "Search AWR#, builder, community, lot...",
+        "reqDate": "Req Date",
+        "serviceDate": "Service Date",
+        "super": "Super",
+        "awrNumber": "AWR #",
+        "requestedBy": "Requested By",
+        "total": "Total",
+        "poNumber": "PO#",
+        "invoiceNum": "Invoice #"
     },
     "users": {
         "title": "Users",
@@ -453,7 +465,10 @@
         "sent": "Sent",
         "inProgress": "In Progress",
         "notDone": "Not Done",
-        "accepted": "Accepted"
+        "accepted": "Accepted",
+        "approved": "Approved",
+        "billed": "Billed",
+        "paid": "Paid"
     },
     "import": {
         "title": "Data Import",

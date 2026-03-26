@@ -127,6 +127,12 @@ export default defineSchema({
         isExtraWork: v.optional(v.boolean()),
         amount: v.optional(v.string()),
         status: v.optional(v.string()),
+        // Extra work fields (from paper form)
+        awrNumber: v.optional(v.string()), // Additional Work Request # (Lunas reference)
+        serviceDate: v.optional(v.string()), // Date service was performed
+        superintendent: v.optional(v.string()), // Lunas foreman/super assigned
+        requestedByEmail: v.optional(v.string()), // Email for invoice delivery
+        invoiceNumber: v.optional(v.string()), // E# reference (e.g. E-60482)
         createdById: v.optional(v.id("users")),
         createdAt: v.number(),
     })

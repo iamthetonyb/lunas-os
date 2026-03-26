@@ -99,6 +99,7 @@
         "title": "Tablero",
         "description": "Bienvenido a Lunas OS - Gestión de Limpieza de Construcción",
         "activeJobs": "Trabajos Activos",
+        "completedJobs": "Trabajos Completados",
         "pendingIntakes": "Ingestas Pendientes",
         "scheduledToday": "Programados Hoy",
         "dispatchBatches": "Lotes de Despacho",
@@ -315,7 +316,18 @@
         "accessRestricted": "Acceso Restringido",
         "accessRestrictedMessage": "La página de Trabajo Extra solo es accesible para personal administrativo.",
         "approved": "Aprobado",
-        "billed": "Facturado"
+        "billed": "Facturado",
+        "records": "registros",
+        "newExtraWork": "Nuevo Trabajo Extra",
+        "searchPlaceholder": "Buscar AWR#, constructor, comunidad, lote...",
+        "reqDate": "Fecha Sol.",
+        "serviceDate": "Fecha Servicio",
+        "super": "Super",
+        "awrNumber": "AWR #",
+        "requestedBy": "Solicitado Por",
+        "total": "Total",
+        "poNumber": "OC#",
+        "invoiceNum": "Factura #"
     },
     "users": {
         "title": "Usuarios",
@@ -453,7 +465,10 @@
         "sent": "Enviado",
         "inProgress": "En Progreso",
         "notDone": "No Completado",
-        "accepted": "Aceptado"
+        "accepted": "Aceptado",
+        "approved": "Aprobado",
+        "billed": "Facturado",
+        "paid": "Pagado"
     },
     "import": {
         "title": "Importar Datos",

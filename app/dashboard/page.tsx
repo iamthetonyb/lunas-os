@@ -35,7 +35,7 @@ export default function DashboardPage() {
   ) ?? [];
 
   // Calculate dynamic stats (hydration-safe today)
-  const activeJobCount = blueBookEntries.filter((e: any) => e.status !== 'COMPLETE').length;
+  const completedJobCount = blueBookEntries.filter((e: any) => e.status === 'COMPLETE').length;
   const pendingIntakeCount = intakeList.length;
 
   const [today, setToday] = useState('');
@@ -48,7 +48,7 @@ export default function DashboardPage() {
   }).length;
 
   const stats = [
-    { name: t('dashboard.activeJobs'), value: (activeJobCount ?? 0).toString(), change: (activeJobCount ?? 0) > 0 ? `+${activeJobCount}` : '0', color: 'blue' as const },
+    { name: t('dashboard.completedJobs', 'Completed Jobs'), value: (completedJobCount ?? 0).toString(), change: (completedJobCount ?? 0) > 0 ? `+${completedJobCount}` : '0', color: 'blue' as const },
     { name: t('dashboard.pendingIntakes'), value: (pendingIntakeCount ?? 0).toString(), change: (pendingIntakeCount ?? 0) > 0 ? `+${pendingIntakeCount}` : '0', color: 'amber' as const },
     { name: t('dashboard.scheduledToday'), value: (scheduledTodayCount ?? 0).toString(), change: '0', color: 'emerald' as const },
     { name: t('dashboard.dispatchBatches'), value: (dispatchBatches?.length ?? 0).toString(), change: (dispatchBatches?.length ?? 0) > 0 ? `+${dispatchBatches?.length}` : '0', color: 'violet' as const },
