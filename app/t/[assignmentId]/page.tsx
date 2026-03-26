@@ -69,8 +69,8 @@ export default function FieldTicketPage({ params }: { params: Promise<{ assignme
     <>
       <PageHeader title={t('dispatch.fieldTicket')} description={`Assignment ${assignmentId}`} />
       <main className="px-6 py-6">
-        <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-          <p className="text-red-600">Failed to load assignment</p>
+        <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4">
+          <p className="text-red-600 dark:text-red-400">Failed to load assignment</p>
         </div>
       </main>
     </>
@@ -80,8 +80,8 @@ export default function FieldTicketPage({ params }: { params: Promise<{ assignme
     <>
       <PageHeader title={t('dispatch.fieldTicket')} description={`Assignment ${assignmentId}`} />
       <main className="px-6 py-6">
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-          <p className="text-gray-600">{t('common.loading')}</p>
+        <div className="bg-white dark:bg-slate-800 rounded-lg shadow-sm border border-gray-200 dark:border-slate-700 p-6">
+          <p className="text-gray-600 dark:text-gray-400">{t('common.loading')}</p>
         </div>
       </main>
     </>
@@ -100,14 +100,14 @@ export default function FieldTicketPage({ params }: { params: Promise<{ assignme
       />
       <main className="px-6 py-6">
         <form onSubmit={onSubmit} className="space-y-6">
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Ticket Status</h3>
+          <div className="bg-white dark:bg-slate-800 rounded-lg shadow-sm border border-gray-200 dark:border-slate-700 p-6">
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Ticket Status</h3>
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">{t('common.status')}</label>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">{t('common.status')}</label>
                 <select
                   {...register('status')}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-4 py-2 border border-gray-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-700 dark:text-white"
                 >
                   <option value="COMPLETE">{t('common.complete')}</option>
                   <option value="NOT_DONE">{t('common.notComplete')}</option>
@@ -116,78 +116,78 @@ export default function FieldTicketPage({ params }: { params: Promise<{ assignme
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">{t('schedule.windows')}</label>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">{t('schedule.windows')}</label>
                   <input
                     type="number"
                     {...register('windows', { valueAsNumber: true })}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-4 py-2 border border-gray-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-700 dark:text-white"
                     placeholder="Count"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">{t('schedule.tubs')}</label>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">{t('schedule.tubs')}</label>
                   <input
                     type="number"
                     {...register('tubs', { valueAsNumber: true })}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-4 py-2 border border-gray-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-700 dark:text-white"
                     placeholder="Count"
                   />
                 </div>
               </div>
 
               <div>
-                <label htmlFor="notes" className="block text-sm font-medium text-gray-700 mb-2">{t('common.notes')}</label>
+                <label htmlFor="notes" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">{t('common.notes')}</label>
                 <textarea
                   id="notes"
                   {...register('notes')}
                   rows={4}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-4 py-2 border border-gray-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-700 dark:text-white"
                   placeholder="Add any notes..."
                 />
               </div>
             </div>
           </div>
 
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Signatures</h3>
+          <div className="bg-white dark:bg-slate-800 rounded-lg shadow-sm border border-gray-200 dark:border-slate-700 p-6">
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Signatures</h3>
             <div className="space-y-6">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">{t('schedule.signatureForeman')}</label>
-                <div className="border border-gray-300 rounded-lg overflow-hidden">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">{t('schedule.signatureForeman')}</label>
+                <div className="border border-gray-300 dark:border-slate-600 rounded-lg overflow-hidden">
                   <SignatureCanvas
                     ref={foremanSigRef}
                     canvasProps={{
                       width: 500,
                       height: 200,
-                      className: 'w-full bg-white'
+                      className: 'w-full bg-white dark:bg-slate-700'
                     }}
                   />
                 </div>
                 <button
                   type="button"
                   onClick={() => foremanSigRef.current?.clear()}
-                  className="mt-2 text-sm text-gray-600 hover:text-gray-800"
+                  className="mt-2 text-sm text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200"
                 >
                   Clear Signature
                 </button>
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">{t('schedule.signatureCustomer')}</label>
-                <div className="border border-gray-300 rounded-lg overflow-hidden">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">{t('schedule.signatureCustomer')}</label>
+                <div className="border border-gray-300 dark:border-slate-600 rounded-lg overflow-hidden">
                   <SignatureCanvas
                     ref={customerSigRef}
                     canvasProps={{
                       width: 500,
                       height: 200,
-                      className: 'w-full bg-white'
+                      className: 'w-full bg-white dark:bg-slate-700'
                     }}
                   />
                 </div>
                 <button
                   type="button"
                   onClick={() => customerSigRef.current?.clear()}
-                  className="mt-2 text-sm text-gray-600 hover:text-gray-800"
+                  className="mt-2 text-sm text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200"
                 >
                   Clear Signature
                 </button>
@@ -198,7 +198,7 @@ export default function FieldTicketPage({ params }: { params: Promise<{ assignme
           <div className="flex justify-end gap-3">
             <Link
               href="/schedule"
-              className="px-6 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 font-medium"
+              className="px-6 py-2 bg-gray-200 dark:bg-slate-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-300 dark:hover:bg-slate-600 font-medium"
             >
               {t('common.cancel')}
             </Link>

@@ -21,18 +21,20 @@ const AIChatPanel = dynamic(() => import('./ai-chat-panel'), {
 export function AIChatWidget() {
     const [open, setOpen] = useState(false);
     const pathname = usePathname();
-
-    // Hide on chat page — the floating button conflicts with the message input
-    if (pathname === '/chat') return null;
+    const isOnChat = pathname === '/chat';
 
     if (!open) {
         return (
             <button
                 onClick={() => setOpen(true)}
-                className="fixed bottom-6 right-6 z-50 w-14 h-14 bg-blue-600 hover:bg-blue-700 text-white rounded-full shadow-lg flex items-center justify-center transition-all hover:scale-105 active:scale-95"
+                className={`fixed z-50 flex items-center justify-center transition-all active:scale-95 ${
+                    isOnChat
+                        ? 'bottom-3 right-1 w-9 h-9 bg-blue-600/60 hover:bg-blue-600 text-white/70 hover:text-white rounded-l-full shadow-md'
+                        : 'bottom-6 right-6 w-14 h-14 bg-blue-600 hover:bg-blue-700 text-white rounded-full shadow-lg hover:scale-105'
+                }`}
                 aria-label="Open LUNAS AI"
             >
-                <svg xmlns="http://www.w3.org/2000/svg" className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <svg xmlns="http://www.w3.org/2000/svg" className={isOnChat ? 'w-4 h-4' : 'w-6 h-6'} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
                 </svg>
             </button>

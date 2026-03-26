@@ -52,8 +52,8 @@ function DetailItem({ label, value }: { label: string; value: string | null | un
   if (!value) return null;
   return (
     <div>
-      <p className="text-sm font-medium text-gray-500">{label}</p>
-      <p className="text-base text-gray-900">{value}</p>
+      <p className="text-sm font-medium text-gray-500 dark:text-gray-400">{label}</p>
+      <p className="text-base text-gray-900 dark:text-gray-100">{value}</p>
     </div>
   );
 }
@@ -100,13 +100,13 @@ function IntakeDetailModal({
               leaveFrom="opacity-100 scale-100"
               leaveTo="opacity-0 scale-95"
             >
-              <Dialog.Panel className="w-full max-w-2xl transform overflow-hidden rounded-2xl bg-white p-6 text-left align-middle shadow-xl transition-all">
-                <Dialog.Title as="h3" className="text-lg font-medium leading-6 text-gray-900">
+              <Dialog.Panel className="w-full max-w-2xl transform overflow-hidden rounded-2xl bg-white dark:bg-slate-800 p-6 text-left align-middle shadow-xl transition-all">
+                <Dialog.Title as="h3" className="text-lg font-medium leading-6 text-gray-900 dark:text-white">
                   {t('intake.title')}
                 </Dialog.Title>
                 <div className="mt-4 space-y-6">
                   <div>
-                    <h4 className="text-base font-semibold text-gray-800 border-b pb-2">
+                    <h4 className="text-base font-semibold text-gray-800 dark:text-gray-200 border-b dark:border-slate-700 pb-2">
                       {t('intake.builderLocation')}
                     </h4>
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-2">
@@ -119,7 +119,7 @@ function IntakeDetailModal({
                   </div>
 
                   <div>
-                    <h4 className="text-base font-semibold text-gray-800 border-b pb-2">
+                    <h4 className="text-base font-semibold text-gray-800 dark:text-gray-200 border-b dark:border-slate-700 pb-2">
                       {t('intake.scheduleInfo')}
                     </h4>
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-2">
@@ -135,18 +135,18 @@ function IntakeDetailModal({
                   </div>
 
                   <div>
-                    <h4 className="text-base font-semibold text-gray-800 border-b pb-2">
+                    <h4 className="text-base font-semibold text-gray-800 dark:text-gray-200 border-b dark:border-slate-700 pb-2">
                       {t('intake.services')}
                     </h4>
                     <ul className="space-y-2 mt-2">
                       {intake.services.map((service, index) => (
                         <li
                           key={index}
-                          className="flex items-center justify-between rounded-lg bg-gray-50 px-4 py-2"
+                          className="flex items-center justify-between rounded-lg bg-gray-50 dark:bg-slate-700/50 px-4 py-2"
                         >
-                          <span className="font-medium text-gray-800">{service.name}</span>
+                          <span className="font-medium text-gray-800 dark:text-gray-200">{service.name}</span>
                           {service.walkTime && (
-                            <span className="text-sm text-gray-500">
+                            <span className="text-sm text-gray-500 dark:text-gray-400">
                               Walk-thru: {service.walkTime}
                             </span>
                           )}
@@ -157,10 +157,10 @@ function IntakeDetailModal({
 
                   {intake.notes && (
                     <div>
-                      <h4 className="text-base font-semibold text-gray-800 border-b pb-2">
+                      <h4 className="text-base font-semibold text-gray-800 dark:text-gray-200 border-b dark:border-slate-700 pb-2">
                         {t('common.notes')}
                       </h4>
-                      <p className="text-base text-gray-700 whitespace-pre-wrap mt-2">
+                      <p className="text-base text-gray-700 dark:text-gray-300 whitespace-pre-wrap mt-2">
                         {intake.notes}
                       </p>
                     </div>
@@ -179,7 +179,7 @@ function IntakeDetailModal({
                   <div className="flex gap-2">
                     <button
                       type="button"
-                      className="inline-flex justify-center rounded-md border border-transparent bg-gray-100 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-200"
+                      className="inline-flex justify-center rounded-md border border-transparent bg-gray-100 dark:bg-slate-700 px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-slate-600"
                       onClick={onClose}
                     >
                       {t('common.close')}
@@ -210,43 +210,43 @@ function RecentIntakes({ onIntakeSelect, onDelete, onEdit, callerUserId }: { onI
   const isLoading = data === undefined;
 
   if (isLoading) {
-    return <p className="text-gray-500">Loading recent intakes...</p>;
+    return <p className="text-gray-500 dark:text-gray-400">Loading recent intakes...</p>;
   }
 
   const { intakes, total, totalPages } = data || { intakes: [], total: 0, totalPages: 0 };
 
   if (!intakes || intakes.length === 0) {
-    return <p className="text-gray-500">No recent intakes found.</p>;
+    return <p className="text-gray-500 dark:text-gray-400">No recent intakes found.</p>;
   }
 
   return (
     <div className="space-y-4">
       <div className="overflow-x-auto">
-        <table className="min-w-full divide-y divide-gray-200 text-sm">
-          <thead className="bg-gray-50">
+        <table className="min-w-full divide-y divide-gray-200 dark:divide-slate-700 text-sm">
+          <thead className="bg-gray-50 dark:bg-slate-700/50">
             <tr>
-              <th className="px-4 py-2 text-left font-semibold text-gray-500">{t('common.community')}</th>
-              <th className="px-4 py-2 text-left font-semibold text-gray-500">{t('common.builder')}</th>
-              <th className="px-4 py-2 text-left font-semibold text-gray-500">{t('common.lot')}</th>
-              <th className="px-4 py-2 text-left font-semibold text-gray-500">{t('intake.dueDate')}</th>
-              <th className="px-4 py-2 text-left font-semibold text-gray-500">{t('intake.services')}</th>
-              <th className="px-4 py-2 text-left font-semibold text-gray-500">{t('common.actions')}</th>
+              <th className="px-4 py-2 text-left font-semibold text-gray-500 dark:text-gray-400">{t('common.community')}</th>
+              <th className="px-4 py-2 text-left font-semibold text-gray-500 dark:text-gray-400">{t('common.builder')}</th>
+              <th className="px-4 py-2 text-left font-semibold text-gray-500 dark:text-gray-400">{t('common.lot')}</th>
+              <th className="px-4 py-2 text-left font-semibold text-gray-500 dark:text-gray-400">{t('intake.dueDate')}</th>
+              <th className="px-4 py-2 text-left font-semibold text-gray-500 dark:text-gray-400">{t('intake.services')}</th>
+              <th className="px-4 py-2 text-left font-semibold text-gray-500 dark:text-gray-400">{t('common.actions')}</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-gray-100 bg-white">
+          <tbody className="divide-y divide-gray-100 dark:divide-slate-700 bg-white dark:bg-slate-800">
             {intakes.map((intake: any) => (
               <tr
                 key={intake.id}
                 onClick={() => onIntakeSelect(intake)}
-                className="cursor-pointer hover:bg-gray-50"
+                className="cursor-pointer hover:bg-gray-50 dark:hover:bg-slate-800"
               >
-                <td className="px-4 py-3 font-medium text-gray-900">{intake.communityName}</td>
-                <td className="px-4 py-3 text-gray-700">{intake.builderName}</td>
-                <td className="px-4 py-3 text-gray-700">{intake.lot}</td>
-                <td className="px-4 py-3 text-gray-700">
+                <td className="px-4 py-3 font-medium text-gray-900 dark:text-gray-100">{intake.communityName}</td>
+                <td className="px-4 py-3 text-gray-700 dark:text-gray-300">{intake.builderName}</td>
+                <td className="px-4 py-3 text-gray-700 dark:text-gray-300">{intake.lot}</td>
+                <td className="px-4 py-3 text-gray-700 dark:text-gray-300">
                   {formatDateLocal(intake.dueDate)}
                 </td>
-                <td className="px-4 py-3 text-gray-600">
+                <td className="px-4 py-3 text-gray-600 dark:text-gray-400">
                   {intake.services.map((s: any) => s.name).join(', ')}
                 </td>
                 <td className="px-4 py-3 text-right">
@@ -371,8 +371,8 @@ export default function IntakePage() {
         }
       />
       <main className="px-6 py-6">
-        <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">{t('dashboard.recentIntakes')}</h3>
+        <div className="rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-6 shadow-sm">
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">{t('dashboard.recentIntakes')}</h3>
           <RecentIntakes onIntakeSelect={handleIntakeSelect} onDelete={handleDelete} onEdit={handleEditFromTable} callerUserId={session?.user?.id as Id<"users"> | undefined} />
         </div>
       </main>

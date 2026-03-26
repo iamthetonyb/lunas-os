@@ -104,67 +104,67 @@ export default function ExtraWorkPage() {
         </button>
       </div>
 
-      <div className="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
-        <table className="min-w-full divide-y divide-gray-200 text-sm">
-          <thead className="bg-gray-50">
+      <div className="rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-sm overflow-hidden">
+        <table className="min-w-full divide-y divide-gray-200 dark:divide-slate-700 text-sm">
+          <thead className="bg-gray-50 dark:bg-slate-700/50">
             <tr>
-              <th className="px-4 py-2 text-left font-semibold text-gray-500">{t('common.due')} {t('common.date')}</th>
-              <th className="px-4 py-2 text-left font-semibold text-gray-500">{t('common.builder')} / {t('common.community')}</th>
-              <th className="px-4 py-2 text-left font-semibold text-gray-500">{t('common.lot')} / {t('common.address')}</th>
-              <th className="px-4 py-2 text-left font-semibold text-gray-500">{t('common.service')}</th>
-              <th className="px-4 py-2 text-left font-semibold text-gray-500">{t('extraWork.price')}</th>
-              <th className="px-4 py-2 text-left font-semibold text-gray-500">{t('common.notes')}</th>
-              <th className="px-4 py-2 text-left font-semibold text-gray-500">{t('common.status')}</th>
+              <th className="px-4 py-2 text-left font-semibold text-gray-500 dark:text-gray-400">{t('common.due')} {t('common.date')}</th>
+              <th className="px-4 py-2 text-left font-semibold text-gray-500 dark:text-gray-400">{t('common.builder')} / {t('common.community')}</th>
+              <th className="px-4 py-2 text-left font-semibold text-gray-500 dark:text-gray-400">{t('common.lot')} / {t('common.address')}</th>
+              <th className="px-4 py-2 text-left font-semibold text-gray-500 dark:text-gray-400">{t('common.service')}</th>
+              <th className="px-4 py-2 text-left font-semibold text-gray-500 dark:text-gray-400">{t('extraWork.price')}</th>
+              <th className="px-4 py-2 text-left font-semibold text-gray-500 dark:text-gray-400">{t('common.notes')}</th>
+              <th className="px-4 py-2 text-left font-semibold text-gray-500 dark:text-gray-400">{t('common.status')}</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-gray-100">
+          <tbody className="divide-y divide-gray-100 dark:divide-slate-700">
             {isLoading && (
-              <tr><td colSpan={7} className="px-4 py-6 text-center text-gray-500">{t('common.loading')}</td></tr>
+              <tr><td colSpan={7} className="px-4 py-6 text-center text-gray-500 dark:text-gray-400">{t('common.loading')}</td></tr>
             )}
             {!isLoading && (!jobs || jobs.length === 0) && (
-              <tr><td colSpan={7} className="px-4 py-6 text-center text-gray-500">{t('extraWork.noExtraWork')}</td></tr>
+              <tr><td colSpan={7} className="px-4 py-6 text-center text-gray-500 dark:text-gray-400">{t('extraWork.noExtraWork')}</td></tr>
             )}
             {paginatedJobs.map((job) => {
               const isDuplicate = duplicateKeys.has(`${job.communityName}:${job.lot}`);
 
               return (
-                <tr key={job.id} className={isDuplicate ? "bg-red-50 hover:bg-red-100" : "hover:bg-gray-50"}>
+                <tr key={job.id} className={isDuplicate ? "bg-red-50 hover:bg-red-100" : "hover:bg-gray-50 dark:hover:bg-slate-800"}>
                   <td className="px-4 py-3">
                     <input
                       type="date"
                       defaultValue={job.dueDate ? new Date(job.dueDate).toISOString().split('T')[0] : ''}
-                      className="w-full px-2 py-1 border rounded text-xs"
+                      className="w-full px-2 py-1 border rounded text-xs dark:bg-slate-700 dark:text-white dark:border-slate-600"
                       onBlur={(e) => handleUpdate(job.id, 'dueDate', e.target.value)}
                     />
                   </td>
-                  <td className="px-4 py-3 text-gray-900">
+                  <td className="px-4 py-3 text-gray-900 dark:text-gray-100">
                     <div className="font-medium flex items-center gap-1">
                       {job.builderName}
                       {isDuplicate && <span className="text-[10px] bg-red-500 text-white px-1 rounded">DUP</span>}
                     </div>
-                    <div className="text-xs text-gray-500">{job.communityName}</div>
+                    <div className="text-xs text-gray-500 dark:text-gray-400">{job.communityName}</div>
                   </td>
-                  <td className="px-4 py-3 text-gray-900">
+                  <td className="px-4 py-3 text-gray-900 dark:text-gray-100">
                     <div className="space-y-1">
                       <div className="flex items-center gap-1">
                         <span className="text-xs text-gray-400">{t('common.lot')}:</span>
                         <input
                           type="text"
                           defaultValue={job.lot}
-                          className="w-16 px-1 py-0.5 border rounded text-xs"
+                          className="w-16 px-1 py-0.5 border rounded text-xs dark:bg-slate-700 dark:text-white dark:border-slate-600"
                           onBlur={(e) => handleUpdate(job.id, 'lot', e.target.value)}
                         />
                       </div>
                       <input
                         type="text"
                         defaultValue={job.address || ''}
-                        className="w-full px-1 py-0.5 border rounded text-[10px]"
+                        className="w-full px-1 py-0.5 border rounded text-[10px] dark:bg-slate-700 dark:text-white dark:border-slate-600"
                         placeholder={t('common.address')}
                         onBlur={(e) => handleUpdate(job.id, 'address', e.target.value)}
                       />
                     </div>
                   </td>
-                  <td className="px-4 py-3 text-gray-900">
+                  <td className="px-4 py-3 text-gray-900 dark:text-gray-100">
                     <div className="flex flex-wrap gap-1">
                       {job.services?.map(s => (
                         <span key={s.id} className="inline-flex rounded-full bg-blue-100 px-2 py-0.5 text-[10px] font-semibold text-blue-800">
@@ -173,14 +173,14 @@ export default function ExtraWorkPage() {
                       ))}
                     </div>
                   </td>
-                  <td className="px-4 py-3 text-gray-900">
+                  <td className="px-4 py-3 text-gray-900 dark:text-gray-100">
                     <div className="space-y-1">
                       <div className="flex items-center gap-1">
                         <span className="text-[10px] text-gray-400">$</span>
                         <input
                           type="number"
                           defaultValue={job.amount || ''}
-                          className="w-20 px-1 py-0.5 border rounded text-xs"
+                          className="w-20 px-1 py-0.5 border rounded text-xs dark:bg-slate-700 dark:text-white dark:border-slate-600"
                           placeholder={t('extraWork.price')}
                           onBlur={(e) => handleUpdate(job.id, 'amount', e.target.value)}
                         />
@@ -188,25 +188,25 @@ export default function ExtraWorkPage() {
                       <input
                         type="text"
                         defaultValue={job.poNumber || ''}
-                        className="w-full px-1 py-0.5 border rounded text-[10px]"
+                        className="w-full px-1 py-0.5 border rounded text-[10px] dark:bg-slate-700 dark:text-white dark:border-slate-600"
                         placeholder={t('blueBook.invoiceNumber')}
                         onBlur={(e) => handleUpdate(job.id, 'poNumber', e.target.value)}
                       />
                     </div>
                   </td>
-                  <td className="px-4 py-3 text-gray-900">
+                  <td className="px-4 py-3 text-gray-900 dark:text-gray-100">
                     <textarea
                       defaultValue={job.notes || ''}
                       rows={2}
-                      className="w-full px-2 py-1 border rounded text-xs resize-none"
+                      className="w-full px-2 py-1 border rounded text-xs resize-none dark:bg-slate-700 dark:text-white dark:border-slate-600"
                       placeholder={t('common.notes')}
                       onBlur={(e) => handleUpdate(job.id, 'notes', e.target.value)}
                     />
                   </td>
-                  <td className="px-4 py-3 text-gray-900">
+                  <td className="px-4 py-3 text-gray-900 dark:text-gray-100">
                     <select
                       defaultValue={job.status || 'PENDING'}
-                      className="w-28 px-1 py-1 border rounded text-xs"
+                      className="w-28 px-1 py-1 border rounded text-xs dark:bg-slate-700 dark:text-white dark:border-slate-600"
                       onChange={(e) => handleUpdate(job.id, 'status', e.target.value)}
                     >
                       <option value="PENDING">{t('status.pending')}</option>

@@ -4,7 +4,7 @@ import { SignIn } from '@clerk/nextjs';
 
 export default function LoginPage() {
   return (
-    <main className="min-h-screen flex items-center justify-center p-6 bg-gradient-to-br from-slate-50 to-blue-50">
+    <main className="min-h-screen flex items-center justify-center p-6 bg-gradient-to-br from-slate-50 to-blue-50 dark:from-slate-900 dark:to-slate-800">
       {/* Hide Clerk dev mode banner globally */}
       <style>{`
         .cl-internal-b3fm6y,
@@ -17,8 +17,8 @@ export default function LoginPage() {
 
       <div className="w-full max-w-md space-y-6">
         <div className="text-center">
-          <h1 className="text-3xl font-bold text-gray-900 tracking-tight">Lunas OS</h1>
-          <p className="mt-1 text-sm text-gray-500">Construction Cleanup Management</p>
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-white tracking-tight">Lunas OS</h1>
+          <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">Construction Cleanup Management</p>
         </div>
 
         <SignIn
@@ -41,7 +41,7 @@ export default function LoginPage() {
           }}
         />
 
-        <p className="text-center text-xs text-gray-400">
+        <p className="text-center text-xs text-gray-400 dark:text-gray-500">
           Powered by Lunas OS v2
         </p>
       </div>

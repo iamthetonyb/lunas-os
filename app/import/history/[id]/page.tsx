@@ -379,7 +379,7 @@ export default function ImportDetailPage() {
                                 .filter(([, r]) => r.success > 0 || r.errors > 0)
                                 .map(([target, r]) => (
                                     <div key={target} className="flex items-center gap-2">
-                                        <span className={`text-[10px] px-1.5 py-0.5 rounded border ${TARGET_COLORS[target as ActiveTarget] ?? 'bg-gray-100 text-gray-600 border-gray-200'}`}>
+                                        <span className={`text-[10px] px-1.5 py-0.5 rounded border ${TARGET_COLORS[target as ActiveTarget] ?? 'bg-gray-100 dark:bg-slate-700 text-gray-600 dark:text-gray-400 border-gray-200 dark:border-slate-700'}`}>
                                             {TARGET_LABELS[target as ActiveTarget] ?? target}
                                         </span>
                                         <span className="text-xs text-green-600 dark:text-green-400 font-medium">{r.success} {t('import.ok')}</span>
@@ -577,7 +577,7 @@ export default function ImportDetailPage() {
                                                 <td className="px-4 py-3">
                                                     <span className={`text-[10px] px-1.5 py-0.5 rounded border ${
                                                         TARGET_COLORS[(entity.entityType === 'blueBookEntry' ? 'blueBook' : entity.entityType === 'jobRequest' ? 'jobRequests' : entity.entityType + 's') as ActiveTarget]
-                                                        ?? 'bg-gray-100 text-gray-600 border-gray-200'
+                                                        ?? 'bg-gray-100 dark:bg-slate-700 text-gray-600 dark:text-gray-400 border-gray-200 dark:border-slate-700'
                                                     }`}>
                                                         {entity.entityType}
                                                     </span>

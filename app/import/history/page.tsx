@@ -162,7 +162,7 @@ function DeleteSelectionModal({
                             {Object.entries(grouped).map(([type, items]) => (
                                 <div key={type} className="mb-4">
                                     <div className="flex items-center gap-2 mb-2">
-                                        <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${ENTITY_TYPE_COLORS[type] ?? 'bg-gray-100 text-gray-600'}`}>
+                                        <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${ENTITY_TYPE_COLORS[type] ?? 'bg-gray-100 dark:bg-slate-700 text-gray-600 dark:text-gray-400'}`}>
                                             {ENTITY_TYPE_LABELS[type] ?? type}
                                         </span>
                                         <span className="text-xs text-gray-400 dark:text-gray-500">
@@ -346,7 +346,7 @@ export default function ImportHistoryPage() {
                                                     {record.detectedTargets.map((target) => (
                                                         <span
                                                             key={target}
-                                                            className={`text-[10px] px-1.5 py-0.5 rounded border ${TARGET_COLORS[target as ActiveTarget] ?? 'bg-gray-100 text-gray-600 border-gray-200'}`}
+                                                            className={`text-[10px] px-1.5 py-0.5 rounded border ${TARGET_COLORS[target as ActiveTarget] ?? 'bg-gray-100 dark:bg-slate-700 text-gray-600 dark:text-gray-400 border-gray-200 dark:border-slate-700'}`}
                                                         >
                                                             {TARGET_LABELS[target as ActiveTarget] ?? target}
                                                         </span>

@@ -55,16 +55,16 @@ function LogRow({
   return (
     <>
       <tr
-        className={`hover:bg-gray-50 cursor-pointer ${borderClass}`}
+        className={`hover:bg-gray-50 dark:hover:bg-slate-800 cursor-pointer ${borderClass}`}
         onClick={() => setExpanded(!expanded)}
       >
-        <td className="px-4 py-3 text-sm text-gray-700 whitespace-nowrap">{log.date}</td>
-        <td className="px-4 py-3 text-sm text-gray-700">{log.communityName ?? '—'}</td>
-        <td className="px-4 py-3 text-sm text-gray-700">
+        <td className="px-4 py-3 text-sm text-gray-700 dark:text-gray-300 whitespace-nowrap">{log.date}</td>
+        <td className="px-4 py-3 text-sm text-gray-700 dark:text-gray-300">{log.communityName ?? '—'}</td>
+        <td className="px-4 py-3 text-sm text-gray-700 dark:text-gray-300">
           {log.serviceType}
           {log.isExtraWork && <span className="ml-1 text-amber-600 font-bold">*</span>}
         </td>
-        <td className="px-4 py-3 text-sm text-gray-700">{log.lots}</td>
+        <td className="px-4 py-3 text-sm text-gray-700 dark:text-gray-300">{log.lots}</td>
         <td className="px-4 py-3">
           <div className="flex flex-col gap-1">
             <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-semibold ${badge.bg}`}>
@@ -104,7 +104,7 @@ function LogRow({
         </td>
       </tr>
       {expanded && (
-        <tr className="bg-gray-50">
+        <tr className="bg-gray-50 dark:bg-slate-900">
           <td colSpan={6} className="px-6 py-4">
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-sm">
               {log.crewLeader && <Detail label={t('workLog.crewLeader', 'Crew Leader')} value={log.crewLeader} />}
@@ -126,8 +126,8 @@ function LogRow({
 function Detail({ label, value }: { label: string; value: string }) {
   return (
     <div>
-      <p className="text-xs font-medium text-gray-500">{label}</p>
-      <p className="text-gray-900">{value}</p>
+      <p className="text-xs font-medium text-gray-500 dark:text-gray-400">{label}</p>
+      <p className="text-gray-900 dark:text-gray-100">{value}</p>
     </div>
   );
 }
@@ -305,7 +305,7 @@ export default function WorkLogPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 dark:bg-slate-900">
       <PageHeader title={t('workLog.title', 'Work Log')} />
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 space-y-6">
@@ -321,8 +321,8 @@ export default function WorkLogPage() {
         )}
 
         {/* ── Entry Form ── */}
-        <form onSubmit={handleSubmit} className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 space-y-5">
-          <h2 className="text-lg font-semibold text-gray-900">{t('workLog.newEntry', 'New Entry')}</h2>
+        <form onSubmit={handleSubmit} className="bg-white dark:bg-slate-800 rounded-lg shadow-sm border border-gray-200 dark:border-slate-700 p-6 space-y-5">
+          <h2 className="text-lg font-semibold text-gray-900 dark:text-white">{t('workLog.newEntry', 'New Entry')}</h2>
 
           {/* ── Crew + Foreman ── */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -377,7 +377,7 @@ export default function WorkLogPage() {
           {/* ── Lot Selection (pill buttons from system data) ── */}
           {communityId && (
             <div>
-              <p className="text-sm font-medium text-gray-700 mb-2">{t('workLog.selectLots', 'Select Lot(s)')}</p>
+              <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">{t('workLog.selectLots', 'Select Lot(s)')}</p>
               {availableLots.length > 0 ? (
                 <div className="flex flex-wrap gap-2">
                   {availableLots.map((lot) => (
@@ -388,7 +388,7 @@ export default function WorkLogPage() {
                       className={`px-3 py-1.5 text-sm rounded-lg border transition-colors ${
                         selectedLots.includes(lot)
                           ? 'bg-blue-600 text-white border-blue-600'
-                          : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+                          : 'bg-white dark:bg-slate-700 text-gray-700 dark:text-gray-300 border-gray-300 dark:border-slate-600 hover:bg-gray-50 dark:hover:bg-slate-800'
                       }`}
                     >
                       {lot}
@@ -399,7 +399,7 @@ export default function WorkLogPage() {
                 <p className="text-sm text-gray-400 italic">{t('workLog.noLotsFound', 'No lots found for this community')}</p>
               )}
               {selectedLots.length > 0 && (
-                <p className="text-xs text-gray-500 mt-1">
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
                   {t('workLog.selectedLots', 'Selected')}: {selectedLots.join(', ')}
                 </p>
               )}
@@ -425,7 +425,7 @@ export default function WorkLogPage() {
           </Field>
 
           {/* ── Extra Work ── */}
-          <div className="border-t border-gray-200 pt-4">
+          <div className="border-t border-gray-200 dark:border-slate-700 pt-4">
             <div className="flex items-center gap-3 mb-3">
               <label className="relative inline-flex items-center cursor-pointer">
                 <input type="checkbox" checked={isExtraWork} onChange={(e) => setIsExtraWork(e.target.checked)}
@@ -434,7 +434,7 @@ export default function WorkLogPage() {
                   peer peer-checked:bg-amber-500 after:content-[''] after:absolute after:top-[2px] after:left-[2px]
                   after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:after:translate-x-full" />
               </label>
-              <span className="text-sm font-semibold text-gray-800">
+              <span className="text-sm font-semibold text-gray-800 dark:text-gray-200">
                 {t('workLog.extraWork', 'Extra Work')}
               </span>
               <span className="text-xs text-amber-600">
@@ -470,14 +470,14 @@ export default function WorkLogPage() {
         </form>
 
         {/* ── Log History ── */}
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-          <div className="px-6 py-4 border-b border-gray-200">
-            <h2 className="text-lg font-semibold text-gray-900">{t('workLog.history', 'Log History')}</h2>
+        <div className="bg-white dark:bg-slate-800 rounded-lg shadow-sm border border-gray-200 dark:border-slate-700 overflow-hidden">
+          <div className="px-6 py-4 border-b border-gray-200 dark:border-slate-700">
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-white">{t('workLog.history', 'Log History')}</h2>
           </div>
 
           <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
+            <table className="min-w-full divide-y divide-gray-200 dark:divide-slate-700">
+              <thead className="bg-gray-50 dark:bg-slate-700/50">
                 <tr>
                   {[
                     t('workLog.date', 'Date'),
@@ -487,13 +487,13 @@ export default function WorkLogPage() {
                     t('workLog.status', 'Status'),
                     t('workLog.actions', 'Actions'),
                   ].map((h) => (
-                    <th key={h} className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th key={h} className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                       {h}
                     </th>
                   ))}
                 </tr>
               </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
+              <tbody className="bg-white dark:bg-slate-800 divide-y divide-gray-200 dark:divide-slate-700">
                 {logs === undefined && (
                   <tr><td colSpan={6} className="px-4 py-8 text-center text-sm text-gray-400">
                     {t('workLog.loading', 'Loading...')}
@@ -528,7 +528,7 @@ export default function WorkLogPage() {
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div>
-      <label className="block text-sm font-medium text-gray-700 mb-1">{label}</label>
+      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{label}</label>
       {children}
     </div>
   );

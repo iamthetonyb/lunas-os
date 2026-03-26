@@ -25,7 +25,7 @@ export default function NewIntakePage() {
         }
       />
       <main className="px-6 py-6">
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+        <div className="bg-white dark:bg-slate-800 rounded-lg shadow-sm border border-gray-200 dark:border-slate-700 p-6">
           <IntakeForm />
         </div>
       </main>
