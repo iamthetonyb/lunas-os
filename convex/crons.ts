@@ -43,4 +43,12 @@ crons.monthly(
     _internal.maintenance.purgeStaleRecords
 );
 
+// Daily notification purge — remove read notifications older than 90 days
+// Runs at 3:30 AM UTC
+crons.daily(
+    "purge-old-notifications",
+    { hourUTC: 3, minuteUTC: 30 },
+    _internal.notifications.purgeOld
+);
+
 export default crons;

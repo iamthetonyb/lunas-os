@@ -15,7 +15,8 @@
         "darkMode": "Dark",
         "lightMode": "Light",
         "constructionCleanup": "Construction Cleanup",
-        "workLog": "Work Log"
+        "workLog": "Work Log",
+        "chat": "Chat"
     },
     "login": {
         "title": "Lunas OS",
@@ -649,5 +650,37 @@
         "textMode": "Text mode",
         "mute": "Mute",
         "unmute": "Unmute"
+    },
+    "chat": {
+        "title": "Messages",
+        "description": "Team chat & notifications",
+        "notifications": "Notifications",
+        "markAllRead": "Mark all read",
+        "noNotifications": "No notifications",
+        "viewAllMessages": "View All Messages & Chat",
+        "filterAll": "All",
+        "filterUnread": "Unread",
+        "filterMessages": "Messages",
+        "filterSystem": "System",
+        "chats": "Chats",
+        "systemNotifs": "Alerts",
+        "newDM": "+ Direct Message",
+        "newGroup": "+ Group",
+        "group": "Group",
+        "unknownUser": "Unknown",
+        "searchUsers": "Search users...",
+        "groupName": "Group name...",
+        "createGroup": "Create Group",
+        "createError": "Failed to create conversation",
+        "groupRequirements": "Group name and at least one member required",
+        "noConversations": "No conversations yet",
+        "selectConversation": "Select a conversation or start a new one",
+        "selectNotification": "Select a notification to view details",
+        "memberCount": "{{count}} members",
+        "noMessages": "No messages yet. Start the conversation!",
+        "typePlaceholder": "Type a message...",
+        "send": "Send",
+        "sendError": "Failed to send message",
+        "enterToSend": "Press Enter to send, Shift+Enter for new line"
     }
 }

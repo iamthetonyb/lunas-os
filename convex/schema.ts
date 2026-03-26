@@ -484,6 +484,56 @@ export default defineSchema({
         .index("by_status", ["status"])
         .index("by_createdAt", ["createdAt"]),
 
+    // ── Chat & Notifications ──────────────────────────────────────────
+
+    // Conversations — DMs and group chats
+    conversations: defineTable({
+        type: v.string(), // "direct" | "group"
+        name: v.optional(v.string()), // group name (optional for DMs)
+        createdBy: v.id("users"),
+        lastMessageAt: v.optional(v.number()),
+        lastMessagePreview: v.optional(v.string()),
+        createdAt: v.number(),
+    })
+        .index("by_lastMessageAt", ["lastMessageAt"]),
+
+    // Conversation Members — who's in each conversation
+    conversationMembers: defineTable({
+        conversationId: v.id("conversations"),
+        userId: v.id("users"),
+        lastReadAt: v.optional(v.number()),
+        joinedAt: v.number(),
+    })
+        .index("by_user", ["userId"])
+        .index("by_conversation", ["conversationId"])
+        .index("by_user_conversation", ["userId", "conversationId"]),
+
+    // Messages — chat messages within conversations
+    messages: defineTable({
+        conversationId: v.id("conversations"),
+        senderId: v.id("users"),
+        senderName: v.optional(v.string()),
+        body: v.string(),
+        createdAt: v.number(),
+    })
+        .index("by_conversation", ["conversationId", "createdAt"]),
+
+    // Notifications — system-wide notifications (requests, approvals, messages, etc.)
+    notifications: defineTable({
+        userId: v.id("users"), // recipient
+        type: v.string(), // message, job_request, dispatch, approval, work_log, system
+        title: v.string(),
+        body: v.optional(v.string()),
+        relatedId: v.optional(v.string()), // generic ID for deep-linking
+        relatedType: v.optional(v.string()), // jobRequest, dispatch, workLog, conversation, etc.
+        conversationId: v.optional(v.id("conversations")),
+        read: v.boolean(),
+        createdAt: v.number(),
+    })
+        .index("by_user_read", ["userId", "read"])
+        .index("by_user_createdAt", ["userId", "createdAt"])
+        .index("by_createdAt", ["createdAt"]),
+
     // Foreman Affinity Cache — pre-computed affinity data (updated by weekly insight pipeline)
     foremanAffinityCache: defineTable({
         communityId: v.id("communities"),

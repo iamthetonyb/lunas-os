@@ -15,7 +15,8 @@
         "darkMode": "Oscuro",
         "lightMode": "Claro",
         "constructionCleanup": "Limpieza de Construcción",
-        "workLog": "Registro de Trabajo"
+        "workLog": "Registro de Trabajo",
+        "chat": "Chat"
     },
     "login": {
         "title": "Lunas OS",
@@ -649,5 +650,37 @@
         "textMode": "Modo de texto",
         "mute": "Silenciar",
         "unmute": "Activar sonido"
+    },
+    "chat": {
+        "title": "Mensajes",
+        "description": "Chat del equipo y notificaciones",
+        "notifications": "Notificaciones",
+        "markAllRead": "Marcar todo como leído",
+        "noNotifications": "Sin notificaciones",
+        "viewAllMessages": "Ver Todos los Mensajes y Chat",
+        "filterAll": "Todo",
+        "filterUnread": "No leído",
+        "filterMessages": "Mensajes",
+        "filterSystem": "Sistema",
+        "chats": "Chats",
+        "systemNotifs": "Alertas",
+        "newDM": "+ Mensaje Directo",
+        "newGroup": "+ Grupo",
+        "group": "Grupo",
+        "unknownUser": "Desconocido",
+        "searchUsers": "Buscar usuarios...",
+        "groupName": "Nombre del grupo...",
+        "createGroup": "Crear Grupo",
+        "createError": "Error al crear la conversación",
+        "groupRequirements": "Se requiere nombre del grupo y al menos un miembro",
+        "noConversations": "No hay conversaciones todavía",
+        "selectConversation": "Selecciona una conversación o inicia una nueva",
+        "selectNotification": "Selecciona una notificación para ver detalles",
+        "memberCount": "{{count}} miembros",
+        "noMessages": "Sin mensajes aún. ¡Inicia la conversación!",
+        "typePlaceholder": "Escribe un mensaje...",
+        "send": "Enviar",
+        "sendError": "Error al enviar el mensaje",
+        "enterToSend": "Presiona Enter para enviar, Shift+Enter para nueva línea"
     }
 }
