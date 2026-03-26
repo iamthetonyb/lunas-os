@@ -21,7 +21,6 @@ export default function PublicWorkLogPage() {
   const [communityId, setCommunityId] = useState<string>('');
   const [serviceType, setServiceType] = useState<string>('');
   const [selectedLots, setSelectedLots] = useState<string[]>([]);
-  const [crewLeader, setCrewLeader] = useState('');
   const [workExplanation, setWorkExplanation] = useState('');
   const [isExtraWork, setIsExtraWork] = useState(false);
   const [extraDesc, setExtraDesc] = useState('');
@@ -119,7 +118,6 @@ export default function PublicWorkLogPage() {
         workExplanation: workExplanation.trim() || undefined,
         hoursWorked: hoursWorked ? Number(hoursWorked) : undefined,
         numWorkers: isExtraWork && numWorkers ? Number(numWorkers) : undefined,
-        crewLeader: crewLeader.trim() || undefined,
         supervisor: foremanId ? (foremen.find(f => f.id === foremanId)?.name) : undefined,
       });
       toast.success(t('workLog.publicSubmitSuccess', 'Work log submitted successfully'));
@@ -152,7 +150,6 @@ export default function PublicWorkLogPage() {
               setCommunityId('');
               setServiceType('');
               setSelectedLots([]);
-              setCrewLeader('');
               setWorkExplanation('');
               setIsExtraWork(false);
               setExtraDesc('');
@@ -201,17 +198,11 @@ export default function PublicWorkLogPage() {
             </Field>
           </div>
 
-          {/* ── Date + Crew Leader ── */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <Field label={t('workLog.date', 'Date')}>
-              <input type="date" value={date} onChange={(e) => setDate(e.target.value)}
-                className="input-field" required />
-            </Field>
-            <Field label={t('workLog.crewLeader', 'Crew Leader')}>
-              <input type="text" value={crewLeader} onChange={(e) => setCrewLeader(e.target.value)}
-                placeholder={t('workLog.optional', 'Optional')} className="input-field" />
-            </Field>
-          </div>
+          {/* ── Date ── */}
+          <Field label={t('workLog.date', 'Date')}>
+            <input type="date" value={date} onChange={(e) => setDate(e.target.value)}
+              className="input-field" required />
+          </Field>
 
           {/* ── Builder → Community (cascading) ── */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
