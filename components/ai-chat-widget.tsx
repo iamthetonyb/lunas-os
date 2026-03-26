@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { usePathname } from 'next/navigation';
 import dynamic from 'next/dynamic';
 
 // Lazy-load the heavy chat panel — zero AI SDK bundle until user clicks
@@ -19,6 +20,10 @@ const AIChatPanel = dynamic(() => import('./ai-chat-panel'), {
 
 export function AIChatWidget() {
     const [open, setOpen] = useState(false);
+    const pathname = usePathname();
+
+    // Hide on chat page — the floating button conflicts with the message input
+    if (pathname === '/chat') return null;
 
     if (!open) {
         return (

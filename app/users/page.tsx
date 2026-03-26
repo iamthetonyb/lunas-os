@@ -383,7 +383,7 @@ function UserModal({
                     <button
                       type="button"
                       onClick={onClose}
-                      className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
+                      className="px-4 py-2 border border-gray-300 dark:border-slate-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-slate-700"
                       disabled={isSubmitting}
                     >
                       {t('common.cancel')}
@@ -572,22 +572,22 @@ export default function UsersPage() {
         }
       />
       <main className="px-6 py-6 space-y-6">
-        <section className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">{t('users.currentUsers')}</h3>
-          {isLoading && <p className="text-gray-600">{t('common.loading')}</p>}
+        <section className="rounded-lg border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-6 shadow-sm">
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">{t('users.currentUsers')}</h3>
+          {isLoading && <p className="text-gray-600 dark:text-gray-400">{t('common.loading')}</p>}
           {!isLoading && (
             <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200 text-sm">
-                <thead className="bg-gray-50">
+              <table className="min-w-full divide-y divide-gray-200 dark:divide-slate-700 text-sm">
+                <thead className="bg-gray-50 dark:bg-slate-700/50">
                   <tr>
-                    <th className="px-4 py-2 text-left font-semibold text-gray-500">{t('common.name')}</th>
-                    <th className="px-4 py-2 text-left font-semibold text-gray-500">{t('common.email')}</th>
-                    <th className="px-4 py-2 text-left font-semibold text-gray-500">{t('common.role')}</th>
-                    <th className="px-4 py-2 text-left font-semibold text-gray-500">{t('users.memberships')}</th>
-                    <th className="px-4 py-2 text-left font-semibold text-gray-500">{t('common.actions')}</th>
+                    <th className="px-4 py-2 text-left font-semibold text-gray-500 dark:text-gray-400">{t('common.name')}</th>
+                    <th className="px-4 py-2 text-left font-semibold text-gray-500 dark:text-gray-400">{t('common.email')}</th>
+                    <th className="px-4 py-2 text-left font-semibold text-gray-500 dark:text-gray-400">{t('common.role')}</th>
+                    <th className="px-4 py-2 text-left font-semibold text-gray-500 dark:text-gray-400">{t('users.memberships')}</th>
+                    <th className="px-4 py-2 text-left font-semibold text-gray-500 dark:text-gray-400">{t('common.actions')}</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-100">
+                <tbody className="divide-y divide-gray-100 dark:divide-slate-700">
                   {paginatedUsers.map((user) => (
                     <tr key={user.id}>
                       <td className="px-4 py-3 text-gray-900 dark:text-gray-100">{user.name || '—'}</td>
@@ -602,15 +602,15 @@ export default function UsersPage() {
                           {user.systemRole}
                         </span>
                       </td>
-                      <td className="px-4 py-3 text-gray-900">
+                      <td className="px-4 py-3 text-gray-900 dark:text-gray-100">
                         {user.memberships.length === 0 ? (
-                          <span className="text-xs text-gray-500">{t('users.noOrgAccess')}</span>
+                          <span className="text-xs text-gray-500 dark:text-gray-400">{t('users.noOrgAccess')}</span>
                         ) : (
                           <div className="flex flex-wrap gap-2">
                             {user.memberships.map((membership) => (
                               <span
                                 key={`${user.id}-${membership.orgId}`}
-                                className="inline-flex items-center rounded-full bg-blue-50 px-3 py-1 text-xs font-medium text-blue-700"
+                                className="inline-flex items-center rounded-full bg-blue-50 dark:bg-blue-500/10 px-3 py-1 text-xs font-medium text-blue-700 dark:text-blue-400"
                               >
                                 {membership.orgName} · {membership.role}
                               </span>
@@ -650,13 +650,13 @@ export default function UsersPage() {
           )}
         </section>
 
-        <section className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">{t('users.assignOrgRole')}</h3>
+        <section className="rounded-lg border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-6 shadow-sm">
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">{t('users.assignOrgRole')}</h3>
           <form onSubmit={handleMembershipSubmit} className="grid grid-cols-1 gap-4 md:grid-cols-4">
             <div>
-              <label className="text-sm font-medium text-gray-700">{t('users.user')}</label>
+              <label className="text-sm font-medium text-gray-700 dark:text-gray-300">{t('users.user')}</label>
               <select
-                className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2"
+                className="mt-1 w-full rounded-lg border border-gray-300 dark:border-slate-600 px-3 py-2 bg-white dark:bg-slate-700 text-gray-900 dark:text-white"
                 value={membership.userId}
                 onChange={(e) => setMembership((prev) => ({ ...prev, userId: e.target.value }))}
               >
@@ -669,9 +669,9 @@ export default function UsersPage() {
               </select>
             </div>
             <div>
-              <label className="text-sm font-medium text-gray-700">{t('users.organization')}</label>
+              <label className="text-sm font-medium text-gray-700 dark:text-gray-300">{t('users.organization')}</label>
               <select
-                className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2"
+                className="mt-1 w-full rounded-lg border border-gray-300 dark:border-slate-600 px-3 py-2 bg-white dark:bg-slate-700 text-gray-900 dark:text-white"
                 value={membership.orgId}
                 onChange={(e) => setMembership((prev) => ({ ...prev, orgId: e.target.value }))}
               >
@@ -684,9 +684,9 @@ export default function UsersPage() {
               </select>
             </div>
             <div>
-              <label className="text-sm font-medium text-gray-700">{t('common.role')}</label>
+              <label className="text-sm font-medium text-gray-700 dark:text-gray-300">{t('common.role')}</label>
               <select
-                className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2"
+                className="mt-1 w-full rounded-lg border border-gray-300 dark:border-slate-600 px-3 py-2 bg-white dark:bg-slate-700 text-gray-900 dark:text-white"
                 value={membership.role}
                 onChange={(e) => setMembership((prev) => ({ ...prev, role: e.target.value as 'admin' | 'backoffice' | 'contractor' }))}
               >
@@ -707,22 +707,22 @@ export default function UsersPage() {
           </form>
         </section>
 
-        <section className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">{t('users.organizations')}</h3>
+        <section className="rounded-lg border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-6 shadow-sm">
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">{t('users.organizations')}</h3>
           <div className="overflow-x-auto mb-6">
-            <table className="min-w-full divide-y divide-gray-200 text-sm">
-              <thead className="bg-gray-50">
+            <table className="min-w-full divide-y divide-gray-200 dark:divide-slate-700 text-sm">
+              <thead className="bg-gray-50 dark:bg-slate-700/50">
                 <tr>
-                  <th className="px-4 py-2 text-left font-semibold text-gray-500">{t('common.name')}</th>
-                  <th className="px-4 py-2 text-left font-semibold text-gray-500">{t('users.slug')}</th>
-                  <th className="px-4 py-2 text-right font-semibold text-gray-500">{t('common.actions')}</th>
+                  <th className="px-4 py-2 text-left font-semibold text-gray-500 dark:text-gray-400">{t('common.name')}</th>
+                  <th className="px-4 py-2 text-left font-semibold text-gray-500 dark:text-gray-400">{t('users.slug')}</th>
+                  <th className="px-4 py-2 text-right font-semibold text-gray-500 dark:text-gray-400">{t('common.actions')}</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-100">
+              <tbody className="divide-y divide-gray-100 dark:divide-slate-700">
                 {data?.orgs.map((org) => (
                   <tr key={org.id}>
-                    <td className="px-4 py-3 text-gray-900 font-medium">{org.name}</td>
-                    <td className="px-4 py-3 text-gray-600 font-mono">{org.slug}</td>
+                    <td className="px-4 py-3 text-gray-900 dark:text-gray-100 font-medium">{org.name}</td>
+                    <td className="px-4 py-3 text-gray-600 dark:text-gray-400 font-mono">{org.slug}</td>
                     <td className="px-4 py-3 text-right">
                       <div className="flex justify-end gap-3">
                         <button
@@ -745,14 +745,14 @@ export default function UsersPage() {
             </table>
           </div>
 
-          <h4 className="text-md font-semibold text-gray-900 mb-4">
+          <h4 className="text-md font-semibold text-gray-900 dark:text-white mb-4">
             {editingOrg ? t('users.editOrganization') : t('users.createOrganization')}
           </h4>
           <form onSubmit={handleOrgSubmit} className="flex flex-col gap-3 md:flex-row md:items-end">
             <div className="flex-1">
-              <label className="text-sm font-medium text-gray-700">{t('users.orgName')}</label>
+              <label className="text-sm font-medium text-gray-700 dark:text-gray-300">{t('users.orgName')}</label>
               <input
-                className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 bg-white text-gray-900"
+                className="mt-1 w-full rounded-lg border border-gray-300 dark:border-slate-600 px-3 py-2 bg-white dark:bg-slate-700 text-gray-900 dark:text-white"
                 placeholder="e.g., Pulte Phoenix"
                 value={orgForm.name}
                 onChange={(e) => setOrgForm({ name: e.target.value })}
@@ -774,7 +774,7 @@ export default function UsersPage() {
                     setEditingOrg(null);
                     setOrgForm({ name: '' });
                   }}
-                  className="rounded-lg bg-gray-200 px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-300"
+                  className="rounded-lg bg-gray-200 dark:bg-slate-600 px-4 py-2 text-sm font-semibold text-gray-700 dark:text-gray-200 hover:bg-gray-300 dark:hover:bg-slate-500"
                 >
                   {t('common.cancel')}
                 </button>

@@ -53,19 +53,39 @@ export const listConversations = query({
     },
 });
 
-/** Get messages for a conversation (most recent first, paginated). */
+/** Get messages for a conversation (most recent first, paginated).
+ *  Respects visibleFrom — members added later only see history from their allowed timestamp. */
 export const getMessages = query({
     args: {
         conversationId: v.id("conversations"),
+        userId: v.optional(v.id("users")),
         limit: v.optional(v.number()),
     },
     handler: async (ctx, args) => {
         const limit = args.limit ?? 100;
-        const messages = await ctx.db
+
+        // Check if this member has a visibleFrom restriction
+        let visibleFrom: number | undefined;
+        if (args.userId) {
+            const membership = await ctx.db
+                .query("conversationMembers")
+                .withIndex("by_user_conversation", (q) =>
+                    q.eq("userId", args.userId!).eq("conversationId", args.conversationId)
+                )
+                .first();
+            visibleFrom = membership?.visibleFrom ?? undefined;
+        }
+
+        let messages = await ctx.db
             .query("messages")
             .withIndex("by_conversation", (q) => q.eq("conversationId", args.conversationId))
             .order("desc")
             .take(limit);
+
+        // Filter by visibleFrom if set
+        if (visibleFrom) {
+            messages = messages.filter((m) => m.createdAt >= visibleFrom!);
+        }
 
         return messages.reverse(); // chronological order
     },
@@ -277,11 +297,34 @@ export const markRead = mutation({
     },
 });
 
-/** Add a member to a group conversation. */
+/** Update group conversation name. */
+export const updateGroupName = mutation({
+    args: {
+        conversationId: v.id("conversations"),
+        name: v.string(),
+    },
+    handler: async (ctx, args) => {
+        const conv = await ctx.db.get(args.conversationId);
+        if (!conv || conv.type !== "group") {
+            throw new Error("Not a group conversation");
+        }
+        await ctx.db.patch(args.conversationId, { name: args.name.trim() });
+        return { success: true };
+    },
+});
+
+/** Add a member to a group conversation with optional history visibility control.
+ *  historyAccess: "all" = see everything, "from_now" = only messages after joining,
+ *  or a timestamp for custom cutoff. */
 export const addMember = mutation({
     args: {
         conversationId: v.id("conversations"),
         userId: v.id("users"),
+        historyAccess: v.optional(v.union(
+            v.literal("all"),
+            v.literal("from_now"),
+            v.number(), // custom timestamp
+        )),
     },
     handler: async (ctx, args) => {
         const existing = await ctx.db
@@ -292,11 +335,40 @@ export const addMember = mutation({
             .first();
         if (existing) return { success: true, alreadyMember: true };
 
+        const now = Date.now();
+        let visibleFrom: number | undefined;
+
+        if (args.historyAccess === "from_now") {
+            visibleFrom = now;
+        } else if (typeof args.historyAccess === "number") {
+            visibleFrom = args.historyAccess;
+        }
+        // "all" or undefined → visibleFrom stays undefined → can see all history
+
         await ctx.db.insert("conversationMembers", {
             conversationId: args.conversationId,
             userId: args.userId,
-            joinedAt: Date.now(),
+            joinedAt: now,
+            visibleFrom,
         });
+
+        // Create a system notification for the new member
+        const conv = await ctx.db.get(args.conversationId);
+        const user = await ctx.db.get(args.userId);
+        if (conv && user) {
+            await ctx.db.insert("notifications", {
+                userId: args.userId,
+                type: "system",
+                title: `Added to group: ${conv.name ?? "Group"}`,
+                body: `You were added to a group conversation`,
+                relatedId: args.conversationId,
+                relatedType: "conversation",
+                conversationId: args.conversationId,
+                read: false,
+                createdAt: now,
+            });
+        }
+
         return { success: true, alreadyMember: false };
     },
 });

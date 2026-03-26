@@ -503,6 +503,7 @@ export default defineSchema({
         userId: v.id("users"),
         lastReadAt: v.optional(v.number()),
         joinedAt: v.number(),
+        visibleFrom: v.optional(v.number()), // earliest message timestamp this member can see (null = all history)
     })
         .index("by_user", ["userId"])
         .index("by_conversation", ["conversationId"])
