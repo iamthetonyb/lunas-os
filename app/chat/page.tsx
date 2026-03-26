@@ -139,14 +139,18 @@ function ConversationList({
     };
 
     const handleCreateGroup = async () => {
-        if (!groupName.trim() || groupMembers.length === 0) {
-            toast.error(t('chat.groupRequirements', 'Group name and at least one member required'));
+        if (groupMembers.length === 0) {
+            toast.error(t('chat.groupRequirements', 'Select at least one member'));
             return;
         }
+        // Auto-generate group name from member names if not provided
+        const name = groupName.trim() || groupMembers
+            .map((uid) => otherUsers.find((u: any) => u.id === uid)?.name ?? 'User')
+            .join(', ');
         try {
             const result = await createGroup({
                 creatorId: userId,
-                name: groupName.trim(),
+                name,
                 memberIds: groupMembers as Id<'users'>[],
             });
             onSelect(result.conversationId);
@@ -263,7 +267,7 @@ function ConversationList({
                         type="text"
                         value={groupName}
                         onChange={(e) => setGroupName(e.target.value)}
-                        placeholder={t('chat.groupName', 'Group name...')}
+                        placeholder={t('chat.groupNameOptional', 'Group name (optional)')}
                         className="w-full px-2.5 py-1.5 text-sm border border-gray-200 dark:border-slate-600 rounded-md bg-white dark:bg-slate-800 text-gray-900 dark:text-white focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
                     />
                     <div className="max-h-40 overflow-y-auto space-y-0.5">
@@ -284,7 +288,7 @@ function ConversationList({
                     </div>
                     <button
                         onClick={handleCreateGroup}
-                        disabled={!groupName.trim() || groupMembers.length === 0}
+                        disabled={groupMembers.length === 0}
                         className="w-full px-3 py-2 text-sm font-medium bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors min-h-[44px]"
                     >
                         {t('chat.createGroup', 'Create Group')} ({groupMembers.length})

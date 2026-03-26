@@ -129,11 +129,11 @@ const opsNavigation = [
   { key: 'Blue Book', tKey: 'navigation.blueBook', href: '/blue-book' },
   { key: 'Work Log', tKey: 'navigation.workLog', href: '/work-log' },
   { key: 'Extra Work', tKey: 'navigation.extraWork', href: '/extra-work' },
-  { key: 'Chat', tKey: 'navigation.chat', href: '/chat' },
 ];
 
-// Admin/config nav — below the divider (Chat sits above this for contractors too)
+// Admin/config nav — below the divider
 const adminNavigation = [
+  { key: 'Chat', tKey: 'navigation.chat', href: '/chat' },
   { key: 'Contracts', tKey: 'navigation.contracts', href: '/contracts' },
   { key: 'Invoicing', tKey: 'navigation.invoicing', href: '/invoicing' },
   { key: 'Import', tKey: 'navigation.import', href: '/import' },
@@ -156,13 +156,16 @@ export function Navigation({ onMobileClose }: { onMobileClose?: () => void } = {
     setMounted(true);
   }, []);
 
-  const contractorAllowed = new Set(['Dashboard', 'Intake', 'Schedule', 'Work Log', 'Chat']);
+  const contractorAllowed = new Set(['Dashboard', 'Intake', 'Schedule', 'Work Log']);
   const opsNav =
     orgRole === 'contractor'
       ? opsNavigation.filter((item) => contractorAllowed.has(item.key))
       : opsNavigation;
+  // Contractors see only Chat from admin nav
   const adminNav =
-    orgRole === 'contractor' ? [] : adminNavigation;
+    orgRole === 'contractor'
+      ? adminNavigation.filter((item) => item.key === 'Chat')
+      : adminNavigation;
 
   const userDisplayName = session?.user?.name ?? 'User';
   const userInitials = userDisplayName
