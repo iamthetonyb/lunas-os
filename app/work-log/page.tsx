@@ -163,8 +163,8 @@ export default function WorkLogPage() {
     api.queries.getCommunitiesByBuilder,
     builderId ? { builderId: builderId as Id<'builders'> } : 'skip'
   ) ?? [];
-  const communityLots = useQuery(
-    api.communityLots.byCommunity,
+  const allLots = useQuery(
+    api.communityLots.allLotsByCommunity,
     communityId ? { communityId: communityId as Id<'communities'> } : 'skip'
   ) ?? [];
   const dbServices = useQuery(api.queries.getServices, {}) ?? [];
@@ -190,18 +190,8 @@ export default function WorkLogPage() {
     return names.length > 0 ? names.sort() : [];
   }, [dbServices]);
 
-  // Lot numbers from communityLots
-  const availableLots = useMemo(() => {
-    const lotNums = communityLots
-      .map((l: any) => l.lotNumber)
-      .filter(Boolean) as string[];
-    return [...new Set(lotNums)].sort((a, b) => {
-      const na = parseInt(a, 10);
-      const nb = parseInt(b, 10);
-      if (!isNaN(na) && !isNaN(nb)) return na - nb;
-      return a.localeCompare(b);
-    });
-  }, [communityLots]);
+  // Lot numbers — allLotsByCommunity returns deduped sorted string[]
+  const availableLots = allLots;
 
   // ── Mutations ──
   const createLog = useMutation(api.workLogs.create);

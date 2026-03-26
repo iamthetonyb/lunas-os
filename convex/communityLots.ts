@@ -11,6 +11,57 @@ export const byCommunity = query({
     },
 });
 
+/**
+ * Returns all known lot numbers for a community — merged from:
+ * 1. communityLots table
+ * 2. blueBookEntries (lot field)
+ * 3. jobRequests (lot field)
+ * Deduplicated and sorted numerically.
+ */
+export const allLotsByCommunity = query({
+    args: { communityId: v.id("communities") },
+    handler: async (ctx, args) => {
+        const seen = new Set<string>();
+
+        // 1. communityLots table
+        const clots = await ctx.db
+            .query("communityLots")
+            .withIndex("by_community", (q) => q.eq("communityId", args.communityId))
+            .collect();
+        for (const cl of clots) {
+            if (cl.lotNumber) seen.add(cl.lotNumber.trim());
+        }
+
+        // 2. blueBookEntries — lot field
+        const bbEntries = await ctx.db
+            .query("blueBookEntries")
+            .withIndex("by_community", (q) => q.eq("communityId", args.communityId))
+            .take(2000);
+        for (const e of bbEntries) {
+            if (e.lot) seen.add(e.lot.trim());
+        }
+
+        // 3. jobRequests — lot field
+        const jrs = await ctx.db
+            .query("jobRequests")
+            .withIndex("by_community", (q) => q.eq("communityId", args.communityId))
+            .take(2000);
+        for (const jr of jrs) {
+            if (jr.lot) seen.add(jr.lot.trim());
+        }
+
+        // Sort numerically where possible
+        const lots = [...seen].filter(Boolean).sort((a, b) => {
+            const na = parseInt(a, 10);
+            const nb = parseInt(b, 10);
+            if (!isNaN(na) && !isNaN(nb)) return na - nb;
+            return a.localeCompare(b);
+        });
+
+        return lots;
+    },
+});
+
 export const byModelPlan = query({
     args: { modelPlanId: v.id("modelPlans") },
     handler: async (ctx, args) => {

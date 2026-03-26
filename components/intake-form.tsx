@@ -155,8 +155,8 @@ export function IntakeForm() {
     watchedRequestedBy ? { name: watchedRequestedBy } : 'skip'
   );
 
-  const communityLots = useQuery(
-    api.communityLots.byCommunity,
+  const allLots = useQuery(
+    api.communityLots.allLotsByCommunity,
     watchedCommunityId ? { communityId: watchedCommunityId as Id<"communities"> } : 'skip'
   ) ?? [];
 
@@ -170,23 +170,13 @@ export function IntakeForm() {
     }
   }, [isContractor, session?.user?.name, setValue, watchedRequestedBy, foremanNames]);
 
-  // Lot options from scraped data — deduplicated by lotNumber
+  // Lot options — allLotsByCommunity returns deduped sorted string[]
   const lotOptions = useMemo<SelectOption[]>(() => {
-    if (!communityLots || communityLots.length === 0) return [];
-    const seen = new Set<string>();
-    const opts: SelectOption[] = [];
-    for (const lot of communityLots) {
-      const num = (lot as any).lotNumber;
-      if (!num || seen.has(num)) continue;
-      seen.add(num);
-      opts.push({
-        value: num,
-        label: `Lot ${num}`,
-        description: (lot as any).address ?? (lot as any).jobNumber,
-      });
-    }
-    return opts;
-  }, [communityLots]);
+    return allLots.map((num) => ({
+      value: num,
+      label: `Lot ${num}`,
+    }));
+  }, [allLots]);
 
   const serviceOptions = useMemo<SelectOption[]>(() => {
     if (!services) return [];

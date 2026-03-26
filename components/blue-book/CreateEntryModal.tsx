@@ -48,23 +48,14 @@ export function CreateEntryModal({ isOpen, onClose, builders, defaultBuilderId }
         label: c.name,
     }));
 
-    const communityLots = useQuery(
-        api.communityLots.byCommunity,
+    const allLots = useQuery(
+        api.communityLots.allLotsByCommunity,
         form.communityId ? { communityId: form.communityId as Id<'communities'> } : 'skip'
     ) ?? [];
 
     const lotOptions = useMemo(() => {
-        if (!communityLots || communityLots.length === 0) return [];
-        const seen = new Set<string>();
-        const opts: { value: string; label: string }[] = [];
-        for (const lot of communityLots) {
-            const num = (lot as any).lotNumber;
-            if (!num || seen.has(num)) continue;
-            seen.add(num);
-            opts.push({ value: num, label: `Lot ${num}` });
-        }
-        return opts;
-    }, [communityLots]);
+        return allLots.map((num) => ({ value: num, label: `Lot ${num}` }));
+    }, [allLots]);
 
     const createLot = useMutation(api.communityLots.create);
 
