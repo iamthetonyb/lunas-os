@@ -40,10 +40,23 @@ export function useCommunityGroups(
         for (const [communityName, communityEntries] of byCommunity) {
             const communityId = communityEntries[0]?.communityId ?? null;
 
-            // Resolve phases: community-specific > builder defaults > synthetic
+            // Resolve phases: merge community-specific ON TOP of builder defaults.
+            // Community phases override builder phases with the same code,
+            // but builder phases not overridden still appear.
             let effectivePhases: PhaseDefinition[];
             const communityPhases = communityId ? communityPhasesMap?.get(communityId) : undefined;
-            if (communityPhases && communityPhases.length > 0) {
+            if (communityPhases && communityPhases.length > 0 && builderPhases.length > 0) {
+                // Merge: start with builder defaults, overlay community-specific
+                const communityCodeSet = new Set(communityPhases.map(cp => cp.code));
+                const merged: PhaseDefinition[] = [
+                    // Builder phases not overridden by community
+                    ...builderPhases.filter(bp => !communityCodeSet.has(bp.code)),
+                    // All community phases
+                    ...communityPhases,
+                ];
+                merged.sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
+                effectivePhases = merged;
+            } else if (communityPhases && communityPhases.length > 0) {
                 effectivePhases = communityPhases;
             } else if (builderPhases.length > 0) {
                 effectivePhases = builderPhases;
