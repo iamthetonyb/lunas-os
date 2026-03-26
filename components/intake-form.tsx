@@ -170,14 +170,22 @@ export function IntakeForm() {
     }
   }, [isContractor, session?.user?.name, setValue, watchedRequestedBy, foremanNames]);
 
-  // Lot options from scraped data
+  // Lot options from scraped data — deduplicated by lotNumber
   const lotOptions = useMemo<SelectOption[]>(() => {
     if (!communityLots || communityLots.length === 0) return [];
-    return communityLots.map((lot: any) => ({
-      value: lot.lotNumber,
-      label: `Lot ${lot.lotNumber}`,
-      description: lot.address ?? lot.jobNumber,
-    }));
+    const seen = new Set<string>();
+    const opts: SelectOption[] = [];
+    for (const lot of communityLots) {
+      const num = (lot as any).lotNumber;
+      if (!num || seen.has(num)) continue;
+      seen.add(num);
+      opts.push({
+        value: num,
+        label: `Lot ${num}`,
+        description: (lot as any).address ?? (lot as any).jobNumber,
+      });
+    }
+    return opts;
   }, [communityLots]);
 
   const serviceOptions = useMemo<SelectOption[]>(() => {

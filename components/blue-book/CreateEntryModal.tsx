@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, Fragment } from 'react';
+import { useState, useCallback, useMemo, Fragment } from 'react';
 import { Dialog, Transition } from '@headlessui/react';
 import { useMutation, useQuery } from 'convex/react';
 import { api } from '@/convex/_generated/api';
@@ -47,6 +47,43 @@ export function CreateEntryModal({ isOpen, onClose, builders, defaultBuilderId }
         value: c._id,
         label: c.name,
     }));
+
+    const communityLots = useQuery(
+        api.communityLots.byCommunity,
+        form.communityId ? { communityId: form.communityId as Id<'communities'> } : 'skip'
+    ) ?? [];
+
+    const lotOptions = useMemo(() => {
+        if (!communityLots || communityLots.length === 0) return [];
+        const seen = new Set<string>();
+        const opts: { value: string; label: string }[] = [];
+        for (const lot of communityLots) {
+            const num = (lot as any).lotNumber;
+            if (!num || seen.has(num)) continue;
+            seen.add(num);
+            opts.push({ value: num, label: `Lot ${num}` });
+        }
+        return opts;
+    }, [communityLots]);
+
+    const createLot = useMutation(api.communityLots.create);
+
+    const handleCreateLot = useCallback(async (lotNumber: string) => {
+        if (!form.communityId) {
+            toast.error('Select a community first');
+            return;
+        }
+        try {
+            await createLot({
+                communityId: form.communityId as Id<'communities'>,
+                lotNumber,
+            });
+            toast.success(`Lot ${lotNumber} created`);
+            return lotNumber;
+        } catch (err: any) {
+            toast.error(err?.message ?? 'Failed to create lot');
+        }
+    }, [createLot, form.communityId]);
 
     const handleCreateCommunity = useCallback(async (name: string) => {
         try {
@@ -118,7 +155,7 @@ export function CreateEntryModal({ isOpen, onClose, builders, defaultBuilderId }
 
                                 <div className="grid grid-cols-2 gap-3">
                                     <Field label="Builder">
-                                        <select value={form.builderId} onChange={(e) => setForm(f => ({ ...f, builderId: e.target.value, communityId: '' }))} className="input-field">
+                                        <select value={form.builderId} onChange={(e) => setForm(f => ({ ...f, builderId: e.target.value, communityId: '', lot: '' }))} className="input-field">
                                             <option value="">Select builder...</option>
                                             {builders.map(b => (
                                                 <option key={b._id} value={b._id}>{b.name}</option>
@@ -155,7 +192,17 @@ export function CreateEntryModal({ isOpen, onClose, builders, defaultBuilderId }
                                         </select>
                                     </Field>
                                     <Field label="Lot">
-                                        <input type="text" value={form.lot} onChange={(e) => setForm(f => ({ ...f, lot: e.target.value }))} className="input-field" />
+                                        <SearchableSelect
+                                            value={form.lot}
+                                            onChange={(val) => setForm(f => ({ ...f, lot: val }))}
+                                            options={lotOptions}
+                                            placeholder={form.communityId ? t('intake.lotPlaceholder', 'Type or select lot number...') : t('workLog.selectCommunityFirst', 'Select community first')}
+                                            disabled={!form.communityId}
+                                            emptyStateLabel={t('intake.noLots', 'No lots found — type to add')}
+                                            allowCreate={!!form.communityId}
+                                            onCreateOption={handleCreateLot}
+                                            createLabel={t('intake.createLot', 'Add lot')}
+                                        />
                                     </Field>
                                     <Field label="Completed Date">
                                         <input type="date" value={form.startDate} onChange={(e) => setForm(f => ({ ...f, startDate: e.target.value }))} className="input-field" />

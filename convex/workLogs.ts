@@ -150,6 +150,7 @@ export const create = mutation({
         userId: v.id("users"),
         date: v.string(),
         time: v.optional(v.string()),
+        builderId: v.optional(v.id("builders")),
         communityId: v.optional(v.id("communities")),
         serviceType: v.string(),
         serviceChecks: v.optional(v.array(v.string())),
@@ -184,18 +185,20 @@ export const create = mutation({
         const user = await ctx.db.get(args.userId);
         const userName = user?.name ?? "Unknown";
 
-        // Resolve community → builder
+        // Resolve community → builder (use explicit builderId if provided, else derive from community)
         let communityName: string | undefined;
-        let builderId: Id<"builders"> | undefined;
+        let builderId: Id<"builders"> | undefined = args.builderId;
         let builderName: string | undefined;
         if (args.communityId) {
             const community = await ctx.db.get(args.communityId);
             communityName = community?.name;
-            if (community?.builderId) {
+            if (!builderId && community?.builderId) {
                 builderId = community.builderId;
-                const builder = await ctx.db.get(community.builderId);
-                builderName = builder?.name;
             }
+        }
+        if (builderId) {
+            const builder = await ctx.db.get(builderId);
+            builderName = builder?.name;
         }
 
         // Validate assignment — check if this user has a matching assignment
@@ -473,6 +476,7 @@ export const createPublic = mutation({
         submitterName: v.string(),
         date: v.string(),
         time: v.optional(v.string()),
+        builderId: v.optional(v.id("builders")),
         communityId: v.optional(v.id("communities")),
         serviceType: v.string(),
         serviceChecks: v.optional(v.array(v.string())),
@@ -527,18 +531,20 @@ export const createPublic = mutation({
             .take(1);
         const matchedUser = users[0];
 
-        // Resolve community → builder
+        // Resolve community → builder (use explicit builderId if provided, else derive from community)
         let communityName: string | undefined;
-        let builderId: Id<"builders"> | undefined;
+        let builderId: Id<"builders"> | undefined = args.builderId;
         let builderName: string | undefined;
         if (args.communityId) {
             const community = await ctx.db.get(args.communityId);
             communityName = community?.name;
-            if (community?.builderId) {
+            if (!builderId && community?.builderId) {
                 builderId = community.builderId;
-                const builder = await ctx.db.get(community.builderId);
-                builderName = builder?.name;
             }
+        }
+        if (builderId) {
+            const builder = await ctx.db.get(builderId);
+            builderName = builder?.name;
         }
 
         const now = Date.now();

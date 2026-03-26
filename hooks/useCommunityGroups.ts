@@ -73,6 +73,9 @@ export function useCommunityGroups(
                     active: true,
                 } as PhaseDefinition];
 
+                // Track which entries are claimed by a defined phase
+                const claimedEntryIds = new Set<string>();
+
                 // Build phases for this lot
                 const lotPhases: LotPhase[] = phasesForLot.map((phase) => {
                     const matchingEntries = lotEntries.filter((e) =>
@@ -82,6 +85,11 @@ export function useCommunityGroups(
                                 e.accountCategoryName?.toLowerCase().includes(sn.toLowerCase())
                         )
                     );
+
+                    // Mark these entries as claimed
+                    for (const me of matchingEntries) {
+                        if (me._id) claimedEntryIds.add(me._id);
+                    }
 
                     const services: LotPhaseService[] = phase.serviceNames.map(
                         (serviceName) => {
@@ -121,6 +129,51 @@ export function useCommunityGroups(
                         isComplete: overrideStatus ?? baseComplete,
                     };
                 });
+
+                // Collect unclaimed entries — services that don't match any defined phase
+                const unclaimedEntries = lotEntries.filter(
+                    (e) => e._id && !claimedEntryIds.has(e._id)
+                );
+
+                // If there are unclaimed entries, create a dynamic "Other" phase
+                // so nothing is invisible
+                if (unclaimedEntries.length > 0) {
+                    const otherServiceNames = [
+                        ...new Set(
+                            unclaimedEntries
+                                .map((e) => e.serviceName ?? e.accountCategoryName ?? '')
+                                .filter(Boolean)
+                        ),
+                    ];
+                    const otherServices: LotPhaseService[] = otherServiceNames.map(
+                        (serviceName) => {
+                            const svcEntries = unclaimedEntries.filter(
+                                (e) =>
+                                    e.serviceName?.toLowerCase().includes(serviceName.toLowerCase()) ||
+                                    e.accountCategoryName?.toLowerCase().includes(serviceName.toLowerCase())
+                            );
+                            return {
+                                name: serviceName,
+                                entries: svcEntries,
+                                baseLogged: svcEntries.length > 0,
+                                overrideStatus: undefined,
+                                isLogged: svcEntries.length > 0,
+                            };
+                        }
+                    );
+                    const overrideKey = `${lot}:OTHER`;
+                    const phaseOverride = overrideMap.get(overrideKey);
+                    lotPhases.push({
+                        code: 'OTHER',
+                        title: 'Other Services',
+                        shorthand: 'Other',
+                        matchingEntries: unclaimedEntries,
+                        services: otherServices,
+                        baseComplete: otherServices.every((s) => s.baseLogged),
+                        overrideStatus: phaseOverride?.phase,
+                        isComplete: phaseOverride?.phase ?? otherServices.every((s) => s.baseLogged),
+                    });
+                }
 
                 const withModel = lotEntries.find((e) => e.modelPlanCode);
 
