@@ -112,7 +112,7 @@ export function NotificationBell() {
             {/* Bell button */}
             <button
                 onClick={() => setOpen(!open)}
-                className="relative p-2 rounded-lg text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-slate-800 hover:text-gray-700 dark:hover:text-gray-200 transition-colors"
+                className="relative p-2 rounded-lg text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-slate-800 hover:text-gray-700 dark:hover:text-gray-200 transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center"
                 aria-label={t('chat.notifications', 'Notifications')}
             >
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.75}>
@@ -127,7 +127,7 @@ export function NotificationBell() {
 
             {/* Dropdown panel */}
             {open && (
-                <div className="absolute right-0 top-full mt-2 w-96 max-h-[480px] bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl shadow-2xl z-50 flex flex-col overflow-hidden">
+                <div className="absolute right-0 sm:right-0 top-full mt-2 w-[calc(100vw-24px)] sm:w-96 max-h-[70vh] sm:max-h-[480px] bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl shadow-2xl z-50 flex flex-col overflow-hidden">
                     {/* Header */}
                     <div className="px-4 py-3 border-b border-gray-100 dark:border-slate-700 flex items-center justify-between">
                         <h3 className="text-sm font-semibold text-gray-900 dark:text-white">

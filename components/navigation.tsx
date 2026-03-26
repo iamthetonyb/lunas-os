@@ -132,7 +132,7 @@ const opsNavigation = [
   { key: 'Chat', tKey: 'navigation.chat', href: '/chat' },
 ];
 
-// Admin/config nav — below the divider
+// Admin/config nav — below the divider (Chat sits above this for contractors too)
 const adminNavigation = [
   { key: 'Contracts', tKey: 'navigation.contracts', href: '/contracts' },
   { key: 'Invoicing', tKey: 'navigation.invoicing', href: '/invoicing' },
@@ -140,7 +140,7 @@ const adminNavigation = [
   { key: 'Users', tKey: 'navigation.users', href: '/users' },
 ];
 
-export function Navigation() {
+export function Navigation({ onMobileClose }: { onMobileClose?: () => void } = {}) {
   const pathname = usePathname();
   const { theme, setTheme, resolvedTheme } = useTheme();
   const currentTheme = theme === 'system' ? resolvedTheme : theme;
@@ -210,8 +210,9 @@ export function Navigation() {
               <Link
                 key={item.key}
                 href={item.href}
+                onClick={onMobileClose}
                 className={`
-                  group flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-150 relative
+                  group flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-150 relative min-h-[44px]
                   ${isActive
                     ? 'bg-blue-50 dark:bg-blue-500/10 text-blue-700 dark:text-blue-400 font-semibold'
                     : 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-slate-800 hover:text-gray-900 dark:hover:text-gray-200'
@@ -244,8 +245,9 @@ export function Navigation() {
               <Link
                 key={item.key}
                 href={item.href}
+                onClick={onMobileClose}
                 className={`
-                  group flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-150 relative
+                  group flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-150 relative min-h-[44px]
                   ${isActive
                     ? 'bg-blue-50 dark:bg-blue-500/10 text-blue-700 dark:text-blue-400 font-semibold'
                     : 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-slate-800 hover:text-gray-900 dark:hover:text-gray-200'
