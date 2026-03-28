@@ -36,106 +36,106 @@ export default function PrivacyPage() {
       )}
 
       <div className="max-w-3xl mx-auto">
-        <Link href="/login" className="text-sm text-blue-600 hover:text-blue-700 dark:text-blue-400 mb-6 inline-block">&larr; Back to Login</Link>
-        <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">Privacy Policy</h1>
-        <p className="text-sm text-gray-500 dark:text-gray-400 mb-8">Last updated: March 28, 2026</p>
+        <Link href="/login" className="text-sm text-blue-600 hover:text-blue-700 dark:text-blue-400 mb-6 inline-block">&larr; {t('privacy.backToLogin')}</Link>
+        <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">{t('privacy.title')}</h1>
+        <p className="text-sm text-gray-500 dark:text-gray-400 mb-8">{t('privacy.lastUpdated')}</p>
 
         <div className="prose prose-sm dark:prose-invert max-w-none space-y-6 text-gray-700 dark:text-gray-300">
           <section>
-            <h2 className="text-lg font-semibold text-gray-900 dark:text-white">1. Introduction</h2>
-            <p>Lunas Construction Cleanup LLC (&ldquo;Company&rdquo;, &ldquo;we&rdquo;, &ldquo;us&rdquo;) respects your privacy. This Privacy Policy explains how we collect, use, disclose, and safeguard your information when you use Lunas OS (&ldquo;the Platform&rdquo;).</p>
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-white">{t('privacy.s1Title')}</h2>
+            <p>{t('privacy.s1Text')}</p>
           </section>
 
           <section>
-            <h2 className="text-lg font-semibold text-gray-900 dark:text-white">2. Information We Collect</h2>
-            <h3 className="text-sm font-semibold text-gray-800 dark:text-gray-200 mt-3">Personal Information</h3>
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-white">{t('privacy.s2Title')}</h2>
+            <h3 className="text-sm font-semibold text-gray-800 dark:text-gray-200 mt-3">{t('privacy.s2PersonalTitle')}</h3>
             <ul className="list-disc pl-5 space-y-1">
-              <li>Name, email address, phone number</li>
-              <li>Account credentials (securely hashed)</li>
-              <li>Role and organizational affiliation</li>
-              <li>Work logs, job requests, and dispatch records</li>
+              <li>{t('privacy.s2PersonalList1')}</li>
+              <li>{t('privacy.s2PersonalList2')}</li>
+              <li>{t('privacy.s2PersonalList3')}</li>
+              <li>{t('privacy.s2PersonalList4')}</li>
             </ul>
 
-            <h3 className="text-sm font-semibold text-gray-800 dark:text-gray-200 mt-3">Automatically Collected Information</h3>
+            <h3 className="text-sm font-semibold text-gray-800 dark:text-gray-200 mt-3">{t('privacy.s2AutoTitle')}</h3>
             <ul className="list-disc pl-5 space-y-1">
-              <li>Device type, browser, and operating system</li>
-              <li>IP address and general location</li>
-              <li>Usage patterns and feature interactions</li>
-              <li>Session timestamps</li>
-            </ul>
-          </section>
-
-          <section>
-            <h2 className="text-lg font-semibold text-gray-900 dark:text-white">3. How We Use Your Information</h2>
-            <p>We use collected information to:</p>
-            <ul className="list-disc pl-5 space-y-1">
-              <li>Provide and maintain the Platform</li>
-              <li>Manage user accounts and authentication</li>
-              <li>Process job scheduling, dispatch, and invoicing</li>
-              <li>Send notifications related to your work (chat messages, approvals, alerts)</li>
-              <li>Improve Platform performance and user experience</li>
-              <li>Comply with legal obligations</li>
+              <li>{t('privacy.s2AutoList1')}</li>
+              <li>{t('privacy.s2AutoList2')}</li>
+              <li>{t('privacy.s2AutoList3')}</li>
+              <li>{t('privacy.s2AutoList4')}</li>
             </ul>
           </section>
 
           <section>
-            <h2 className="text-lg font-semibold text-gray-900 dark:text-white">4. Data Sharing</h2>
-            <p>We do not sell your personal information. We may share data with:</p>
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-white">{t('privacy.s3Title')}</h2>
+            <p>{t('privacy.s3Text')}</p>
             <ul className="list-disc pl-5 space-y-1">
-              <li><strong>Service providers</strong> — third-party services that help us operate the Platform (hosting, authentication, email delivery)</li>
-              <li><strong>Construction partners</strong> — builder superintendents and contacts as necessary for job coordination</li>
-              <li><strong>Legal requirements</strong> — when required by law, subpoena, or government request</li>
+              <li>{t('privacy.s3List1')}</li>
+              <li>{t('privacy.s3List2')}</li>
+              <li>{t('privacy.s3List3')}</li>
+              <li>{t('privacy.s3List4')}</li>
+              <li>{t('privacy.s3List5')}</li>
+              <li>{t('privacy.s3List6')}</li>
             </ul>
           </section>
 
           <section>
-            <h2 className="text-lg font-semibold text-gray-900 dark:text-white">5. Data Storage &amp; Security</h2>
-            <p>Your data is stored using industry-standard cloud infrastructure with encryption in transit and at rest. We implement access controls, audit logging, and regular security reviews. While no system is 100% secure, we take reasonable measures to protect your information.</p>
-          </section>
-
-          <section>
-            <h2 className="text-lg font-semibold text-gray-900 dark:text-white">6. Data Retention</h2>
-            <p>We retain your data for as long as your account is active or as needed to provide services. Work records may be retained for legal and accounting purposes. Chat notifications are automatically purged after 90 days. You may request deletion of your account and associated data.</p>
-          </section>
-
-          <section>
-            <h2 className="text-lg font-semibold text-gray-900 dark:text-white">7. Your Rights</h2>
-            <p>Depending on your jurisdiction, you may have the right to:</p>
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-white">{t('privacy.s4Title')}</h2>
+            <p>{t('privacy.s4Text')}</p>
             <ul className="list-disc pl-5 space-y-1">
-              <li>Access the personal data we hold about you</li>
-              <li>Request correction of inaccurate data</li>
-              <li>Request deletion of your data</li>
-              <li>Object to or restrict processing of your data</li>
-              <li>Data portability</li>
+              <li><strong>{t('privacy.s4Label1')}</strong> — {t('privacy.s4Desc1')}</li>
+              <li><strong>{t('privacy.s4Label2')}</strong> — {t('privacy.s4Desc2')}</li>
+              <li><strong>{t('privacy.s4Label3')}</strong> — {t('privacy.s4Desc3')}</li>
             </ul>
-            <p className="mt-2">To exercise these rights, contact us at the email below.</p>
           </section>
 
           <section>
-            <h2 className="text-lg font-semibold text-gray-900 dark:text-white">8. Cookies &amp; Tracking</h2>
-            <p>The Platform uses essential cookies for authentication and session management. We do not use advertising or tracking cookies. Third-party authentication providers (Clerk, Google) may set their own cookies as described in their respective privacy policies.</p>
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-white">{t('privacy.s5Title')}</h2>
+            <p>{t('privacy.s5Text')}</p>
           </section>
 
           <section>
-            <h2 className="text-lg font-semibold text-gray-900 dark:text-white">9. Children&apos;s Privacy</h2>
-            <p>The Platform is not intended for individuals under 18 years of age. We do not knowingly collect personal information from children.</p>
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-white">{t('privacy.s6Title')}</h2>
+            <p>{t('privacy.s6Text')}</p>
           </section>
 
           <section>
-            <h2 className="text-lg font-semibold text-gray-900 dark:text-white">10. Changes to This Policy</h2>
-            <p>We may update this Privacy Policy periodically. We will notify you of material changes via the Platform or email. Continued use after changes constitutes acceptance.</p>
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-white">{t('privacy.s7Title')}</h2>
+            <p>{t('privacy.s7Text')}</p>
+            <ul className="list-disc pl-5 space-y-1">
+              <li>{t('privacy.s7List1')}</li>
+              <li>{t('privacy.s7List2')}</li>
+              <li>{t('privacy.s7List3')}</li>
+              <li>{t('privacy.s7List4')}</li>
+              <li>{t('privacy.s7List5')}</li>
+            </ul>
+            <p className="mt-2">{t('privacy.s7Outro')}</p>
           </section>
 
           <section>
-            <h2 className="text-lg font-semibold text-gray-900 dark:text-white">11. Contact</h2>
-            <p>For privacy questions or data requests, contact us at <a href="mailto:dispatch@lunasinc.com" className="text-blue-600 dark:text-blue-400 hover:underline">dispatch@lunasinc.com</a>.</p>
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-white">{t('privacy.s8Title')}</h2>
+            <p>{t('privacy.s8Text')}</p>
+          </section>
+
+          <section>
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-white">{t('privacy.s9Title')}</h2>
+            <p>{t('privacy.s9Text')}</p>
+          </section>
+
+          <section>
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-white">{t('privacy.s10Title')}</h2>
+            <p>{t('privacy.s10Text')}</p>
+          </section>
+
+          <section>
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-white">{t('privacy.s11Title')}</h2>
+            <p>{t('privacy.s11Text')} <a href={`mailto:${t('privacy.contactEmail')}`} className="text-blue-600 dark:text-blue-400 hover:underline">{t('privacy.contactEmail')}</a>.</p>
           </section>
         </div>
 
         <div className="mt-12 pt-6 border-t border-gray-200 dark:border-slate-700 text-center text-xs text-gray-400 dark:text-gray-500">
-          <Link href="/terms" className="text-blue-500 hover:underline">Terms &amp; Conditions</Link>
+          <Link href="/terms" className="text-blue-500 hover:underline">{t('privacy.termsLink')}</Link>
           <span className="mx-2">|</span>
-          <Link href="/login" className="text-blue-500 hover:underline">Back to Login</Link>
+          <Link href="/login" className="text-blue-500 hover:underline">{t('privacy.backToLogin')}</Link>
         </div>
       </div>
     </main>

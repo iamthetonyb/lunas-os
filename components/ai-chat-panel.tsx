@@ -34,7 +34,7 @@ export default function AIChatPanel({ onClose }: { onClose: () => void }) {
                 api: '/api/chat',
                 body: {
                     userName: session?.user?.name || 'Team Member',
-                    userRole: (session?.user as any)?.role || 'ADMIN',
+                    userRole: (session?.user as any)?.role || 'CREW',
                     currentPage: pathname,
                     preferredLang: i18n.language === 'es' ? 'ES' : 'EN',
                 },

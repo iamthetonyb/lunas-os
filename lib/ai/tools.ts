@@ -250,6 +250,9 @@ export function createTools(options: ToolOptions = {}) {
                 foremanUserId: z.string().describe("The foreman's user ID"),
             }),
             execute: async ({ workLogId, foremanUserId }) => {
+                if (options.userRole !== "ADMIN" && options.userRole !== "FOREMAN") {
+                    return { error: "Only admins and foremen can verify work logs. Contact your administrator to request access." };
+                }
                 const result = await client.mutation(api.workLogs.foremanVerify, {
                     id: workLogId as any,
                     foremanUserId: foremanUserId as any,
@@ -267,6 +270,9 @@ export function createTools(options: ToolOptions = {}) {
                 verifiedBy: z.string().describe("The admin user ID performing verification"),
             }),
             execute: async ({ workLogId, verifiedBy }) => {
+                if (options.userRole !== "ADMIN") {
+                    return { error: "Only admins can perform final work log verification. Contact your administrator for assistance." };
+                }
                 const result = await client.mutation(api.workLogs.verify, {
                     id: workLogId as any,
                     verifiedBy: verifiedBy as any,
@@ -283,6 +289,9 @@ export function createTools(options: ToolOptions = {}) {
                 reason: z.string().describe("Reason for flagging"),
             }),
             execute: async ({ workLogId, reason }) => {
+                if (options.userRole !== "ADMIN" && options.userRole !== "FOREMAN") {
+                    return { error: "Only admins and foremen can flag work logs. Contact your administrator to request access." };
+                }
                 const result = await client.mutation(api.workLogs.flag, {
                     id: workLogId as any,
                     reason,
@@ -301,6 +310,9 @@ export function createTools(options: ToolOptions = {}) {
                 builderId: z.string().optional().describe("Optional builder ID to scope within community"),
             }),
             execute: async ({ communityId, billingStatus, builderId }) => {
+                if (options.userRole !== "ADMIN") {
+                    return { error: "Only admins can update community billing status. Contact your administrator for assistance." };
+                }
                 const result = await client.mutation(api.workLogs.setCommunityBillingStatus, {
                     communityId: communityId as any,
                     billingStatus,
@@ -323,6 +335,9 @@ export function createTools(options: ToolOptions = {}) {
                     .describe("Foreman name to assign"),
             }),
             execute: async ({ jobId, foremanName }) => {
+                if (options.userRole !== "ADMIN" && options.userRole !== "FOREMAN") {
+                    return { error: "Only admins and foremen can assign foremen. Contact your administrator to request access." };
+                }
                 const result = await client.mutation(
                     api.mutations.assignForeman,
                     { jobId: jobId as any, foremanName }
@@ -341,6 +356,9 @@ export function createTools(options: ToolOptions = {}) {
                     .describe("Crew name to assign"),
             }),
             execute: async ({ jobId, crewName }) => {
+                if (options.userRole !== "ADMIN" && options.userRole !== "FOREMAN") {
+                    return { error: "Only admins and foremen can assign crews. Contact your administrator to request access." };
+                }
                 const result = await client.mutation(
                     api.mutations.assignCrew,
                     { jobId: jobId as any, crewName }
@@ -363,6 +381,9 @@ export function createTools(options: ToolOptions = {}) {
                     .describe("Reason for rescheduling"),
             }),
             execute: async ({ jobId, newDate, reason }) => {
+                if (options.userRole !== "ADMIN" && options.userRole !== "FOREMAN") {
+                    return { error: "Only admins and foremen can reschedule jobs. Contact your administrator to request access." };
+                }
                 const result = await client.mutation(
                     api.mutations.rescheduleJob,
                     { jobId: jobId as any, newDate, reason }
@@ -389,6 +410,9 @@ export function createTools(options: ToolOptions = {}) {
                 crewName,
                 serviceDate,
             }) => {
+                if (options.userRole !== "ADMIN") {
+                    return { error: "Only admins can dispatch jobs. Contact your administrator for assistance." };
+                }
                 const result = await client.mutation(
                     api.mutations.dispatchJob,
                     { jobId: jobId as any, foremanName, crewName, serviceDate }
@@ -398,6 +422,7 @@ export function createTools(options: ToolOptions = {}) {
             },
         }),
 
+        // createIntake: Allowed for ALL authenticated roles (ADMIN, FOREMAN, CREW, BACKOFFICE)
         createIntake: tool({
             description:
                 "Create a new job request/intake. Requires at least a service name. Builder, community, lot, and date are recommended.",
@@ -469,6 +494,9 @@ export function createTools(options: ToolOptions = {}) {
                 poNumber: z.string().optional(),
             }),
             execute: async ({ id, ...updates }) => {
+                if (options.userRole !== "ADMIN" && options.userRole !== "BACKOFFICE") {
+                    return { error: "Only admins and back office staff can update job requests." };
+                }
                 const filtered: Record<string, any> = { id: id as any };
                 for (const [k, v] of Object.entries(updates)) {
                     if (v !== undefined) filtered[k] = v;
@@ -489,6 +517,9 @@ export function createTools(options: ToolOptions = {}) {
                 "Manually trigger the scheduler agent to auto-assign foremen to unassigned jobs. Shows what assignments were made and their confidence scores. Use when asked to 'run the scheduler', 'auto-assign jobs', or 'balance the workload'.",
             inputSchema: z.object({}),
             execute: async () => {
+                if (options.userRole !== "ADMIN") {
+                    return { error: "Only admins can run the scheduler. Contact your administrator for assistance." };
+                }
                 const result = await client.action(
                     (api as any).scheduler.autoAssignJobs,
                     {}
@@ -504,6 +535,9 @@ export function createTools(options: ToolOptions = {}) {
                 "Manually trigger the dispatch agent to auto-batch today's assigned jobs into dispatch batches. Groups by crew+date, flags anomalies like double-booked lots. Use when asked to 'run dispatch', 'send out today\\'s jobs', or 'batch the dispatches'.",
             inputSchema: z.object({}),
             execute: async () => {
+                if (options.userRole !== "ADMIN") {
+                    return { error: "Only admins can run dispatch. Contact your administrator for assistance." };
+                }
                 const result = await client.action(
                     (api as any).dispatchAgent.autoDispatch,
                     {}
@@ -1989,6 +2023,30 @@ export function createTools(options: ToolOptions = {}) {
                 } catch (e: any) {
                     return { error: `Failed to remove section: ${e.message}` };
                 }
+            },
+        }),
+        // ── Permission Requests ──────────────────────────────────────────
+
+        requestPermission: tool({
+            description:
+                "Route a permission or approval request to the appropriate person. Use when a user tries an action they don't have access to. Logs the request for admin review.",
+            inputSchema: z.object({
+                action: z.string().describe("What the user is trying to do"),
+                reason: z.string().optional().describe("Why they need this"),
+                targetRole: z.enum(["ADMIN", "FOREMAN", "BACKOFFICE"]).describe("Role that should handle this request"),
+            }),
+            execute: async ({ action, reason, targetRole }) => {
+                await logAction("permission_request", {
+                    action,
+                    reason,
+                    targetRole,
+                    requestedByRole: options.userRole || "UNKNOWN",
+                }, { status: "pending_review" });
+
+                return {
+                    success: true,
+                    message: `Your request has been logged and will be reviewed by a ${targetRole.toLowerCase()}. The request: "${action}"${reason ? ` (Reason: ${reason})` : ''}. You'll be notified when it's been addressed.`,
+                };
             },
         }),
     };

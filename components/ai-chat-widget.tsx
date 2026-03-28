@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { usePathname } from 'next/navigation';
+import { useUser } from '@clerk/nextjs';
 import dynamic from 'next/dynamic';
 
 // Lazy-load the heavy chat panel — zero AI SDK bundle until user clicks
@@ -21,7 +22,14 @@ const AIChatPanel = dynamic(() => import('./ai-chat-panel'), {
 export function AIChatWidget() {
     const [open, setOpen] = useState(false);
     const pathname = usePathname();
+    const { isSignedIn } = useUser();
     const isOnChat = pathname === '/chat';
+    const isPublicWithWidget = pathname === '/work-log/public';
+
+    // Hide widget for unauthenticated users except on public pages
+    if (!isSignedIn && !isPublicWithWidget) {
+        return null;
+    }
 
     if (!open) {
         return (

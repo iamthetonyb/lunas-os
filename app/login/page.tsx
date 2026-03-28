@@ -2,13 +2,19 @@
 
 import { SignIn } from '@clerk/nextjs';
 import { useTheme } from 'next-themes';
+import { useTranslation } from 'react-i18next';
 import { useEffect, useState } from 'react';
 import Image from 'next/image';
 
 export default function LoginPage() {
-  const { resolvedTheme } = useTheme();
+  const { resolvedTheme, setTheme } = useTheme();
+  const { t, i18n } = useTranslation();
   const [mounted, setMounted] = useState(false);
   useEffect(() => { setMounted(true); }, []);
+
+  const toggleLang = () => {
+    i18n.changeLanguage(i18n.language === 'es' ? 'en' : 'es');
+  };
 
   return (
     <main className="min-h-screen flex items-center justify-center p-6 bg-gradient-to-br from-slate-50 to-blue-50 dark:from-slate-900 dark:to-slate-800">
@@ -22,6 +28,24 @@ export default function LoginPage() {
         }
       `}</style>
 
+      {/* Top-right controls */}
+      {mounted && (
+        <div className="fixed top-4 right-4 flex gap-2 z-10">
+          <button
+            onClick={toggleLang}
+            className="px-2.5 py-1.5 text-xs font-medium rounded-lg border border-gray-200 dark:border-slate-700 text-gray-600 dark:text-gray-300 bg-white dark:bg-slate-800 hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors"
+          >
+            {i18n.language === 'es' ? 'EN' : 'ES'}
+          </button>
+          <button
+            onClick={() => setTheme(resolvedTheme === 'dark' ? 'light' : 'dark')}
+            className="px-2.5 py-1.5 text-xs font-medium rounded-lg border border-gray-200 dark:border-slate-700 text-gray-600 dark:text-gray-300 bg-white dark:bg-slate-800 hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors"
+          >
+            {resolvedTheme === 'dark' ? '\u2600\uFE0F' : '\uD83C\uDF19'}
+          </button>
+        </div>
+      )}
+
       <div className="w-full max-w-md space-y-6">
         <div className="text-center flex flex-col items-center">
           {mounted && (
@@ -34,7 +58,7 @@ export default function LoginPage() {
               className="mb-3"
             />
           )}
-          <p className="text-sm text-gray-500 dark:text-gray-400">Construction Cleanup Management</p>
+          <p className="text-sm text-gray-500 dark:text-gray-400">{t('navigation.constructionCleanup')}</p>
         </div>
 
         <SignIn
@@ -58,10 +82,10 @@ export default function LoginPage() {
         />
 
         <p className="text-center text-xs text-gray-400 dark:text-gray-500">
-          By signing in you agree to our{' '}
-          <a href="/terms" className="text-blue-500 hover:text-blue-600 hover:underline">Terms &amp; Conditions</a>
+          {t('login.agreePrefix')}{' '}
+          <a href="/terms" className="text-blue-500 hover:text-blue-600 hover:underline">{t('login.termsLink')}</a>
           {' '}&amp;{' '}
-          <a href="/privacy" className="text-blue-500 hover:text-blue-600 hover:underline">Privacy Policy</a>
+          <a href="/privacy" className="text-blue-500 hover:text-blue-600 hover:underline">{t('login.privacyLink')}</a>
         </p>
       </div>
     </main>
