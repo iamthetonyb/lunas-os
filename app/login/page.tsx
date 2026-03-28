@@ -18,13 +18,18 @@ export default function LoginPage() {
 
   return (
     <main className="min-h-screen flex items-center justify-center p-6 bg-gradient-to-br from-slate-50 to-blue-50 dark:from-slate-900 dark:to-slate-800">
-      {/* Hide Clerk dev mode banner globally */}
+      {/* Hide Clerk "Don't have an account", "Secured by Clerk", and dev mode banner */}
       <style>{`
+        .cl-footerAction,
+        .cl-footer,
         .cl-internal-b3fm6y,
         [data-testid="clerk-development-banner"],
-        .cl-dev-mode-banner,
-        div[style*="development"] {
+        .cl-dev-mode-banner {
           display: none !important;
+          height: 0 !important;
+          overflow: hidden !important;
+          margin: 0 !important;
+          padding: 0 !important;
         }
       `}</style>
 
@@ -74,7 +79,8 @@ export default function LoginPage() {
               card: 'shadow-lg border border-gray-200 rounded-xl',
               headerTitle: 'hidden',
               headerSubtitle: 'hidden',
-              footerAction: 'hidden',
+              footer: '!hidden',
+              footerAction: '!hidden',
               socialButtonsBlockButton: 'border border-gray-300 hover:bg-gray-50 transition-colors',
               formButtonPrimary: 'bg-blue-600 hover:bg-blue-700 transition-colors',
             },
