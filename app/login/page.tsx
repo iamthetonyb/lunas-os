@@ -65,7 +65,7 @@ export default function LoginPage() {
               />
             </a>
           )}
-          <p className="text-sm text-gray-500 dark:text-gray-400">{t('navigation.constructionCleanup')}</p>
+          <p className="text-sm text-gray-500 dark:text-gray-400">{t('navigation.constructionCleanup')} OS</p>
         </div>
 
         <SignIn
