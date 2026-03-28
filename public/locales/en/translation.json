@@ -33,7 +33,9 @@
         "error": "An error occurred. Please try again.",
         "agreePrefix": "By signing in you agree to our",
         "termsLink": "Terms & Conditions",
-        "privacyLink": "Privacy Policy"
+        "privacyLink": "Privacy Policy",
+        "needAccount": "Need an account?",
+        "contactAdmin": "Contact your administrator"
     },
     "common": {
         "add": "Add",

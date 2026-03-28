@@ -74,12 +74,17 @@ export default function LoginPage() {
               card: 'shadow-lg border border-gray-200 rounded-xl',
               headerTitle: 'hidden',
               headerSubtitle: 'hidden',
+              footerAction: 'hidden',
               socialButtonsBlockButton: 'border border-gray-300 hover:bg-gray-50 transition-colors',
               formButtonPrimary: 'bg-blue-600 hover:bg-blue-700 transition-colors',
-              footerActionLink: 'text-blue-600 hover:text-blue-700',
             },
           }}
         />
+
+        <p className="text-center text-xs text-gray-500 dark:text-gray-400">
+          {t('login.needAccount')}{' '}
+          <a href="mailto:dispatch@lunasinc.com" className="text-blue-500 hover:text-blue-600 hover:underline">{t('login.contactAdmin')}</a>
+        </p>
 
         <p className="text-center text-xs text-gray-400 dark:text-gray-500">
           {t('login.agreePrefix')}{' '}

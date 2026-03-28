@@ -33,7 +33,9 @@
         "error": "Ocurrió un error. Inténtalo de nuevo.",
         "agreePrefix": "Al iniciar sesión aceptas nuestros",
         "termsLink": "Términos y Condiciones",
-        "privacyLink": "Política de Privacidad"
+        "privacyLink": "Política de Privacidad",
+        "needAccount": "¿Necesitas una cuenta?",
+        "contactAdmin": "Contacta a tu administrador"
     },
     "common": {
         "add": "Agregar",
