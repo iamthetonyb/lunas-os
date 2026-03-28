@@ -6,6 +6,8 @@ const isPublicRoute = createRouteMatcher([
   '/reset-password(.*)',
   '/work-log/public(.*)', // Public work log (no login required)
   '/t/(.*)',               // Public ticket submission
+  '/terms(.*)',            // Public terms page
+  '/privacy(.*)',          // Public privacy policy page
   '/api/auth/(.*)',        // Auth API routes (password reset)
   '/api/telegram/(.*)',    // Telegram webhook
   '/api/uploadthing(.*)',  // File uploads
@@ -19,6 +21,9 @@ export default clerkMiddleware(async (auth, req) => {
   if (!isPublicRoute(req)) {
     await auth.protect();
   }
+}, {
+  signInUrl: '/login',
+  signUpUrl: '/login',
 });
 
 export const config = {

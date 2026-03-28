@@ -42,7 +42,10 @@ export default function LoginPage() {
         />
 
         <p className="text-center text-xs text-gray-400 dark:text-gray-500">
-          Powered by Lunas OS v2
+          By signing in you agree to our{' '}
+          <a href="/terms" className="text-blue-500 hover:text-blue-600 hover:underline">Terms &amp; Conditions</a>
+          {' '}&amp;{' '}
+          <a href="/privacy" className="text-blue-500 hover:text-blue-600 hover:underline">Privacy Policy</a>
         </p>
       </div>
     </main>

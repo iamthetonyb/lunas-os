@@ -60,7 +60,7 @@ export default function Providers({ children }: { children: ReactNode }) {
 
   // Authenticated routes: Clerk + Convex
   return (
-    <ClerkProvider>
+    <ClerkProvider signInUrl="/login" signUpUrl="/login" afterSignOutUrl="/login">
       <ConvexProviderWithClerk client={convex} useAuth={useAuth}>
         {inner}
       </ConvexProviderWithClerk>
