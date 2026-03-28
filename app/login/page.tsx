@@ -54,14 +54,16 @@ export default function LoginPage() {
       <div className="w-full max-w-md space-y-6">
         <div className="text-center flex flex-col items-center">
           {mounted && (
-            <Image
-              src={resolvedTheme === 'dark' ? '/lunas-light-logo.png' : '/lunas-dark-logo.png'}
-              alt="Lunas Construction Cleanup"
-              width={180}
-              height={60}
-              priority
-              className="mb-3"
-            />
+            <a href="https://lunasinc.com" target="_blank" rel="noopener noreferrer">
+              <Image
+                src={resolvedTheme === 'dark' ? '/lunas-light-logo.png' : '/lunas-dark-logo.png'}
+                alt="Lunas Construction Cleanup"
+                width={180}
+                height={60}
+                priority
+                className="mb-3 hover:opacity-80 transition-opacity cursor-pointer"
+              />
+            </a>
           )}
           <p className="text-sm text-gray-500 dark:text-gray-400">{t('navigation.constructionCleanup')}</p>
         </div>
