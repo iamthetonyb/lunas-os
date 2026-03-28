@@ -1,12 +1,40 @@
-import Link from 'next/link';
+'use client';
 
-export const metadata = {
-  title: 'Privacy Policy | Lunas OS',
-};
+import Link from 'next/link';
+import { useTheme } from 'next-themes';
+import { useTranslation } from 'react-i18next';
+import { useEffect, useState } from 'react';
 
 export default function PrivacyPage() {
+  const { theme, setTheme, resolvedTheme } = useTheme();
+  const { t, i18n } = useTranslation();
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => { setMounted(true); }, []);
+
+  const toggleLang = () => {
+    i18n.changeLanguage(i18n.language === 'es' ? 'en' : 'es');
+  };
+
   return (
-    <main className="min-h-screen bg-white dark:bg-slate-900 py-12 px-4 sm:px-6 lg:px-8">
+    <main className="min-h-screen bg-white dark:bg-slate-900 py-8 px-4 sm:px-6 lg:px-8">
+      {/* Top-right controls */}
+      {mounted && (
+        <div className="fixed top-4 right-4 flex gap-2 z-10">
+          <button
+            onClick={toggleLang}
+            className="px-2.5 py-1.5 text-xs font-medium rounded-lg border border-gray-200 dark:border-slate-700 text-gray-600 dark:text-gray-300 bg-white dark:bg-slate-800 hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors"
+          >
+            {i18n.language === 'es' ? 'EN' : 'ES'}
+          </button>
+          <button
+            onClick={() => setTheme(resolvedTheme === 'dark' ? 'light' : 'dark')}
+            className="px-2.5 py-1.5 text-xs font-medium rounded-lg border border-gray-200 dark:border-slate-700 text-gray-600 dark:text-gray-300 bg-white dark:bg-slate-800 hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors"
+          >
+            {resolvedTheme === 'dark' ? '☀️' : '🌙'}
+          </button>
+        </div>
+      )}
+
       <div className="max-w-3xl mx-auto">
         <Link href="/login" className="text-sm text-blue-600 hover:text-blue-700 dark:text-blue-400 mb-6 inline-block">&larr; Back to Login</Link>
         <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">Privacy Policy</h1>
@@ -15,7 +43,7 @@ export default function PrivacyPage() {
         <div className="prose prose-sm dark:prose-invert max-w-none space-y-6 text-gray-700 dark:text-gray-300">
           <section>
             <h2 className="text-lg font-semibold text-gray-900 dark:text-white">1. Introduction</h2>
-            <p>Lunas Construction Cleanup (&ldquo;Company&rdquo;, &ldquo;we&rdquo;, &ldquo;us&rdquo;) respects your privacy. This Privacy Policy explains how we collect, use, disclose, and safeguard your information when you use Lunas OS (&ldquo;the Platform&rdquo;).</p>
+            <p>Lunas Construction Cleanup LLC (&ldquo;Company&rdquo;, &ldquo;we&rdquo;, &ldquo;us&rdquo;) respects your privacy. This Privacy Policy explains how we collect, use, disclose, and safeguard your information when you use Lunas OS (&ldquo;the Platform&rdquo;).</p>
           </section>
 
           <section>
@@ -100,7 +128,7 @@ export default function PrivacyPage() {
 
           <section>
             <h2 className="text-lg font-semibold text-gray-900 dark:text-white">11. Contact</h2>
-            <p>For privacy questions or data requests, contact us at <a href="mailto:info@lunasconstruction.com" className="text-blue-600 dark:text-blue-400 hover:underline">info@lunasconstruction.com</a>.</p>
+            <p>For privacy questions or data requests, contact us at <a href="mailto:dispatch@lunasinc.com" className="text-blue-600 dark:text-blue-400 hover:underline">dispatch@lunasinc.com</a>.</p>
           </section>
         </div>
 

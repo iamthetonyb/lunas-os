@@ -1,8 +1,15 @@
 'use client';
 
 import { SignIn } from '@clerk/nextjs';
+import { useTheme } from 'next-themes';
+import { useEffect, useState } from 'react';
+import Image from 'next/image';
 
 export default function LoginPage() {
+  const { resolvedTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => { setMounted(true); }, []);
+
   return (
     <main className="min-h-screen flex items-center justify-center p-6 bg-gradient-to-br from-slate-50 to-blue-50 dark:from-slate-900 dark:to-slate-800">
       {/* Hide Clerk dev mode banner globally */}
@@ -16,9 +23,18 @@ export default function LoginPage() {
       `}</style>
 
       <div className="w-full max-w-md space-y-6">
-        <div className="text-center">
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white tracking-tight">Lunas OS</h1>
-          <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">Construction Cleanup Management</p>
+        <div className="text-center flex flex-col items-center">
+          {mounted && (
+            <Image
+              src={resolvedTheme === 'dark' ? '/lunas-light-logo.png' : '/lunas-dark-logo.png'}
+              alt="Lunas Construction Cleanup"
+              width={180}
+              height={60}
+              priority
+              className="mb-3"
+            />
+          )}
+          <p className="text-sm text-gray-500 dark:text-gray-400">Construction Cleanup Management</p>
         </div>
 
         <SignIn
